@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <record model="ir.ui.view" id="portalgestor_asignacion_mensual_form">
+      <field name="name">portalgestor.asignacion.mensual.form</field>
+      <field name="model">portalgestor.asignacion.mensual</field>
+      <field name="arch" type="xml">
+        <form string="Trabajo Fijo">
+          <sheet>
+            <group>
+              <group>
+                <field name="usuario_id" domain="[('baja', '=', False)]"/>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
+              </group>
+              <group>
+                <field name="total_dias_generados" readonly="1"/>
+                <field name="total_lineas_generadas" readonly="1"/>
+              </group>
+            </group>
+            <notebook>
+              <page string="Tramos Fijos">
+                <field name="linea_fija_ids">
+                  <list editable="bottom">
+                    <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                    <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                    <field
+                      name="trabajador_id"
+                      options="{'no_create': True}"
+                      domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id])]"
+                    />
+                  </list>
+                  <form string="Tramo Fijo">
+                    <group>
+                      <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                      <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                      <field
+                        name="trabajador_id"
+                        options="{'no_create': True}"
+                        domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id])]"
+                      />
+                    </group>
+                  </form>
+                </field>
+              </page>
+              <page string="Asignaciones Generadas">
+                <field name="asignacion_linea_ids" readonly="1">
+                  <list>
+                    <field name="fecha"/>
+                    <field name="hora_inicio" widget="float_time"/>
+                    <field name="hora_fin" widget="float_time"/>
+                    <field name="trabajador_id"/>
+                    <field name="asignacion_id"/>
+                  </list>
+                </field>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_asignacion_mensual_list">
+      <field name="name">portalgestor.asignacion.mensual.list</field>
+      <field name="model">portalgestor.asignacion.mensual</field>
+      <field name="arch" type="xml">
+        <list string="Trabajos Fijos">
+          <field name="usuario_id"/>
+          <field name="fecha_inicio"/>
+          <field name="fecha_fin"/>
+          <field name="total_dias_generados"/>
+          <field name="total_lineas_generadas"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_portalgestor_asignacion_mensual">
+      <field name="name">Trabajos Fijos</field>
+      <field name="res_model">portalgestor.asignacion.mensual</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_portalgestor_asignacion_mensual_create">
+      <field name="name">Trabajos Fijos</field>
+      <field name="res_model">portalgestor.asignacion.mensual</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem
+      name="Trabajos Fijos"
+      id="portalgestor_menu_asignacion_mensual"
+      parent="portalgestor_menu_root"
+      action="action_portalgestor_asignacion_mensual"
+      sequence="20"
+    />
+
+    <record model="ir.ui.menu" id="portalgestor_menu_asignacion_mensual_create">
+      <field name="active">False</field>
+    </record>
+
+  </data>
+</odoo>

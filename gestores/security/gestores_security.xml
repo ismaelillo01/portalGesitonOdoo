@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Categoría para Gestores -->
+        <record id="module_category_gestores" model="ir.module.category">
+            <field name="name">Gestores</field>
+            <field name="description">Ayuda a gestionar el grupo de los gestores.</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- Grupo Agusto -->
+        <record id="group_gestores_agusto" model="res.groups">
+            <field name="name">Gestor Agusto</field>
+            <field name="category_id" ref="module_category_gestores"/>
+        </record>
+
+        <!-- Grupo Intecum -->
+        <record id="group_gestores_intecum" model="res.groups">
+            <field name="name">Gestor Intecum</field>
+            <field name="category_id" ref="module_category_gestores"/>
+        </record>
+
+        <!-- Grupo Administrador -->
+        <record id="group_gestores_administrador" model="res.groups">
+            <field name="name">Gestor Administrador</field>
+            <field name="category_id" ref="module_category_gestores"/>
+        </record>
+    </data>
+</odoo>

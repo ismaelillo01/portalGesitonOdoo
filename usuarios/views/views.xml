@@ -1,0 +1,70 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+    <record model="ir.ui.view" id="usuarios.usuario_list">
+      <field name="name">usuario.list</field>
+      <field name="model">usuarios.usuario</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="name"/>
+          <field name="apellido1"/>
+          <field name="dni_nie"/>
+          <field name="telefono"/>
+          <field name="grupo"/>
+          <field name="zona_trabajo_id"/>
+          <field name="baja"/>
+        </list>
+      </field>
+    </record>
+
+    <!-- explicit form view definition -->
+    <record model="ir.ui.view" id="usuarios.usuario_form">
+      <field name="name">usuario.form</field>
+      <field name="model">usuarios.usuario</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <group string="Datos Personales">
+                <field name="name"/>
+                <field name="apellido1"/>
+                <field name="apellido2"/>
+                <field name="dni_nie"/>
+              </group>
+              <group string="Datos de Contacto">
+                <field name="telefono"/>
+                <field name="direccion"/>
+              </group>
+            </group>
+            <group string="Datos Asignación">
+              <group>
+                <field name="grupo"/>
+                <field name="zona_trabajo_id" options="{'no_create': True, 'no_open': True}"/>
+              </group>
+              <group>
+                <field name="baja"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <!-- actions opening views on models -->
+    <record model="ir.actions.act_window" id="usuarios.action_window">
+      <field name="name">Usuarios</field>
+      <field name="res_model">usuarios.usuario</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Top menu item -->
+    <menuitem name="Usuarios" id="usuarios.menu_root"/>
+
+    <!-- menu categories -->
+    <menuitem name="Usuarios" id="usuarios.menu_usuarios" parent="usuarios.menu_root"/>
+
+    <!-- actions -->
+    <menuitem name="Todos los Usuarios" id="usuarios.menu_1_list" parent="usuarios.menu_usuarios"
+              action="usuarios.action_window"/>
+  </data>
+</odoo>

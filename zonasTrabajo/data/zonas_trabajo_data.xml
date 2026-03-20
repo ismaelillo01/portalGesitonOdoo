@@ -1,0 +1,24 @@
+<odoo>
+    <data noupdate="1">
+        <record id="zona_palencia_capital" model="zonastrabajo.zona">
+            <field name="name">Palencia Capital</field>
+            <field name="code">palencia_capital</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="zona_cerrato" model="zonastrabajo.zona">
+            <field name="name">Cerrato</field>
+            <field name="code">cerrato</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="zona_tierra_de_campos" model="zonastrabajo.zona">
+            <field name="name">Tierra de Campos</field>
+            <field name="code">tierra_de_campos</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="zona_norte" model="zonastrabajo.zona">
+            <field name="name">Norte</field>
+            <field name="code">norte</field>
+            <field name="sequence">40</field>
+        </record>
+    </data>
+</odoo>

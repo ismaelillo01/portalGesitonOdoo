@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Record Rule para Agusto (Solo leen Usuarios que sean Agusto y sus asignaciones) -->
+        <record id="rule_asignacion_gestor_agusto" model="ir.rule">
+            <field name="name">Asignaciones solo para usuarios Agusto si el gestor es Agusto</field>
+            <field name="model_id" ref="model_portalgestor_asignacion"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[('usuario_grupo', '=', 'agusto')]</field>
+        </record>
+
+        <!-- Record Rule general para Intecum / Admin (Leen todo en Asignaciones) -->
+        <record id="rule_asignacion_gestor_intecum" model="ir.rule">
+            <field name="name">Asignaciones globales Intecum y Admin</field>
+            <field name="model_id" ref="model_portalgestor_asignacion"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_asignacion_mensual_gestor_agusto" model="ir.rule">
+            <field name="name">Trabajos fijos solo para usuarios Agusto si el gestor es Agusto</field>
+            <field name="model_id" ref="model_portalgestor_asignacion_mensual"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[('usuario_grupo', '=', 'agusto')]</field>
+        </record>
+
+        <record id="rule_asignacion_mensual_gestor_intecum" model="ir.rule">
+            <field name="name">Trabajos fijos globales Intecum y Admin</field>
+            <field name="model_id" ref="model_portalgestor_asignacion_mensual"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_asignacion_mensual_linea_gestor_agusto" model="ir.rule">
+            <field name="name">Tramos de trabajos fijos solo para usuarios Agusto si el gestor es Agusto</field>
+            <field name="model_id" ref="model_portalgestor_asignacion_mensual_linea"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[('asignacion_mensual_id.usuario_grupo', '=', 'agusto')]</field>
+        </record>
+
+        <record id="rule_asignacion_mensual_linea_gestor_intecum" model="ir.rule">
+            <field name="name">Tramos de trabajos fijos globales Intecum y Admin</field>
+            <field name="model_id" ref="model_portalgestor_asignacion_mensual_linea"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- Record Rules para Usuarios y Trabajadores (Limitar vista a Agusto) -->
+        <record id="rule_usuarios_gestor_agusto" model="ir.rule">
+            <field name="name">Usuarios solo Agusto para gestores Agusto</field>
+            <field name="model_id" ref="usuarios.model_usuarios_usuario"/> <!-- Requiere dep usuarios -->
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[('grupo', '=', 'agusto')]</field>
+        </record>
+        
+        <record id="rule_usuarios_gestor_intecum" model="ir.rule">
+            <field name="name">Usuarios Globales (Intecum/Admin)</field>
+            <field name="model_id" ref="usuarios.model_usuarios_usuario"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_trabajadores_gestor_agusto" model="ir.rule">
+            <field name="name">Trabajadores solo Agusto para gestores Agusto</field>
+            <field name="model_id" ref="trabajadores.model_trabajadores_trabajador"/> <!-- Requiere dep trabajadores -->
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[('grupo', '=', 'agusto')]</field>
+        </record>
+
+        <record id="rule_trabajadores_gestor_intecum" model="ir.rule">
+            <field name="name">Trabajadores Globales (Intecum/Admin)</field>
+            <field name="model_id" ref="trabajadores.model_trabajadores_trabajador"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_vacacion_calendar_filter_own_records" model="ir.rule">
+            <field name="name">Filtros de calendario de vacaciones propios</field>
+            <field name="model_id" ref="model_portalgestor_vacacion_calendar_filter"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto')), (4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[('user_id', '=', user.id), ('trabajador_id.baja', '=', False)]</field>
+        </record>
+
+        <record id="rule_asignacion_calendar_usuario_filter_own_records" model="ir.rule">
+            <field name="name">Filtros de calendario de asignaciones por usuario propios</field>
+            <field name="model_id" ref="model_portalgestor_asignacion_calendar_usuario_filter"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto')), (4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[('user_id', '=', user.id), ('usuario_id.baja', '=', False)]</field>
+        </record>
+
+        <record id="rule_asignacion_calendar_trabajador_filter_own_records" model="ir.rule">
+            <field name="name">Filtros de calendario de asignaciones por trabajador propios</field>
+            <field name="model_id" ref="model_portalgestor_asignacion_calendar_trabajador_filter"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto')), (4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[('user_id', '=', user.id), ('trabajador_id.baja', '=', False)]</field>
+        </record>
+
+    </data>
+</odoo>

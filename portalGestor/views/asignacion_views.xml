@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <!-- Calendar view para la asignacion principal -->
+    <record model="ir.ui.view" id="portalgestor_asignacion_calendar">
+        <field name="name">portalgestor.asignacion.calendar</field>
+        <field name="model">portalgestor.asignacion</field>
+        <field name="arch" type="xml">
+            <calendar string="Calendario de Asignaciones" date_start="fecha" color="color_calendario" mode="month" quick_create="False">
+                <field name="usuario_id" write_model="portalgestor.asignacion.calendar.usuario.filter" write_field="usuario_id" filter_field="usuario_checked"/>
+                <field name="trabajador_calendar_filter_id" string="Trabajador" invisible="1" filters="1" write_model="portalgestor.asignacion.calendar.trabajador.filter" write_field="trabajador_id" filter_field="trabajador_checked"/>
+                <field name="trabajador_id" invisible="1"/>
+                <field name="confirmado"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record model="ir.ui.view" id="portalgestor_asignacion_form">
+      <field name="name">portalgestor.asignacion.form</field>
+      <field name="model">portalgestor.asignacion</field>
+      <field name="arch" type="xml">
+        <form string="Asignación Horaria">
+          <header>
+            <button name="action_verificar_y_confirmar" string="Verificar y Confirmar" type="object" class="oe_highlight" invisible="confirmado == True"/>
+            <button name="action_editar" string="Modificar Horario" type="object" invisible="confirmado == False"/>
+          </header>
+          <sheet>
+            <group>
+              <group>
+                <field name="usuario_id" readonly="confirmado == True" domain="[('baja', '=', False)]"/>
+                <field name="fecha" readonly="confirmado == True"/>
+              </group>
+              <group>
+                <field name="confirmado" readonly="1"/>
+                <field name="color_calendario" invisible="1"/>
+              </group>
+            </group>
+            <notebook>
+              <page string="Horas Asignadas">
+                <field name="lineas_ids" readonly="confirmado == True">
+                  <list editable="bottom">
+                    <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                    <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                    <field name="usuario_zona_trabajo_id" column_invisible="True"/>
+                    <field name="trabajador_id" options="{'no_create': True}" context="{'exclude_vacaciones_fecha': parent.fecha}" domain="[('zona_trabajo_ids', 'in', [usuario_zona_trabajo_id]), ('baja', '=', False)]"/>
+                  </list>
+                </field>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_asignacion_list">
+      <field name="name">portalgestor.asignacion.list</field>
+      <field name="model">portalgestor.asignacion</field>
+      <field name="arch" type="xml">
+        <list string="Asignaciones">
+          <field name="usuario_id"/>
+          <field name="trabajador_resumen"/>
+          <field name="fecha"/>
+          <field name="rango_horas_resumen"/>
+        </list>
+      </field>
+    </record>
+
+    <!-- Actions and Menus -->
+    <record model="ir.actions.act_window" id="action_portalgestor_asignacion">
+      <field name="name">Portal Gestor</field>
+      <field name="res_model">portalgestor.asignacion</field>
+      <field name="view_mode">calendar,list,form</field>
+    </record>
+
+    <menuitem name="Portal Gestor" id="portalgestor_menu_root"/>
+    <menuitem name="Asignaciones" id="portalgestor_menu_asignaciones" parent="portalgestor_menu_root" action="action_portalgestor_asignacion"/>
+
+  </data>
+</odoo>

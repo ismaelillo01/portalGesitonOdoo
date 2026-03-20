@@ -1,0 +1,21 @@
+<odoo>
+    <data>
+        <record id="portalgestor_vacacion_calendar_inherit_filters" model="ir.ui.view">
+            <field name="name">trabajadores.vacacion.calendar.portalgestor.filters</field>
+            <field name="model">trabajadores.vacacion</field>
+            <field name="inherit_id" ref="trabajadores.vacacion_calendar"/>
+            <field name="arch" type="xml">
+                <xpath expr="//calendar/field[@name='trabajador_id']" position="attributes">
+                    <attribute name="string">Trabajador</attribute>
+                    <attribute name="write_model">portalgestor.vacacion.calendar.filter</attribute>
+                    <attribute name="write_field">trabajador_id</attribute>
+                    <attribute name="filter_field">trabajador_checked</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="trabajadores.action_vacacion_window" model="ir.actions.act_window">
+            <field name="search_view_id" ref="trabajadores.vacacion_search"/>
+        </record>
+    </data>
+</odoo>

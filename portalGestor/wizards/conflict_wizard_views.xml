@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_portalgestor_conflict_wizard_form" model="ir.ui.view">
+        <field name="name">portalgestor.conflict.wizard.form</field>
+        <field name="model">portalgestor.conflict.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Conflicto de Asignación">
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="conflict_type != 'overlapping'">
+                        <field name="mensaje" readonly="1" force_save="1"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="conflict_type != 'info_same_day'" style="white-space: pre-wrap;">
+                        <field name="mensaje" readonly="1" force_save="1"/>
+                    </div>
+                    <field name="conflict_type" invisible="1"/>
+                    <field name="info_resumen" invisible="1"/>
+                </sheet>
+                <footer>
+                    <button string="Confirmar y Proceder" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

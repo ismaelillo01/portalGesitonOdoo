@@ -1,0 +1,93 @@
+.o_calendar_widget .o_portalgestor_bucket {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_calendar_widget .o_portalgestor_bucket .fc-event-main {
+    padding: 2px 6px;
+}
+
+.o_calendar_widget .o_portalgestor_bucket--pending {
+    background: #d1fae5;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.o_calendar_widget .o_portalgestor_bucket--missing {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.o_calendar_widget .o_portalgestor_bucket--completed {
+    background: #fecaca;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.o_portalgestor_bucket_dialog .modal-content {
+    overflow: hidden;
+}
+
+.o_portalgestor_bucket_dialog_body {
+    background: #f5f5f5;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.o_portalgestor_bucket_dialog_meta {
+    margin-bottom: 12px;
+}
+
+.o_portalgestor_bucket_dialog_badge {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+}
+
+.o_portalgestor_bucket_dialog_badge--pending {
+    background: #d1fae5;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.o_portalgestor_bucket_dialog_badge--missing {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.o_portalgestor_bucket_dialog_badge--completed {
+    background: #fecaca;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.o_portalgestor_bucket_record {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.o_portalgestor_bucket_record--pending {
+    background: #d1fae5;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.o_portalgestor_bucket_record--missing {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.o_portalgestor_bucket_record--completed {
+    background: #fca5a5;
+    border-color: #f87171;
+    color: #7f1d1d;
+}
