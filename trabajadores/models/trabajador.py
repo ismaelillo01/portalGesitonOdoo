@@ -36,30 +36,46 @@ class Trabajador(models.Model):
             record.display_name = " ".join(parts) if parts else ''
 
     @api.model
-    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
+    def _get_excluded_vacation_worker_ids(self):
         fecha = self.env.context.get('exclude_vacaciones_fecha')
-        if fecha:
-            # El contexto puede enviar la fecha como string ISO desde la vista JS
-            if isinstance(fecha, str):
-                fecha = fields.Date.to_date(fecha)
-            if fecha:
-                trabajadores_vacaciones = [
-                    trabajador.id
-                    for trabajador, __count in self.env['trabajadores.vacacion']._read_group(
-                        [
-                            ('date_start', '<=', fecha),
-                            ('date_stop', '>=', fecha),
-                        ],
-                        ['trabajador_id'],
-                        ['__count'],
-                    )
-                    if trabajador
-                ]
-                if trabajadores_vacaciones:
-                    if isinstance(domain, tuple):
-                        domain = list(domain)
-                    elif not isinstance(domain, list):
-                        domain = []
-                    domain = domain + [('id', 'not in', trabajadores_vacaciones)]
+        fecha_inicio = self.env.context.get('exclude_vacaciones_fecha_inicio')
+        fecha_fin = self.env.context.get('exclude_vacaciones_fecha_fin')
+
+        if fecha and not (fecha_inicio or fecha_fin):
+            fecha_inicio = fecha
+            fecha_fin = fecha
+
+        fecha_inicio = fields.Date.to_date(fecha_inicio) if fecha_inicio else False
+        fecha_fin = fields.Date.to_date(fecha_fin) if fecha_fin else False
+        if not fecha_inicio and not fecha_fin:
+            return []
+
+        fecha_inicio = fecha_inicio or fecha_fin
+        fecha_fin = fecha_fin or fecha_inicio
+        if fecha_inicio > fecha_fin:
+            fecha_inicio, fecha_fin = fecha_fin, fecha_inicio
+
+        return [
+            trabajador.id
+            for trabajador, __count in self.env['trabajadores.vacacion']._read_group(
+                [
+                    ('date_start', '<=', fecha_fin),
+                    ('date_stop', '>=', fecha_inicio),
+                ],
+                ['trabajador_id'],
+                ['__count'],
+            )
+            if trabajador
+        ]
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
+        trabajadores_vacaciones = self._get_excluded_vacation_worker_ids()
+        if trabajadores_vacaciones:
+            if isinstance(domain, tuple):
+                domain = list(domain)
+            elif not isinstance(domain, list):
+                domain = []
+            domain = domain + [('id', 'not in', trabajadores_vacaciones)]
 
         return super()._search(domain, offset=offset, limit=limit, order=order, **kwargs)

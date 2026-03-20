@@ -7,28 +7,34 @@
       <field name="model">portalgestor.asignacion.mensual</field>
       <field name="arch" type="xml">
         <form string="Trabajo Fijo">
+          <header>
+            <button name="action_verificar_y_confirmar" string="Verificar y Confirmar" type="object" class="oe_highlight" invisible="confirmado == True"/>
+            <button name="action_editar" string="Modificar Horario" type="object" invisible="confirmado == False"/>
+          </header>
           <sheet>
             <group>
               <group>
-                <field name="usuario_id" domain="[('baja', '=', False)]"/>
-                <field name="fecha_inicio"/>
-                <field name="fecha_fin"/>
+                <field name="usuario_id" domain="[('baja', '=', False)]" readonly="confirmado == True"/>
+                <field name="fecha_inicio" readonly="confirmado == True"/>
+                <field name="fecha_fin" readonly="confirmado == True"/>
               </group>
               <group>
+                <field name="confirmado" readonly="1"/>
                 <field name="total_dias_generados" readonly="1"/>
                 <field name="total_lineas_generadas" readonly="1"/>
               </group>
             </group>
             <notebook>
               <page string="Tramos Fijos">
-                <field name="linea_fija_ids">
+                <field name="linea_fija_ids" readonly="confirmado == True">
                   <list editable="bottom">
                     <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
                     <field name="hora_fin" widget="float_time" placeholder="23:59"/>
                     <field
                       name="trabajador_id"
                       options="{'no_create': True}"
-                      domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id])]"
+                      context="{'exclude_vacaciones_fecha_inicio': parent.fecha_inicio, 'exclude_vacaciones_fecha_fin': parent.fecha_fin}"
+                      domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id]), ('baja', '=', False)]"
                     />
                   </list>
                   <form string="Tramo Fijo">
@@ -38,7 +44,8 @@
                       <field
                         name="trabajador_id"
                         options="{'no_create': True}"
-                        domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id])]"
+                        context="{'exclude_vacaciones_fecha_inicio': parent.fecha_inicio, 'exclude_vacaciones_fecha_fin': parent.fecha_fin}"
+                        domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id]), ('baja', '=', False)]"
                       />
                     </group>
                   </form>
@@ -96,6 +103,7 @@
     />
 
     <record model="ir.ui.menu" id="portalgestor_menu_asignacion_mensual_create">
+      <field name="name">Trabajos Fijos (Oculto)</field>
       <field name="active">False</field>
     </record>
 

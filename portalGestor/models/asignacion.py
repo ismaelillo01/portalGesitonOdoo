@@ -331,10 +331,22 @@ class Asignacion(models.Model):
         lineas = self.env['portalgestor.asignacion.linea'].search([
             ('trabajador_id', 'in', worker_ids),
             ('fecha', '>=', fecha_inicio),
-            ('asignacion_mensual_id', '=', False),
         ])
-        if lineas:
-            lineas.write({'trabajador_id': False})
+        if not lineas:
+            return lineas
+
+        lineas_fijas = lineas.filtered('asignacion_mensual_linea_id')
+        lineas_individuales = lineas - lineas_fijas
+        if lineas_individuales:
+            lineas_individuales.write({'trabajador_id': False})
+        if lineas_fijas:
+            lineas_fijas.with_context(
+                portalgestor_skip_fixed_exception=True,
+            ).write({
+                'trabajador_id': False,
+                'asignacion_mensual_id': False,
+                'asignacion_mensual_linea_id': False,
+            })
         return lineas
 
     @api.model
@@ -350,7 +362,9 @@ class Asignacion(models.Model):
             ('fecha', '>=', fecha_inicio),
         ])
         if asignaciones:
-            asignaciones.unlink()
+            asignaciones.with_context(
+                portalgestor_skip_fixed_exception=True,
+            ).unlink()
         return asignaciones
 
     def cleanup_empty_assignments(self):
@@ -383,7 +397,15 @@ class Asignacion(models.Model):
             return super().write(vals)
 
         before_state = self._get_calendar_realtime_snapshot()
+        monthly_ids_by_assignment = {}
+        if 'lineas_ids' in vals:
+            monthly_ids_by_assignment = self.env['portalgestor.asignacion.linea']._get_assignment_fixed_monthly_ids(self)
         result = super(Asignacion, self.with_context(portalgestor_skip_calendar_notify=True)).write(vals)
+        if monthly_ids_by_assignment:
+            line_model = self.env['portalgestor.asignacion.linea']
+            line_model._merge_assignment_fixed_monthly_ids(monthly_ids_by_assignment, self)
+            line_model._detach_fixed_days_when_worker_changed(self, monthly_ids_by_assignment)
+            self.with_context(portalgestor_skip_calendar_notify=True).cleanup_empty_assignments()
         self._send_calendar_update_notification(
             self._build_calendar_update_payload(
                 before_state=before_state,
@@ -407,14 +429,13 @@ class Asignacion(models.Model):
         )
         return result
 
-    def action_verificar_y_confirmar(self):
+    def _get_verification_action(self, asignacion_mensual_id=False):
         self.ensure_one()
 
         lineas_con_trabajador = self.lineas_ids.filtered('trabajador_id').sorted(
             key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
         )
         if not lineas_con_trabajador:
-            self.confirmado = True
             return True
 
         otras_lineas = self.env['portalgestor.asignacion.linea'].search(
@@ -435,7 +456,12 @@ class Asignacion(models.Model):
                     linea.hora_inicio, conflicto.hora_inicio
                 )
                 if overlap > 0:
-                    return self._launch_wizard('overlapping', linea.id, conflicto.id)
+                    return self._launch_wizard(
+                        'overlapping',
+                        linea.id,
+                        conflicto.id,
+                        asignacion_mensual_id=asignacion_mensual_id,
+                    )
 
         avisos = []
         avisos_set = set()
@@ -451,14 +477,25 @@ class Asignacion(models.Model):
                     avisos.append(aviso)
 
         if avisos:
-            return self._launch_info_wizard("\n".join(avisos))
+            return self._launch_info_wizard(
+                "\n".join(avisos),
+                asignacion_mensual_id=asignacion_mensual_id,
+            )
 
+        return True
+
+    def action_verificar_y_confirmar(self):
+        self.ensure_one()
+        result = self._get_verification_action()
+        if isinstance(result, dict):
+            return result
         self.confirmado = True
         return True
 
-    def _launch_info_wizard(self, resumen):
+    def _launch_info_wizard(self, resumen, asignacion_mensual_id=False):
         wizard = self.env['portalgestor.conflict.wizard'].create({
             'asignacion_id': self.id,
+            'asignacion_mensual_id': asignacion_mensual_id,
             'conflict_type': 'info_same_day',
             'info_resumen': resumen,
         })
@@ -476,9 +513,10 @@ class Asignacion(models.Model):
         self.confirmado = False
         return True
 
-    def _launch_wizard(self, conflict_type, linea_actual_id, linea_conflicto_id):
+    def _launch_wizard(self, conflict_type, linea_actual_id, linea_conflicto_id, asignacion_mensual_id=False):
         wizard = self.env['portalgestor.conflict.wizard'].create({
             'asignacion_id': self.id,
+            'asignacion_mensual_id': asignacion_mensual_id,
             'conflict_type': conflict_type,
             'linea_actual_id': linea_actual_id,
             'linea_conflicto_id': linea_conflicto_id,
@@ -552,6 +590,132 @@ class AsignacionLinea(models.Model):
                 assignment_ids.add(assignment_id)
         return self.env['portalgestor.asignacion'].browse(sorted(assignment_ids))
 
+    def _get_assignment_fixed_monthly_ids(self, assignments):
+        monthly_ids_by_assignment = {}
+        for assignment in assignments.exists():
+            monthly_ids = set(
+                assignment.lineas_ids.filtered('asignacion_mensual_id').mapped('asignacion_mensual_id').ids
+            )
+            if monthly_ids:
+                monthly_ids_by_assignment[assignment.id] = monthly_ids
+        return monthly_ids_by_assignment
+
+    def _merge_assignment_fixed_monthly_ids(self, monthly_ids_by_assignment, assignments):
+        for assignment in assignments.exists():
+            if assignment.id not in monthly_ids_by_assignment:
+                monthly_ids_by_assignment[assignment.id] = set()
+            monthly_ids_by_assignment[assignment.id].update(
+                assignment.lineas_ids.filtered('asignacion_mensual_id').mapped('asignacion_mensual_id').ids
+            )
+        return monthly_ids_by_assignment
+
+    def _ensure_fixed_day_exceptions(self, monthly_date_pairs, exception_type='manual'):
+        Exception = self.env['portalgestor.asignacion.mensual.excepcion']
+        if not monthly_date_pairs:
+            return Exception
+
+        monthly_ids = sorted({monthly_id for monthly_id, __date in monthly_date_pairs})
+        dates = sorted({date_value for __monthly_id, date_value in monthly_date_pairs})
+        existing_exceptions = Exception.search([
+            ('asignacion_mensual_id', 'in', monthly_ids),
+            ('fecha', 'in', dates),
+        ])
+        exceptions_by_key = {
+            (exception.asignacion_mensual_id.id, exception.fecha): exception
+            for exception in existing_exceptions
+            if exception.asignacion_mensual_id and exception.fecha
+        }
+
+        created_exceptions = Exception.browse()
+        for monthly_id, date_value in monthly_date_pairs:
+            exception_key = (monthly_id, date_value)
+            existing_exception = exceptions_by_key.get(exception_key)
+            if existing_exception:
+                if existing_exception.tipo != exception_type:
+                    existing_exception.write({'tipo': exception_type})
+                created_exceptions |= existing_exception
+                continue
+
+            created_exception = Exception.create({
+                'asignacion_mensual_id': monthly_id,
+                'fecha': date_value,
+                'tipo': exception_type,
+            })
+            exceptions_by_key[exception_key] = created_exception
+            created_exceptions |= created_exception
+
+        return created_exceptions
+
+    def _detach_fixed_days_when_worker_changed(self, assignments, monthly_ids_by_assignment):
+        if (
+            self.env.context.get('portalgestor_skip_fixed_sync')
+            or self.env.context.get('portalgestor_skip_fixed_exception')
+        ):
+            return self.browse()
+
+        FixedAssignment = self.env['portalgestor.asignacion.mensual']
+        existing_exceptions = self.env['portalgestor.asignacion.mensual.excepcion'].search([
+            ('asignacion_mensual_id', 'in', sorted({
+                monthly_id
+                for monthly_ids in monthly_ids_by_assignment.values()
+                for monthly_id in monthly_ids
+            })),
+            ('fecha', 'in', assignments.mapped('fecha')),
+        ]) if monthly_ids_by_assignment else self.env['portalgestor.asignacion.mensual.excepcion']
+        existing_exception_keys = {
+            (exception.asignacion_mensual_id.id, exception.fecha)
+            for exception in existing_exceptions
+            if exception.asignacion_mensual_id and exception.fecha
+        }
+
+        lines_to_detach = self.browse()
+        exception_pairs = set()
+        for assignment in assignments.exists():
+            manual_worker_ids = sorted(
+                line.trabajador_id.id
+                for line in assignment.lineas_ids
+                if not line.asignacion_mensual_id and line.trabajador_id
+            )
+            for monthly_id in monthly_ids_by_assignment.get(assignment.id, set()):
+                if (monthly_id, assignment.fecha) in existing_exception_keys:
+                    continue
+
+                monthly = FixedAssignment.browse(monthly_id).exists()
+                if not monthly:
+                    continue
+                if monthly.usuario_id != assignment.usuario_id:
+                    continue
+                if assignment.fecha < monthly.fecha_inicio or assignment.fecha > monthly.fecha_fin:
+                    continue
+
+                fixed_lines = assignment.lineas_ids.filtered(
+                    lambda line: line.asignacion_mensual_id.id == monthly.id
+                )
+                current_worker_signature = sorted(
+                    [line.trabajador_id.id for line in fixed_lines if line.trabajador_id] + manual_worker_ids
+                )
+                fixed_worker_signature = sorted(monthly.linea_fija_ids.mapped('trabajador_id').ids)
+                if current_worker_signature == fixed_worker_signature:
+                    continue
+
+                exception_pairs.add((monthly.id, assignment.fecha))
+                lines_to_detach |= fixed_lines
+
+        if exception_pairs:
+            self._ensure_fixed_day_exceptions(exception_pairs, 'manual')
+            self.env['portalgestor.asignacion.mensual'].browse(
+                sorted({monthly_id for monthly_id, __date in exception_pairs})
+            )._mark_unconfirmed()
+        if lines_to_detach:
+            lines_to_detach.with_context(
+                portalgestor_skip_calendar_notify=True,
+                portalgestor_skip_fixed_exception=True,
+            ).write({
+                'asignacion_mensual_id': False,
+                'asignacion_mensual_linea_id': False,
+            })
+        return lines_to_detach
+
     @api.model_create_multi
     def create(self, vals_list):
         if self.env.context.get('portalgestor_skip_calendar_notify'):
@@ -559,8 +723,11 @@ class AsignacionLinea(models.Model):
 
         impacted_assignments = self._get_impacted_calendar_assignments(vals_list)
         before_state = impacted_assignments._get_calendar_realtime_snapshot()
+        monthly_ids_by_assignment = self._get_assignment_fixed_monthly_ids(impacted_assignments)
         records = super().create(vals_list)
         after_assignments = impacted_assignments | records.mapped('asignacion_id')
+        self._merge_assignment_fixed_monthly_ids(monthly_ids_by_assignment, after_assignments)
+        records._detach_fixed_days_when_worker_changed(after_assignments, monthly_ids_by_assignment)
         after_state = after_assignments._get_calendar_realtime_snapshot()
         after_assignments._send_calendar_update_notification(
             self.env['portalgestor.asignacion']._build_calendar_update_payload(
@@ -577,8 +744,14 @@ class AsignacionLinea(models.Model):
 
         impacted_assignments = self._get_impacted_calendar_assignments([vals])
         before_state = impacted_assignments._get_calendar_realtime_snapshot()
-        result = super().write(vals)
+        monthly_ids_by_assignment = self._get_assignment_fixed_monthly_ids(impacted_assignments | self.mapped('asignacion_id'))
+        result = super(
+            AsignacionLinea,
+            self.with_context(portalgestor_skip_calendar_notify=True),
+        ).write(vals)
         after_assignments = impacted_assignments | self.mapped('asignacion_id')
+        self._merge_assignment_fixed_monthly_ids(monthly_ids_by_assignment, after_assignments)
+        self._detach_fixed_days_when_worker_changed(after_assignments, monthly_ids_by_assignment)
         after_state = after_assignments._get_calendar_realtime_snapshot()
         after_assignments._send_calendar_update_notification(
             self.env['portalgestor.asignacion']._build_calendar_update_payload(
@@ -595,12 +768,16 @@ class AsignacionLinea(models.Model):
 
         impacted_assignments = self.mapped('asignacion_id')
         before_state = impacted_assignments._get_calendar_realtime_snapshot()
-        fixed_assignments = self.filtered('asignacion_mensual_id').mapped('asignacion_id')
+        monthly_ids_by_assignment = self._get_assignment_fixed_monthly_ids(impacted_assignments)
         result = super(
             AsignacionLinea,
             self.with_context(portalgestor_skip_calendar_notify=True),
         ).unlink()
-        fixed_assignments.with_context(
+        self.env['portalgestor.asignacion.linea']._detach_fixed_days_when_worker_changed(
+            impacted_assignments,
+            monthly_ids_by_assignment,
+        )
+        impacted_assignments.with_context(
             portalgestor_skip_calendar_notify=True
         ).cleanup_empty_assignments()
         after_state = impacted_assignments.exists()._get_calendar_realtime_snapshot()

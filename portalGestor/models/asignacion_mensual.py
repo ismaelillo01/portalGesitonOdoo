@@ -56,6 +56,12 @@ class AsignacionMensual(models.Model):
         'asignacion_mensual_id',
         string='Asignaciones generadas',
     )
+    confirmado = fields.Boolean(string='Horario Confirmado', default=False)
+    excepcion_ids = fields.One2many(
+        'portalgestor.asignacion.mensual.excepcion',
+        'asignacion_mensual_id',
+        string='Excepciones por dia',
+    )
     total_dias_generados = fields.Integer(
         string='Dias generados',
         compute='_compute_generation_totals',
@@ -113,6 +119,35 @@ class AsignacionMensual(models.Model):
             current_date += timedelta(days=1)
         return target_dates
 
+    def _mark_unconfirmed(self):
+        if not self:
+            return
+        self.env.cr.execute(
+            """
+                UPDATE portalgestor_asignacion_mensual
+                   SET confirmado = FALSE
+                 WHERE id IN %s
+                   AND confirmado = TRUE
+            """,
+            [tuple(self.ids)],
+        )
+        self.invalidate_recordset(['confirmado'])
+
+    def _get_manual_exception_dates(self, target_dates):
+        self.ensure_one()
+        if not target_dates:
+            return set()
+
+        exceptions = self.env['portalgestor.asignacion.mensual.excepcion'].search([
+            ('asignacion_mensual_id', '=', self.id),
+            ('fecha', 'in', target_dates),
+        ])
+        return {
+            fields.Date.to_string(exception.fecha)
+            for exception in exceptions
+            if exception.fecha
+        }
+
     def _sync_generated_assignments(self):
         Assignment = self.env['portalgestor.asignacion']
         AssignmentLine = self.env['portalgestor.asignacion.linea']
@@ -126,11 +161,22 @@ class AsignacionMensual(models.Model):
             fixed_lines = record.linea_fija_ids.sorted(
                 key=lambda line: (line.hora_inicio, line.hora_fin, line.id)
             )
-            target_keys = {
-                (date_key, fixed_line.id)
-                for date_key in target_dates_by_key
-                for fixed_line in fixed_lines
-            }
+            today = fields.Date.to_date(fields.Date.context_today(record))
+            manual_exception_dates = record._get_manual_exception_dates(target_dates)
+            target_keys = set()
+            active_dates = set()
+            for date_key, target_date in target_dates_by_key.items():
+                if record.usuario_id.baja and target_date >= today:
+                    continue
+                if date_key in manual_exception_dates:
+                    continue
+
+                for fixed_line in fixed_lines:
+                    if fixed_line.trabajador_id.baja and target_date >= today:
+                        continue
+                    target_keys.add((date_key, fixed_line.id))
+                    active_dates.add(date_key)
+
             existing_lines_by_key = {}
             lines_to_remove = AssignmentLine.browse()
             touched_assignments = record.asignacion_linea_ids.mapped('asignacion_id')
@@ -149,21 +195,29 @@ class AsignacionMensual(models.Model):
 
             if lines_to_remove:
                 touched_assignments |= lines_to_remove.mapped('asignacion_id')
-                lines_to_remove.unlink()
+                lines_to_remove.with_context(
+                    portalgestor_skip_fixed_sync=True,
+                    portalgestor_skip_fixed_exception=True,
+                ).unlink()
 
             assignments_by_date = {}
-            if target_dates:
+            if active_dates:
                 assignments_by_date = {
                     fields.Date.to_string(assignment.fecha): assignment
                     for assignment in Assignment.search(
                         [
                             ('usuario_id', '=', record.usuario_id.id),
-                            ('fecha', 'in', target_dates),
+                            ('fecha', 'in', [
+                                target_dates_by_key[date_key]
+                                for date_key in sorted(active_dates)
+                            ]),
                         ]
                     )
                 }
 
             for date_key, target_date in target_dates_by_key.items():
+                if date_key not in active_dates:
+                    continue
                 assignment = assignments_by_date.get(date_key)
                 if not assignment:
                     assignment = Assignment.create({
@@ -175,6 +229,8 @@ class AsignacionMensual(models.Model):
                 touched_assignments |= assignment
                 for fixed_line in fixed_lines:
                     line_key = (date_key, fixed_line.id)
+                    if line_key not in target_keys:
+                        continue
                     line_vals = fixed_line._get_generated_line_vals(assignment)
                     existing_line = existing_lines_by_key.get(line_key)
                     if existing_line:
@@ -187,18 +243,26 @@ class AsignacionMensual(models.Model):
                             or existing_line.asignacion_mensual_id != record
                             or existing_line.asignacion_mensual_linea_id != fixed_line
                         ):
-                            existing_line.write(line_vals)
+                            existing_line.with_context(
+                                portalgestor_skip_fixed_sync=True,
+                                portalgestor_skip_fixed_exception=True,
+                            ).write(line_vals)
                             touched_assignments |= existing_line.asignacion_id
                     else:
-                        generated_line = AssignmentLine.create(line_vals)
+                        generated_line = AssignmentLine.with_context(
+                            portalgestor_skip_fixed_sync=True,
+                            portalgestor_skip_fixed_exception=True,
+                        ).create(line_vals)
                         touched_assignments |= generated_line.asignacion_id
 
             if touched_assignments:
                 touched_assignments.cleanup_empty_assignments()
                 touched_assignments.exists().write({'confirmado': False})
+                record._mark_unconfirmed()
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [dict(vals, confirmado=vals.get('confirmado', False)) for vals in vals_list]
         records = super(
             AsignacionMensual,
             self.with_context(portalgestor_skip_fixed_sync=True),
@@ -207,6 +271,13 @@ class AsignacionMensual(models.Model):
         return records
 
     def write(self, vals):
+        if set(vals) == {'confirmado'}:
+            return super(
+                AsignacionMensual,
+                self.with_context(portalgestor_skip_fixed_sync=True),
+            ).write(vals)
+        if 'confirmado' not in vals:
+            vals = dict(vals, confirmado=False)
         result = super(
             AsignacionMensual,
             self.with_context(portalgestor_skip_fixed_sync=True),
@@ -214,10 +285,44 @@ class AsignacionMensual(models.Model):
         self._sync_generated_assignments()
         return result
 
+    def action_verificar_y_confirmar(self):
+        self.ensure_one()
+        if not self.env.context.get('portalgestor_skip_fixed_sync_before_verify'):
+            self._sync_generated_assignments()
+        asignaciones_pendientes = self.asignacion_linea_ids.mapped('asignacion_id').exists().sorted(
+            key=lambda asignacion: (asignacion.fecha, asignacion.id)
+        ).filtered(lambda asignacion: not asignacion.confirmado)
+
+        for asignacion in asignaciones_pendientes:
+            result = asignacion._get_verification_action(asignacion_mensual_id=self.id)
+            if isinstance(result, dict):
+                return result
+            asignacion.confirmado = True
+
+        self.confirmado = True
+        return True
+
+    def action_editar(self):
+        self.ensure_one()
+        self.confirmado = False
+        self.asignacion_linea_ids.mapped('asignacion_id').write({'confirmado': False})
+        return True
+
     def unlink(self):
         touched_assignments = self.mapped('asignacion_linea_ids.asignacion_id')
         generated_lines = self.mapped('asignacion_linea_ids')
-        generated_lines.unlink()
+        exception_keys = {
+            (exception.asignacion_mensual_id.id, exception.fecha)
+            for exception in self.mapped('excepcion_ids')
+            if exception.asignacion_mensual_id and exception.fecha
+        }
+        generated_lines = generated_lines.filtered(
+            lambda line: (line.asignacion_mensual_id.id, line.fecha) not in exception_keys
+        )
+        generated_lines.with_context(
+            portalgestor_skip_fixed_sync=True,
+            portalgestor_skip_fixed_exception=True,
+        ).unlink()
         touched_assignments.cleanup_empty_assignments()
         return super(
             AsignacionMensual,

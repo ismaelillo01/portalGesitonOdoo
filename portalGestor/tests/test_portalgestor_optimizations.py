@@ -683,6 +683,79 @@ class TestPortalGestorOptimizations(TransactionCase):
                 ],
             )
 
+    def test_fixed_assignment_verification_confirms_generated_days(self):
+        trabajador = self._create_worker('Fijo Verificar OK')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fields.Date.to_date('2099-05-20'),
+            fields.Date.to_date('2099-05-21'),
+            [(8.0, 10.0, trabajador)],
+        )
+
+        result = trabajo_fijo.action_verificar_y_confirmar()
+
+        self.assertTrue(result)
+        self.assertTrue(trabajo_fijo.confirmado)
+        asignaciones = self.env['portalgestor.asignacion'].browse(
+            trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id').ids
+        )
+        self.assertTrue(all(asignaciones.mapped('confirmado')))
+
+    def test_fixed_assignment_verification_detects_overlapping_assignments(self):
+        fecha = fields.Date.to_date('2099-05-22')
+        trabajador = self._create_worker('Fijo Verificar Solape')
+        self._create_assignment(
+            self.usuario_b,
+            fecha,
+            [(9.0, 11.0, trabajador)],
+        )
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [(10.0, 12.0, trabajador)],
+        )
+
+        action = trabajo_fijo.action_verificar_y_confirmar()
+
+        self.assertEqual(action['res_model'], 'portalgestor.conflict.wizard')
+        wizard = self.env[action['res_model']].browse(action['res_id'])
+        self.assertEqual(wizard.asignacion_mensual_id, trabajo_fijo)
+        self.assertEqual(wizard.conflict_type, 'overlapping')
+
+    def test_fixed_assignment_verification_keeps_same_day_warning(self):
+        fecha = fields.Date.to_date('2099-05-23')
+        trabajador = self._create_worker('Fijo Verificar Aviso')
+        self._create_assignment(
+            self.usuario_b,
+            fecha,
+            [(8.0, 10.0, trabajador)],
+        )
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [(10.0, 12.0, trabajador)],
+        )
+
+        action = trabajo_fijo.action_verificar_y_confirmar()
+
+        self.assertEqual(action['res_model'], 'portalgestor.conflict.wizard')
+        wizard = self.env[action['res_model']].browse(action['res_id'])
+        self.assertEqual(wizard.asignacion_mensual_id, trabajo_fijo)
+        self.assertEqual(wizard.conflict_type, 'info_same_day')
+        self.assertIn(self.usuario_b.name, wizard.info_resumen)
+
+        result = wizard.action_confirm()
+
+        self.assertEqual(result['type'], 'ir.actions.act_window_close')
+        self.assertTrue(trabajo_fijo.confirmado)
+        self.assertTrue(all(
+            self.env['portalgestor.asignacion'].browse(
+                trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id').ids
+            ).mapped('confirmado')
+        ))
+
     def test_fixed_assignment_unlink_cleans_empty_calendar_days(self):
         trabajador = self._create_worker('Fijo Unlink')
         trabajo_fijo = self._create_fixed_assignment(
@@ -708,22 +781,346 @@ class TestPortalGestorOptimizations(TransactionCase):
             ])
         )
 
-    def test_worker_baja_keeps_fixed_assignments_completed(self):
+    def test_fixed_assignment_manual_day_override_survives_later_fixed_sync(self):
+        trabajador_original = self._create_worker('Fijo Override Original')
+        trabajador_nuevo = self._create_worker('Fijo Override Nuevo')
+        fecha_inicio = fields.Date.to_date('2099-06-10')
+        fecha_override = fields.Date.to_date('2099-06-12')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha_inicio,
+            fecha_override,
+            [(8.0, 10.0, trabajador_original)],
+        )
+
+        asignacion_override = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha_override),
+        ])
+        linea_generada = asignacion_override.lineas_ids
+        linea_generada.write({'trabajador_id': trabajador_nuevo.id})
+
+        excepcion = self.env['portalgestor.asignacion.mensual.excepcion'].search([
+            ('asignacion_mensual_id', '=', trabajo_fijo.id),
+            ('fecha', '=', fecha_override),
+        ])
+        self.assertEqual(excepcion.tipo, 'manual')
+        self.assertFalse(linea_generada.asignacion_mensual_id)
+        self.assertFalse(linea_generada.asignacion_mensual_linea_id)
+        self.assertEqual(linea_generada.trabajador_id, trabajador_nuevo)
+
+        trabajo_fijo.write({
+            'fecha_fin': fields.Date.to_date('2099-06-13'),
+        })
+
+        asignacion_override = self.env['portalgestor.asignacion'].browse(asignacion_override.id)
+        lineas_override = asignacion_override.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.id))
+        self.assertEqual(len(lineas_override), 1)
+        self.assertEqual(lineas_override.trabajador_id, trabajador_nuevo)
+        self.assertFalse(lineas_override.asignacion_mensual_id)
+
+        asignacion_nueva = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fields.Date.to_date('2099-06-13')),
+        ])
+        self.assertEqual(asignacion_nueva.lineas_ids.trabajador_id, trabajador_original)
+        self.assertEqual(asignacion_nueva.lineas_ids.asignacion_mensual_id, trabajo_fijo)
+
+    def test_fixed_assignment_worker_change_via_assignment_write_survives_fixed_unlink(self):
+        trabajador_1 = self._create_worker('Fijo Form 1')
+        trabajador_2 = self._create_worker('Fijo Form 2')
+        trabajador_3 = self._create_worker('Fijo Form 3')
+        fecha = fields.Date.to_date('2099-06-18')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [
+                (8.0, 10.0, trabajador_1),
+                (10.0, 12.0, trabajador_2),
+            ],
+        )
+
+        asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha),
+        ])
+        linea_a_cambiar = asignacion.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.id))[0]
+        asignacion.write({
+            'lineas_ids': [
+                (1, linea_a_cambiar.id, {'trabajador_id': trabajador_3.id}),
+            ],
+        })
+
+        trabajo_fijo = self.env['portalgestor.asignacion.mensual'].browse(trabajo_fijo.id)
+        self.assertFalse(trabajo_fijo.asignacion_linea_ids.filtered(lambda linea: linea.fecha == fecha))
+
+        trabajo_fijo.unlink()
+
+        asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha),
+        ])
+        self.assertTrue(asignacion.exists())
+        self.assertEqual(
+            sorted(asignacion.lineas_ids.mapped('trabajador_id').ids),
+            sorted([trabajador_2.id, trabajador_3.id]),
+        )
+        self.assertFalse(asignacion.lineas_ids.filtered('asignacion_mensual_id'))
+
+    def test_fixed_assignment_extra_worker_makes_day_independent(self):
+        trabajador = self._create_worker('Fijo Base')
+        trabajador_extra = self._create_worker('Fijo Extra')
+        fecha = fields.Date.to_date('2099-06-20')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [(9.0, 11.0, trabajador)],
+        )
+
+        asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha),
+        ])
+        self.env['portalgestor.asignacion.linea'].create({
+            'asignacion_id': asignacion.id,
+            'hora_inicio': 12.0,
+            'hora_fin': 14.0,
+            'trabajador_id': trabajador_extra.id,
+        })
+
+        trabajo_fijo.write({
+            'fecha_fin': fields.Date.to_date('2099-06-21'),
+        })
+
+        asignacion = self.env['portalgestor.asignacion'].browse(asignacion.id)
+        self.assertEqual(
+            sorted(asignacion.lineas_ids.mapped('trabajador_id').ids),
+            sorted([trabajador.id, trabajador_extra.id]),
+        )
+        self.assertFalse(asignacion.lineas_ids.filtered('asignacion_mensual_id'))
+        nueva_asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fields.Date.to_date('2099-06-21')),
+        ])
+        self.assertEqual(nueva_asignacion.lineas_ids.trabajador_id, trabajador)
+
+    def test_independent_day_worker_removal_deletes_line(self):
+        trabajador_1 = self._create_worker('Fijo Remove 1')
+        trabajador_2 = self._create_worker('Fijo Remove 2')
+        trabajador_3 = self._create_worker('Fijo Remove 3')
+        fecha = fields.Date.to_date('2099-06-23')
+        self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [
+                (8.0, 10.0, trabajador_1),
+                (10.0, 12.0, trabajador_2),
+            ],
+        )
+
+        asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha),
+        ])
+        self.env['portalgestor.asignacion.linea'].create({
+            'asignacion_id': asignacion.id,
+            'hora_inicio': 12.0,
+            'hora_fin': 14.0,
+            'trabajador_id': trabajador_3.id,
+        })
+        linea_borrar = asignacion.lineas_ids.filtered(lambda linea: linea.trabajador_id == trabajador_2)
+        asignacion.write({
+            'lineas_ids': [(2, linea_borrar.id, 0)],
+        })
+
+        asignacion = self.env['portalgestor.asignacion'].browse(asignacion.id)
+        self.assertEqual(
+            sorted(asignacion.lineas_ids.mapped('trabajador_id').ids),
+            sorted([trabajador_1.id, trabajador_3.id]),
+        )
+        self.assertFalse(asignacion.lineas_ids.filtered('asignacion_mensual_id'))
+
+    def test_fixed_assignment_direct_line_unlink_makes_day_independent(self):
+        trabajador_1 = self._create_worker('Fijo Direct Unlink 1')
+        trabajador_2 = self._create_worker('Fijo Direct Unlink 2')
+        fecha = fields.Date.to_date('2099-06-24')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [
+                (8.0, 10.0, trabajador_1),
+                (10.0, 12.0, trabajador_2),
+            ],
+        )
+
+        asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha),
+        ])
+        linea_borrar = asignacion.lineas_ids.filtered(lambda linea: linea.trabajador_id == trabajador_2)
+
+        linea_borrar.unlink()
+
+        trabajo_fijo = self.env['portalgestor.asignacion.mensual'].browse(trabajo_fijo.id)
+        self.assertFalse(trabajo_fijo.asignacion_linea_ids.filtered(lambda linea: linea.fecha == fecha))
+        excepcion = self.env['portalgestor.asignacion.mensual.excepcion'].search([
+            ('asignacion_mensual_id', '=', trabajo_fijo.id),
+            ('fecha', '=', fecha),
+        ])
+        self.assertEqual(excepcion.tipo, 'manual')
+
+        asignacion = self.env['portalgestor.asignacion'].browse(asignacion.id)
+        self.assertEqual(asignacion.lineas_ids.trabajador_id, trabajador_1)
+        self.assertFalse(asignacion.lineas_ids.asignacion_mensual_id)
+
+        trabajo_fijo.unlink()
+
+        asignacion = self.env['portalgestor.asignacion'].browse(asignacion.id)
+        self.assertTrue(asignacion.exists())
+        self.assertEqual(asignacion.lineas_ids.trabajador_id, trabajador_1)
+        self.assertFalse(asignacion.lineas_ids.asignacion_mensual_id)
+
+    def test_fixed_assignment_hour_change_keeps_day_linked_to_fixed(self):
+        trabajador = self._create_worker('Fijo Horas')
+        fecha = fields.Date.to_date('2099-06-25')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [(9.0, 11.0, trabajador)],
+        )
+
+        asignacion = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fecha),
+        ])
+        asignacion.lineas_ids.write({
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+        })
+        self.assertEqual(asignacion.lineas_ids.asignacion_mensual_id, trabajo_fijo)
+
+        trabajo_fijo.unlink()
+
+        self.assertFalse(
+            self.env['portalgestor.asignacion'].search([
+                ('usuario_id', '=', self.usuario_a.id),
+                ('fecha', '=', fecha),
+            ])
+        )
+
+    def test_worker_baja_releases_fixed_assignments_from_today_forward_only(self):
         hoy = fields.Date.to_date(fields.Date.context_today(self.env['portalgestor.asignacion']))
+        ayer = hoy - timedelta(days=1)
         manana = hoy + timedelta(days=1)
         trabajador = self._create_worker('Fijo Baja')
         trabajo_fijo = self._create_fixed_assignment(
             self.usuario_a,
-            hoy,
+            ayer,
             manana,
             [(8.0, 10.0, trabajador)],
         )
+        asignacion_pasada = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', ayer),
+        ])
+        asignacion_hoy = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', hoy),
+        ])
+        asignacion_futura = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', manana),
+        ])
 
         trabajador.write({'baja': True})
 
-        self.assertEqual(
-            set(trabajo_fijo.asignacion_linea_ids.mapped('trabajador_id').ids),
-            {trabajador.id},
+        self.assertEqual(asignacion_pasada.lineas_ids.trabajador_id, trabajador)
+        self.assertEqual(asignacion_pasada.lineas_ids.asignacion_mensual_id, trabajo_fijo)
+        self.assertFalse(asignacion_hoy.lineas_ids.trabajador_id)
+        self.assertFalse(asignacion_hoy.lineas_ids.asignacion_mensual_id)
+        self.assertEqual(asignacion_hoy.calendar_bucket_type, 'pending')
+        self.assertFalse(asignacion_futura.lineas_ids.trabajador_id)
+        self.assertFalse(asignacion_futura.lineas_ids.asignacion_mensual_id)
+        self.assertEqual(asignacion_futura.calendar_bucket_type, 'pending')
+
+        trabajo_fijo.write({
+            'fecha_fin': hoy + timedelta(days=2),
+        })
+
+        self.assertFalse(
+            self.env['portalgestor.asignacion'].search([
+                ('usuario_id', '=', self.usuario_a.id),
+                ('fecha', '=', hoy + timedelta(days=2)),
+            ])
         )
-        for asignacion in trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id'):
-            self.assertEqual(asignacion.calendar_bucket_type, 'completed')
+
+    def test_user_baja_cancels_fixed_assignments_from_today_forward_only(self):
+        hoy = fields.Date.to_date(fields.Date.context_today(self.env['portalgestor.asignacion']))
+        ayer = hoy - timedelta(days=1)
+        manana = hoy + timedelta(days=1)
+        trabajador = self._create_worker('Usuario Baja Fijo')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            ayer,
+            manana,
+            [(8.0, 10.0, trabajador)],
+        )
+        asignacion_pasada = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', ayer),
+        ])
+        asignacion_hoy = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', hoy),
+        ])
+        asignacion_futura = self.env['portalgestor.asignacion'].search([
+            ('usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', manana),
+        ])
+
+        self.usuario_a.write({'baja': True})
+
+        self.assertTrue(asignacion_pasada.exists())
+        self.assertFalse(asignacion_hoy.exists())
+        self.assertFalse(asignacion_futura.exists())
+
+        trabajo_fijo.write({
+            'fecha_fin': hoy + timedelta(days=2),
+        })
+
+        self.assertFalse(
+            self.env['portalgestor.asignacion'].search([
+                ('usuario_id', '=', self.usuario_a.id),
+                ('fecha', '=', hoy + timedelta(days=2)),
+            ])
+        )
+
+    def test_worker_search_excludes_vacations_from_fixed_range_context(self):
+        fecha_inicio = fields.Date.to_date('2099-07-01')
+        fecha_fin = fields.Date.to_date('2099-07-05')
+        trabajador_en_vacaciones = self._create_worker('Fijo Vacaciones')
+        trabajador_disponible = self._create_worker('Fijo Disponible')
+
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador_en_vacaciones.id,
+            'date_start': fields.Date.to_date('2099-07-03'),
+            'date_stop': fields.Date.to_date('2099-07-04'),
+        })
+
+        trabajadores = self.env['trabajadores.trabajador'].with_context(
+            exclude_vacaciones_fecha_inicio=fields.Date.to_string(fecha_inicio),
+            exclude_vacaciones_fecha_fin=fields.Date.to_string(fecha_fin),
+        ).search(
+            [('id', 'in', [trabajador_en_vacaciones.id, trabajador_disponible.id])],
+            order='id',
+        )
+
+        self.assertEqual(trabajadores.ids, [trabajador_disponible.id])
+        form_arch = self.env.ref('portalGestor.portalgestor_asignacion_mensual_form').arch_db
+        self.assertIn('exclude_vacaciones_fecha_inicio', form_arch)
+        self.assertIn("('baja', '=', False)", form_arch)
