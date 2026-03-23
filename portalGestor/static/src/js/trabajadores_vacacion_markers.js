@@ -40,6 +40,24 @@ function collectWorkerIdsFromDomain(domain, workerIds = new Set()) {
     return workerIds;
 }
 
+function getSingleActiveRecordFilter(filterSections, targetFields) {
+    const matches = [];
+    for (const fieldName of targetFields) {
+        const section = filterSections?.[fieldName];
+        for (const filter of section?.filters || []) {
+            if (filter.type !== "record" || !filter.active) {
+                continue;
+            }
+            const value = filter.value || filter.recordId;
+            if (!value) {
+                continue;
+            }
+            matches.push({ fieldName, value });
+        }
+    }
+    return matches.length === 1 ? matches[0] : null;
+}
+
 patch(CalendarModel.prototype, {
     setup() {
         super.setup(...arguments);
@@ -48,6 +66,19 @@ patch(CalendarModel.prototype, {
 
     get assignmentMarkers() {
         return this.data.assignmentMarkers || [];
+    },
+
+    makeContextDefaults(rawRecord) {
+        const context = super.makeContextDefaults(...arguments);
+        if (this.resModel !== TARGET_RES_MODEL) {
+            return context;
+        }
+
+        const activeFilter = getSingleActiveRecordFilter(this.data?.filterSections, [TARGET_FILTER_FIELD]);
+        if (activeFilter) {
+            context.default_trabajador_id = activeFilter.value;
+        }
+        return context;
     },
 
     async updateData(data) {

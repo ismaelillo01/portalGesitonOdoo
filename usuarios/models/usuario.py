@@ -2,6 +2,20 @@
 from odoo import api, fields, models
 
 
+class UsuarioServicio(models.Model):
+    _name = 'usuarios.servicio'
+    _description = 'Servicio de Usuario'
+    _order = 'sequence, name, id'
+
+    name = fields.Char(string='Servicio', required=True)
+    code = fields.Char(string='Codigo', required=True, index=True)
+    sequence = fields.Integer(string='Secuencia', default=10)
+
+    _sql_constraints = [
+        ('usuarios_servicio_code_uniq', 'unique(code)', 'El codigo del servicio debe ser unico.'),
+    ]
+
+
 class Usuario(models.Model):
     _name = 'usuarios.usuario'
     _description = 'Usuario'
@@ -10,9 +24,22 @@ class Usuario(models.Model):
     apellido1 = fields.Char(string='Primer Apellido')
     apellido2 = fields.Char(string='Segundo Apellido')
     dni_nie = fields.Char(string='DNI o NIE')
-    telefono = fields.Char(string='Teléfono')
-    direccion = fields.Char(string='Dirección')
+    telefono = fields.Char(string='Telefono')
+    direccion = fields.Char(string='Direccion')
     baja = fields.Boolean(string='Baja', default=False)
+    servicio_ids = fields.Many2many(
+        'usuarios.servicio',
+        'usuarios_usuario_servicio_rel',
+        'usuario_id',
+        'servicio_id',
+        string='Servicios',
+    )
+    has_ap_service = fields.Boolean(
+        string='Servicio AP activo',
+        compute='_compute_has_ap_service',
+        store=True,
+        index=True,
+    )
 
     grupo = fields.Selection([
         ('intecum', 'Intecum'),
@@ -27,10 +54,23 @@ class Usuario(models.Model):
         index=True,
     )
 
-    @api.depends('name', 'apellido1')
+    @api.depends('name', 'apellido1', 'apellido2')
     def _compute_display_name(self):
         for record in self:
-            if record.name and record.apellido1:
-                record.display_name = f"{record.name} {record.apellido1}"
-            else:
-                record.display_name = record.name or ''
+            record.display_name = record._get_full_name()
+
+    @api.depends('servicio_ids.code')
+    def _compute_has_ap_service(self):
+        for record in self:
+            record.has_ap_service = any(service.code == 'ap' for service in record.servicio_ids)
+
+    def _get_full_name(self):
+        self.ensure_one()
+        parts = [part for part in [self.name, self.apellido1, self.apellido2] if part]
+        return ' '.join(parts)
+
+    def _get_service_names(self):
+        self.ensure_one()
+        return ', '.join(
+            self.servicio_ids.sorted(key=lambda service: (service.sequence, service.name)).mapped('name')
+        )

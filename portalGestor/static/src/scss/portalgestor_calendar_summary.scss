@@ -91,3 +91,37 @@
     border-color: #f87171;
     color: #7f1d1d;
 }
+
+.o_cw_popover .o_portalgestor_calendar_detail {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 2px;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: normal;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_hours {
+    flex: 0 0 auto;
+    font-weight: 700;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_sep {
+    color: #6b7280;
+    font-weight: 700;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_worker {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_empty {
+    color: #6b7280;
+}

@@ -11,7 +11,7 @@
                 <field name="usuario_id" write_model="portalgestor.asignacion.calendar.usuario.filter" write_field="usuario_id" filter_field="usuario_checked"/>
                 <field name="trabajador_calendar_filter_id" string="Trabajador" invisible="1" filters="1" write_model="portalgestor.asignacion.calendar.trabajador.filter" write_field="trabajador_id" filter_field="trabajador_checked"/>
                 <field name="trabajador_id" invisible="1"/>
-                <field name="confirmado"/>
+                <field name="calendar_popover_html" widget="html" nolabel="1"/>
             </calendar>
         </field>
     </record>
@@ -29,7 +29,7 @@
           <sheet>
             <group>
               <group>
-                <field name="usuario_id" readonly="confirmado == True" domain="[('baja', '=', False)]"/>
+                <field name="usuario_id" readonly="confirmado == True" domain="[('baja', '=', False), ('has_ap_service', '=', True)]"/>
                 <field name="fecha" readonly="confirmado == True"/>
               </group>
               <group>

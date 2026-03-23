@@ -100,7 +100,7 @@
             <form>
                 <sheet>
                     <group>
-                        <field name="trabajador_id"/>
+                        <field name="trabajador_id" domain="[('baja', '=', False)]" options="{'no_create': True}"/>
                         <field name="name"/>
                         <field name="date_start"/>
                         <field name="date_stop"/>
@@ -125,7 +125,7 @@
     <!-- actions -->
     <menuitem name="Todos los Trabajadores" id="trabajadores.menu_1_list" parent="trabajadores.menu_trabajadores"
               action="trabajadores.action_window" sequence="10"/>
-    <menuitem name="Calendario Vacaciones" id="trabajadores.menu_vacaciones_cal" parent="trabajadores.menu_trabajadores"
+    <menuitem name="Calendario Vacaciones" id="trabajadores.menu_vacaciones_cal" parent="trabajadores.menu_root"
               action="trabajadores.action_vacacion_window" sequence="20"/>
   </data>
 </odoo>

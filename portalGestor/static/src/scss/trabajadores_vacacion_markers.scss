@@ -10,6 +10,12 @@
             rgba(245, 158, 11, 0.08) 10px 20px);
 }
 
+.o_calendar_widget .fc-daygrid-day-bg .fc-bg-event.o_portalgestor_workday_marker {
+    position: absolute;
+    inset: 2px;
+    margin: 0;
+}
+
 .o_calendar_widget .fc-bg-event.o_portalgestor_workday_marker::after {
     content: "";
     position: absolute;

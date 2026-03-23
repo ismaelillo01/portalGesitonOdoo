@@ -6,6 +6,7 @@ import { Dialog } from "@web/core/dialog/dialog";
 import { patch } from "@web/core/utils/patch";
 import { user } from "@web/core/user";
 import { useOwnedDialogs, useService } from "@web/core/utils/hooks";
+import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 import { CalendarModel } from "@web/views/calendar/calendar_model";
 import { CalendarCommonRenderer } from "@web/views/calendar/calendar_common/calendar_common_renderer";
 import { CalendarFilterPanel } from "@web/views/calendar/filter_panel/calendar_filter_panel";
@@ -25,7 +26,7 @@ const FILTER_CONFIG = {
     [USER_FILTER_FIELD]: {
         model: "usuarios.usuario",
         placeholder: "Buscar usuario",
-        domain: [["baja", "=", false]],
+        domain: [["baja", "=", false], ["has_ap_service", "=", true]],
     },
     [WORKER_FILTER_FIELD]: {
         model: "trabajadores.trabajador",
@@ -42,15 +43,16 @@ export class PortalGestorBucketDialog extends Component {
         bucketType: String,
         close: Function,
         count: Number,
+        formViewId: { type: [Number, Boolean], optional: true },
         label: String,
         records: Array,
         title: String,
     };
 
     setup() {
-        this.action = useService("action");
         this.orm = useService("orm");
         this.busService = useService("bus_service");
+        this.dialogService = useService("dialog");
         this.state = useState({
             count: this.props.count,
             records: [...this.props.records],
@@ -66,16 +68,15 @@ export class PortalGestorBucketDialog extends Component {
         });
     }
 
-    async openRecord(recordId) {
-        this.props.close();
-        await this.action.doAction({
-            type: "ir.actions.act_window",
-            res_model: TARGET_RES_MODEL,
-            res_id: recordId,
-            views: [[false, "form"]],
-            view_mode: "form",
-            target: "current",
+    async openRecord(record) {
+        this.dialogService.add(FormViewDialog, {
+            resModel: TARGET_RES_MODEL,
+            resId: record.id,
+            viewId: this.props.formViewId || false,
+            mode: "edit",
+            title: record.form_title || record.name || _t("Horario"),
         });
+        this.props.close();
     }
 
     isAffectedByCalendarUpdate(payload) {
@@ -103,6 +104,24 @@ function getPortalGestorRecordFilterIds(section) {
             ?.filter((filter) => filter.type === "record" && filter.recordId)
             .map((filter) => filter.recordId) || []
     );
+}
+
+function getSingleActivePortalGestorFilter(filterSections, targetFields = []) {
+    const matches = [];
+    for (const fieldName of targetFields) {
+        const section = filterSections?.[fieldName];
+        for (const filter of section?.filters || []) {
+            if (filter.type !== "record" || !filter.active) {
+                continue;
+            }
+            const value = filter.value || filter.recordId;
+            if (!value) {
+                continue;
+            }
+            matches.push({ fieldName, value });
+        }
+    }
+    return matches.length === 1 ? matches[0] : null;
 }
 
 function hasPortalGestorSearch(section) {
@@ -162,6 +181,28 @@ patch(CalendarModel.prototype, {
 
     get portalGestorBucketEvents() {
         return this.data.portalGestorBucketEvents || [];
+    },
+
+    makeContextDefaults(rawRecord) {
+        const context = super.makeContextDefaults(...arguments);
+        if (this.resModel !== TARGET_RES_MODEL) {
+            return context;
+        }
+
+        const activeFilter = getSingleActivePortalGestorFilter(
+            this.data?.filterSections,
+            FILTER_FIELDS
+        );
+        if (!activeFilter) {
+            return context;
+        }
+
+        if (activeFilter.fieldName === USER_FILTER_FIELD) {
+            context.default_usuario_id = activeFilter.value;
+        } else if (activeFilter.fieldName === WORKER_FILTER_FIELD && !context.default_lineas_ids) {
+            context.default_lineas_ids = [[0, 0, { trabajador_id: activeFilter.value }]];
+        }
+        return context;
     },
 
     isPortalGestorSummaryMode(data = this.data) {
@@ -490,6 +531,7 @@ patch(CalendarCommonRenderer.prototype, {
             label: bucket.portalGestorBucketLabel,
             count: bucket.portalGestorBucketCount,
             bucketType: bucket.portalGestorBucketType,
+            formViewId: this.props.model.formViewId,
             records,
         });
     },

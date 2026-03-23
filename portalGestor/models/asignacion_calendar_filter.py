@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class AsignacionCalendarUsuarioFilter(models.Model):
@@ -18,6 +19,7 @@ class AsignacionCalendarUsuarioFilter(models.Model):
         'usuarios.usuario',
         string='Usuario',
         required=True,
+        domain=[('baja', '=', False), ('has_ap_service', '=', True)],
         ondelete='cascade',
         index=True,
     )
@@ -33,6 +35,12 @@ class AsignacionCalendarUsuarioFilter(models.Model):
             'No puedes tener el mismo usuario repetido en el calendario.',
         ),
     ]
+
+    @api.constrains('usuario_id')
+    def _check_usuario_has_ap_service(self):
+        for record in self:
+            if record.usuario_id and not record.usuario_id.has_ap_service:
+                raise ValidationError(_("Solo puedes filtrar usuarios con el servicio AP activo en portalGestor."))
 
 
 class AsignacionCalendarTrabajadorFilter(models.Model):

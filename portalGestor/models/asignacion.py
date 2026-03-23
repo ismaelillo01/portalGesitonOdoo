@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
+from markupsafe import escape
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
@@ -62,6 +63,11 @@ class Asignacion(models.Model):
         compute='_compute_lineas_resumen',
         store=True,
     )
+    calendar_popover_html = fields.Html(
+        string='Detalle del horario',
+        compute='_compute_calendar_popover_html',
+        sanitize=False,
+    )
     calendar_bucket_type = fields.Selection(
         selection=[
             ('pending', 'Por asignar'),
@@ -108,6 +114,12 @@ class Asignacion(models.Model):
                 record.name = record.usuario_id.name
             else:
                 record.name = _("Nueva Asignacion")
+
+    @api.constrains('usuario_id')
+    def _check_usuario_has_ap_service(self):
+        for record in self:
+            if record.usuario_id and not record.usuario_id.has_ap_service:
+                raise ValidationError(_("Solo puedes asignar horarios a usuarios con el servicio AP activo."))
 
     @staticmethod
     def _calculate_calendar_bucket_type(lineas):
@@ -162,6 +174,42 @@ class Asignacion(models.Model):
             record.rango_horas_resumen = ' | '.join(
                 f"{self._format_hora(linea.hora_inicio)} - {self._format_hora(linea.hora_fin)}"
                 for linea in lineas_ordenadas
+            )
+
+    @api.depends(
+        'lineas_ids',
+        'lineas_ids.trabajador_id',
+        'lineas_ids.hora_inicio',
+        'lineas_ids.hora_fin',
+    )
+    def _compute_calendar_popover_html(self):
+        for record in self:
+            lineas_ordenadas = record.lineas_ids.sorted(
+                key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
+            )
+            if not lineas_ordenadas:
+                record.calendar_popover_html = (
+                    '<div class="o_portalgestor_calendar_detail">'
+                    '<div class="o_portalgestor_calendar_detail_empty">Sin tramos asignados</div>'
+                    '</div>'
+                )
+                continue
+
+            rows = []
+            for linea in lineas_ordenadas:
+                rango = f"{self._format_hora(linea.hora_inicio)} - {self._format_hora(linea.hora_fin)}"
+                trabajador = linea.trabajador_id.display_name or 'Sin asignar'
+                rows.append(
+                    '<div class="o_portalgestor_calendar_detail_row">'
+                    f'<span class="o_portalgestor_calendar_detail_hours">{escape(rango)}</span>'
+                    '<span class="o_portalgestor_calendar_detail_sep">||</span>'
+                    f'<span class="o_portalgestor_calendar_detail_worker">{escape(trabajador)}</span>'
+                    '</div>'
+                )
+            record.calendar_popover_html = (
+                '<div class="o_portalgestor_calendar_detail">'
+                + ''.join(rows)
+                + '</div>'
             )
 
     @staticmethod
@@ -311,7 +359,8 @@ class Asignacion(models.Model):
         return [
             {
                 'id': record.id,
-                'name': record.usuario_id.name or record.name,
+                'name': record.usuario_id.display_name or record.usuario_id.name or record.name,
+                'form_title': f"Horario del usuario {record.usuario_id.display_name or record.usuario_id.name or record.name}",
             }
             for record in records
         ]

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="portalgestor_usuario_form_inherit_report_button" model="ir.ui.view">
+        <field name="name">usuarios.usuario.form.portalgestor.report.button</field>
+        <field name="model">usuarios.usuario</field>
+        <field name="inherit_id" ref="usuarios.usuario_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/sheet" position="before">
+                <header>
+                    <button
+                        name="action_open_horario_usuario_report_wizard"
+                        string="Horario usuario"
+                        type="object"
+                        class="oe_highlight"
+                        groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
+                    />
+                </header>
+            </xpath>
+        </field>
+    </record>
+</odoo>

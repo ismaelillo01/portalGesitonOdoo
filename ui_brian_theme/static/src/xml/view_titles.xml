@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="ui_brian_theme.CalendarViewTitles" t-inherit="web.CalendarController" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='layout-actions']" position="replace">
+            <t t-set-slot="layout-actions">
+                <t t-if="uiBrianUseCompactCalendarSearch">
+                    <div class="o_ui_brian_calendar_toolbar d-flex align-items-center">
+                        <span
+                            t-if="uiBrianViewTitle"
+                            class="o_ui_brian_view_title o_ui_brian_view_title--calendar"
+                            t-esc="uiBrianViewTitle"/>
+                    </div>
+                </t>
+                <SearchBar t-else="" toggler="searchBarToggler"/>
+            </t>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='control-panel-navigation-additional']" position="replace">
+            <t t-set-slot="control-panel-navigation-additional">
+                <div
+                    t-if="uiBrianUseCompactCalendarSearch and !env.isSmall"
+                    class="o_ui_brian_calendar_search">
+                    <SearchBar toggler="searchBarToggler"/>
+                </div>
+                <t t-component="searchBarToggler.component" t-props="searchBarToggler.props"/>
+            </t>
+        </xpath>
+    </t>
+
+    <t t-name="ui_brian_theme.ListViewTitles" t-inherit="web.ListView" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='layout-actions']" position="replace">
+            <t t-set-slot="layout-actions">
+                <t t-if="uiBrianUseCompactListSearch">
+                    <div class="o_ui_brian_list_toolbar d-flex align-items-center">
+                        <span
+                            t-if="uiBrianViewTitle"
+                            class="o_ui_brian_view_title o_ui_brian_view_title--list"
+                            t-esc="uiBrianViewTitle"/>
+                    </div>
+                </t>
+                <SearchBar t-else="" toggler="searchBarToggler" autofocus="firstLoad"/>
+            </t>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='control-panel-navigation-additional']" position="replace">
+            <t t-set-slot="control-panel-navigation-additional">
+                <div
+                    t-if="uiBrianUseCompactListSearch and !hasSelectedRecords and !env.isSmall"
+                    class="o_ui_brian_list_search">
+                    <SearchBar toggler="searchBarToggler" autofocus="firstLoad"/>
+                </div>
+                <t t-if="!hasSelectedRecords" t-component="searchBarToggler.component" t-props="searchBarToggler.props"/>
+            </t>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='control-panel-additional-actions']" position="replace">
+            <t t-set-slot="control-panel-additional-actions">
+                <div t-if="!hasSelectedRecords" class="o_ui_brian_list_cp_extra d-flex align-items-center gap-2">
+                    <CogMenu/>
+                </div>
+                <CogMenu
+                    t-elif="env.isSmall and (props.info.actionMenus or archInfo.headerButtons.length)"
+                    t-props="this.actionMenuProps"
+                    hasSelectedRecords="hasSelectedRecords">
+                    <t t-foreach="archInfo.headerButtons" t-as="button" t-key="button.id" t-if="!evalViewModifier(button.invisible)">
+                        <DropdownItem class="'o-dropdown-item-unstyled-button'">
+                            <MultiRecordViewButton
+                                t-if="button.display !== 'always'"
+                                list="model.root"
+                                className="button.className"
+                                clickParams="button.clickParams"
+                                defaultRank="'btn-secondary'"
+                                domain="props.domain"
+                                icon="button.icon"
+                                string="button.string"
+                                title="button.title"
+                                attrs="button.attrs"
+                            />
+                        </DropdownItem>
+                    </t>
+                </CogMenu>
+            </t>
+        </xpath>
+    </t>
+
+</templates>

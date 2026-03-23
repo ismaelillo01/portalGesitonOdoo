@@ -14,7 +14,7 @@
           <sheet>
             <group>
               <group>
-                <field name="usuario_id" domain="[('baja', '=', False)]" readonly="confirmado == True"/>
+                <field name="usuario_id" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" readonly="confirmado == True"/>
                 <field name="fecha_inicio" readonly="confirmado == True"/>
                 <field name="fecha_fin" readonly="confirmado == True"/>
               </group>

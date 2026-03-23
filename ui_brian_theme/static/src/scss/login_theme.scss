@@ -1,0 +1,156 @@
+body.bg-100 {
+    --ui-brian-login-navy: #03031f;
+    --ui-brian-login-navy-strong: #01011b;
+    --ui-brian-login-accent: #e94692;
+    --ui-brian-login-accent-strong: #cc0033;
+    --ui-brian-login-card-border: rgba(255, 255, 255, 0.14);
+    --ui-brian-login-card-bg: rgba(255, 255, 255, 0.14);
+    --ui-brian-login-text: rgba(255, 255, 255, 0.92);
+    --ui-brian-login-text-muted: rgba(255, 255, 255, 0.74);
+
+    min-height: 100vh;
+    background-color: var(--ui-brian-login-navy-strong) !important;
+    background-image:
+        url("/ui_brian_theme/static/src/img/caras.png"),
+        linear-gradient(135deg, rgba(1, 1, 27, 0.98), rgba(24, 24, 46, 0.92));
+    background-size: 760px auto, cover;
+    background-repeat: no-repeat;
+    background-position: right bottom, center;
+    color: var(--ui-brian-login-text);
+}
+
+body.bg-100 #wrapwrap,
+body.bg-100 #wrapwrap > main {
+    min-height: 100vh;
+    background: transparent;
+}
+
+body.bg-100 .container.py-5 {
+    position: relative;
+    z-index: 1;
+}
+
+body.bg-100 .o_database_list {
+    background: var(--ui-brian-login-card-bg) !important;
+    border: 1px solid var(--ui-brian-login-card-border);
+    border-radius: 20px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+body.bg-100 .o_database_list .card-body {
+    padding: 2rem;
+}
+
+body.bg-100 .o_database_list .border-bottom,
+body.bg-100 .o_database_list .border-top {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.bg-100 .o_database_list img[alt="Logo"] {
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.2));
+}
+
+body.bg-100 .oe_login_form .form-label,
+body.bg-100 .oe_login_form label {
+    color: var(--ui-brian-login-text);
+    font-weight: 600;
+}
+
+body.bg-100 .oe_login_form .form-control,
+body.bg-100 .oe_login_form .form-select,
+body.bg-100 .oe_login_form input {
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: none;
+    color: #1f2238;
+}
+
+body.bg-100 .oe_login_form .form-control::placeholder,
+body.bg-100 .oe_login_form input::placeholder {
+    color: rgba(31, 34, 56, 0.5);
+}
+
+body.bg-100 .oe_login_form .form-control:focus,
+body.bg-100 .oe_login_form .form-select:focus,
+body.bg-100 .oe_login_form input:focus,
+body.bg-100 .oe_login_form .btn:focus {
+    border-color: var(--ui-brian-login-accent);
+    box-shadow: 0 0 0 0.2rem rgba(233, 70, 146, 0.18);
+}
+
+body.bg-100 .oe_login_form .btn-primary,
+body.bg-100 .oe_login_form .btn.btn-primary {
+    min-height: 46px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--ui-brian-login-accent);
+    box-shadow: none;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+body.bg-100 .oe_login_form .btn-primary:hover,
+body.bg-100 .oe_login_form .btn-primary:focus,
+body.bg-100 .oe_login_form .btn-primary:active,
+body.bg-100 .oe_login_form .btn-check:checked + .btn-primary {
+    background: var(--ui-brian-login-accent-strong);
+    color: #fff;
+}
+
+body.bg-100 .oe_login_form .btn-secondary,
+body.bg-100 .oe_login_form .btn.btn-secondary {
+    border-radius: 12px;
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+body.bg-100 .oe_login_form .btn-secondary:hover,
+body.bg-100 .oe_login_form .btn-secondary:focus {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+body.bg-100 .o_database_list a:not(.btn) {
+    color: var(--ui-brian-login-text-muted);
+}
+
+body.bg-100 .o_database_list a:not(.btn):hover,
+body.bg-100 .o_database_list a:not(.btn):focus {
+    color: #fff;
+    text-decoration-color: var(--ui-brian-login-accent);
+}
+
+body.bg-100 .o_database_list .small,
+body.bg-100 .o_database_list .form-text {
+    color: var(--ui-brian-login-text-muted) !important;
+}
+
+body.bg-100 .o_database_list .alert-danger {
+    border-left: 4px solid var(--ui-brian-login-accent);
+    background: rgba(204, 0, 51, 0.16);
+    color: #fff;
+}
+
+body.bg-100 .o_database_list .alert-success {
+    border-left: 4px solid #72d3a1;
+    background: rgba(114, 211, 161, 0.16);
+    color: #fff;
+}
+
+@media (max-width: 767.98px) {
+    body.bg-100 {
+        background-size: 500px auto, cover;
+        background-position: right bottom, center;
+    }
+
+    body.bg-100 .o_database_list .card-body {
+        padding: 1.5rem;
+    }
+}

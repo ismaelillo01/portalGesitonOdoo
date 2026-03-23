@@ -13,6 +13,7 @@ class TestPortalGestorOptimizations(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.ap_service = cls.env.ref('usuarios.usuarios_servicio_ap')
         cls.zone = cls.env['zonastrabajo.zona'].create({
             'name': 'Zona Centro',
             'code': 'ZONA_CENTRO_TEST',
@@ -21,11 +22,13 @@ class TestPortalGestorOptimizations(TransactionCase):
             'name': 'Usuario A',
             'grupo': 'agusto',
             'zona_trabajo_id': cls.zone.id,
+            'servicio_ids': [(6, 0, [cls.ap_service.id])],
         })
         cls.usuario_b = cls.env['usuarios.usuario'].create({
             'name': 'Usuario B',
             'grupo': 'agusto',
             'zona_trabajo_id': cls.zone.id,
+            'servicio_ids': [(6, 0, [cls.ap_service.id])],
         })
 
     @classmethod
@@ -180,6 +183,71 @@ class TestPortalGestorOptimizations(TransactionCase):
 
         self.assertEqual(trabajadores.ids, [trabajador_disponible.id])
 
+    def test_vacation_rejects_days_with_existing_assignments(self):
+        fecha = fields.Date.to_date('2026-03-24')
+        trabajador = self._create_worker('Vacacion Con Trabajo')
+
+        self._create_assignment(
+            self.usuario_a,
+            fecha,
+            [(8.0, 12.0, trabajador)],
+        )
+
+        with self.assertRaises(ValidationError) as error:
+            self.env['trabajadores.vacacion'].create({
+                'trabajador_id': trabajador.id,
+                'date_start': fecha,
+                'date_stop': fecha,
+            })
+
+        self.assertIn('2026-03-24', str(error.exception))
+
+    def test_vacation_rejects_days_with_existing_fixed_assignments(self):
+        fecha_inicio = fields.Date.to_date('2026-03-25')
+        fecha_fin = fields.Date.to_date('2026-03-27')
+        trabajador = self._create_worker('Vacacion Fijo')
+
+        self._create_fixed_assignment(
+            self.usuario_a,
+            fecha_inicio,
+            fecha_fin,
+            [(9.0, 11.0, trabajador)],
+        )
+
+        with self.assertRaises(ValidationError):
+            self.env['trabajadores.vacacion'].create({
+                'trabajador_id': trabajador.id,
+                'date_start': fields.Date.to_date('2026-03-26'),
+                'date_stop': fields.Date.to_date('2026-03-26'),
+            })
+
+    def test_vacation_rejects_overlapping_ranges_for_same_worker(self):
+        trabajador = self._create_worker('Solape Vacacion')
+
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fields.Date.to_date('2026-04-01'),
+            'date_stop': fields.Date.to_date('2026-04-03'),
+        })
+
+        with self.assertRaises(ValidationError):
+            self.env['trabajadores.vacacion'].create({
+                'trabajador_id': trabajador.id,
+                'date_start': fields.Date.to_date('2026-04-03'),
+                'date_stop': fields.Date.to_date('2026-04-05'),
+            })
+
+    def test_vacation_rejects_workers_on_baja(self):
+        trabajador = self._create_worker('Baja Vacacion')
+        trabajador.write({'baja': True})
+
+        with self.assertRaises(ValidationError):
+            self.env['trabajadores.vacacion'].create({
+                'trabajador_id': trabajador.id,
+                'date_start': fields.Date.to_date('2026-04-10'),
+                'date_stop': fields.Date.to_date('2026-04-10'),
+            })
+
     def test_assignment_line_rejects_hours_out_of_range(self):
         fecha = fields.Date.to_date('2026-03-24')
         trabajador = self._create_worker('Rango')
@@ -223,6 +291,7 @@ class TestPortalGestorOptimizations(TransactionCase):
             'name': 'Usuario C',
             'grupo': 'agusto',
             'zona_trabajo_id': self.zone.id,
+            'servicio_ids': [(6, 0, [self.ap_service.id])],
         })
 
         self._create_assignment(
@@ -1124,3 +1193,88 @@ class TestPortalGestorOptimizations(TransactionCase):
         form_arch = self.env.ref('portalGestor.portalgestor_asignacion_mensual_form').arch_db
         self.assertIn('exclude_vacaciones_fecha_inicio', form_arch)
         self.assertIn("('baja', '=', False)", form_arch)
+
+    def test_assignment_rejects_usuario_without_ap_service(self):
+        usuario_sin_ap = self.env['usuarios.usuario'].create({
+            'name': 'Usuario sin AP',
+            'grupo': 'agusto',
+            'zona_trabajo_id': self.zone.id,
+        })
+        trabajador = self._create_worker('Sin AP')
+
+        with self.assertRaises(ValidationError):
+            self._create_assignment(
+                usuario_sin_ap,
+                fields.Date.to_date('2026-03-28'),
+                [(8.0, 10.0, trabajador)],
+            )
+
+    def test_fixed_assignment_rejects_usuario_without_ap_service(self):
+        usuario_sin_ap = self.env['usuarios.usuario'].create({
+            'name': 'Usuario fijo sin AP',
+            'grupo': 'agusto',
+            'zona_trabajo_id': self.zone.id,
+        })
+        trabajador = self._create_worker('Fijo sin AP')
+
+        with self.assertRaises(ValidationError):
+            self._create_fixed_assignment(
+                usuario_sin_ap,
+                fields.Date.to_date('2026-03-01'),
+                fields.Date.to_date('2026-03-31'),
+                [(8.0, 10.0, trabajador)],
+            )
+
+    def test_usuario_report_wizard_payload_contains_services_and_total(self):
+        fecha = fields.Date.to_date('2026-03-29')
+        trabajador = self._create_worker('Reporte Usuario')
+        usuario = self.env['usuarios.usuario'].create({
+            'name': 'Lucia',
+            'apellido1': 'Perez',
+            'apellido2': 'Santos',
+            'grupo': 'agusto',
+            'zona_trabajo_id': self.zone.id,
+            'servicio_ids': [(6, 0, [self.ap_service.id])],
+        })
+
+        self._create_assignment(
+            usuario,
+            fecha,
+            [
+                (8.0, 10.5, trabajador),
+                (11.0, 13.0, trabajador),
+            ],
+        )
+
+        wizard = self.env['portalgestor.usuario.report.wizard'].create({
+            'usuario_ids': [(6, 0, [usuario.id])],
+            'mes': '3',
+            'anio': '2026',
+        })
+        payload = wizard._get_report_payload_for_user(usuario)
+
+        self.assertEqual(payload['usuario_full_name'], 'Lucia Perez Santos')
+        self.assertEqual(payload['services_label'], 'AP')
+        self.assertEqual(payload['total_duration_label'], '4 Horas y 30 minutos')
+        self.assertEqual(len(payload['lines']), 2)
+        self.assertEqual(payload['lines'][0]['duration_label'], '2 Horas y 30 minutos')
+
+    def test_usuario_report_wizard_exports_zip_for_multiple_csv_users(self):
+        trabajador = self._create_worker('Reporte CSV ZIP')
+        fecha = fields.Date.to_date('2026-03-30')
+
+        self._create_assignment(self.usuario_a, fecha, [(8.0, 10.0, trabajador)])
+        self._create_assignment(self.usuario_b, fecha, [(10.0, 12.0, trabajador)])
+
+        wizard = self.env['portalgestor.usuario.report.wizard'].create({
+            'usuario_ids': [(6, 0, [self.usuario_a.id, self.usuario_b.id])],
+            'mes': '3',
+            'anio': '2026',
+            'formato_salida': 'csv',
+        })
+        action = wizard.action_generate_report()
+
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('download_file', action['url'])
+        self.assertTrue(wizard.download_file)
+        self.assertTrue(wizard.download_filename.endswith('.zip'))

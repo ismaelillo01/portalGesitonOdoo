@@ -12,6 +12,7 @@
     'depends': ['base', 'web', 'bus', 'gestores', 'trabajadores', 'usuarios', 'zonasTrabajo'],
     'assets': {
         'web.assets_backend': [
+            'portalGestor/static/src/js/portalgestor_float_time_input.js',
             'portalGestor/static/src/js/portalgestor_calendar_order.js',
             'portalGestor/static/src/js/trabajadores_vacacion_markers.js',
             'portalGestor/static/src/js/portalgestor_calendar_summary.js',
@@ -24,11 +25,17 @@
         'security/ir.model.access.csv',
         'security/portalgestor_security.xml',
         'reports/horario_report.xml',
+        'reports/usuario_horario_report.xml',
         'views/asignacion_views.xml',
         'views/asignacion_mensual_views.xml',
+        'views/usuario_views.xml',
         'views/trabajadores_vacacion_calendar_views.xml',
         'wizards/conflict_wizard_views.xml',
         'wizards/report_wizard_views.xml',
+        'wizards/usuario_report_wizard_views.xml',
+    ],
+    'demo': [
+        'demo/portalgestor_demo.xml',
     ],
     'installable': True,
     'application': True,

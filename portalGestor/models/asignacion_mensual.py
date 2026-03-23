@@ -87,6 +87,12 @@ class AsignacionMensual(models.Model):
                 'tramos': len(record.linea_fija_ids),
             }
 
+    @api.constrains('usuario_id')
+    def _check_usuario_has_ap_service(self):
+        for record in self:
+            if record.usuario_id and not record.usuario_id.has_ap_service:
+                raise ValidationError(_("Solo puedes asignar trabajos fijos a usuarios con el servicio AP activo."))
+
     @api.depends('asignacion_linea_ids', 'asignacion_linea_ids.fecha')
     def _compute_generation_totals(self):
         for record in self:

@@ -23,7 +23,7 @@
                             type="button"
                             class="btn text-start o_portalgestor_bucket_record"
                             t-att-class="'o_portalgestor_bucket_record--' + props.bucketType"
-                            t-on-click="() => this.openRecord(record.id)"
+                            t-on-click="() => this.openRecord(record)"
                         >
                             <t t-esc="record.name"/>
                         </button>

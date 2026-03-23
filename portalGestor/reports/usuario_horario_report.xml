@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_horario_usuario" model="ir.actions.report">
+        <field name="name">Horario de Usuario</field>
+        <field name="model">portalgestor.usuario.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">portalGestor.report_horario_usuario_template</field>
+        <field name="report_file">portalGestor.report_horario_usuario_template</field>
+        <field name="print_report_name">object._get_single_report_filename()</field>
+        <field name="binding_model_id" ref="model_portalgestor_usuario_report_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_horario_usuario_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-foreach="doc._get_report_users()" t-as="usuario">
+                    <t t-set="payload" t-value="doc._get_report_payload_for_user(usuario)"/>
+                    <t t-call="web.external_layout">
+                        <div class="page" t-att-style="'page-break-after: always;' if not usuario_last else ''">
+                            <div class="text-center mb-4">
+                                <h2>Horario Mensual de Usuario</h2>
+                                <h4>Usuario: <t t-esc="payload['usuario_full_name']"/></h4>
+                                <p>Servicios: <span t-esc="payload['services_label']"/></p>
+                                <p>Periodo: <span t-esc="payload['period_label']"/></p>
+                            </div>
+
+                            <div class="alert alert-warning mt-4" role="alert" t-if="not payload['has_ap_service']">
+                                <p class="mb-0">El usuario no tiene activo el servicio AP.</p>
+                            </div>
+
+                            <div class="alert alert-info mt-4" role="alert" t-if="payload['has_ap_service'] and not payload['lines']">
+                                <p class="mb-0">Sin registros en este periodo.</p>
+                            </div>
+
+                            <table class="table table-sm table-bordered mt-4" t-if="payload['lines']">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>AP</th>
+                                        <th>Hora Inicio</th>
+                                        <th>Hora Fin</th>
+                                        <th>Horas Totales</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="payload['lines']" t-as="line">
+                                        <tr>
+                                            <td><span t-esc="line['fecha_label']"/></td>
+                                            <td><span t-esc="line['ap_name']"/></td>
+                                            <td><span t-esc="line['hora_inicio']"/></td>
+                                            <td><span t-esc="line['hora_fin']"/></td>
+                                            <td><span t-esc="line['duration_label']"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+
+                            <div class="mt-4 text-end" t-if="payload['lines']">
+                                <h4><strong>Total Horas del Periodo: <span t-esc="payload['total_duration_label']"/></strong></h4>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

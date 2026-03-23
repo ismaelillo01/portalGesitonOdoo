@@ -1,0 +1,562 @@
+.o_web_client {
+    --ui-brian-navy: #03031f;
+    --ui-brian-navy-strong: #01011b;
+    --ui-brian-accent: #e94692;
+    --ui-brian-accent-strong: #cc0033;
+    --ui-brian-surface: #ffffff;
+    --ui-brian-surface-alt: #fff3ee;
+    --ui-brian-surface-muted: #fff8f5;
+    --ui-brian-text: #21253a;
+    --ui-brian-text-muted: rgba(33, 37, 58, 0.68);
+    --ui-brian-border: rgba(3, 3, 31, 0.12);
+    --ui-brian-border-strong: rgba(3, 3, 31, 0.2);
+    --ui-brian-shadow: 0 14px 30px rgba(3, 3, 31, 0.12);
+    --ui-brian-shadow-soft: 0 8px 20px rgba(3, 3, 31, 0.08);
+    --ui-brian-radius-lg: 18px;
+    --ui-brian-radius-md: 12px;
+    --ui-brian-radius-field: 4px;
+
+    background-color: var(--ui-brian-surface-alt);
+    color: var(--ui-brian-text);
+}
+
+.o_web_client,
+.o_web_client .o_action_manager,
+.o_web_client .o_action,
+.o_web_client .o_content {
+    background-color: var(--ui-brian-surface-alt);
+    color: var(--ui-brian-text);
+}
+
+.o_web_client .o_content {
+    background-image:
+        url("/ui_brian_theme/static/src/img/carasBlanco.png"),
+        linear-gradient(125deg, rgba(255, 255, 255, 0.22), rgba(255, 243, 238, 0.84));
+    background-size: 760px auto, cover;
+    background-repeat: no-repeat;
+    background-position: right 0 bottom 0, center;
+}
+
+.o_web_client a:not(.btn):not(.dropdown-item):not(.nav-link) {
+    color: var(--ui-brian-accent);
+}
+
+.o_web_client a:not(.btn):not(.dropdown-item):not(.nav-link):hover,
+.o_web_client a:not(.btn):not(.dropdown-item):not(.nav-link):focus {
+    color: var(--ui-brian-accent-strong);
+}
+
+.o_web_client .o_main_navbar {
+    --NavBar-entry-color: rgba(255, 255, 255, 0.92);
+    --NavBar-entry-color--hover: #fff;
+    --NavBar-entry-color--active: #fff;
+    --NavBar-entry-backgroundColor--hover: rgba(255, 255, 255, 0.08);
+    --NavBar-entry-backgroundColor--active: rgba(233, 70, 146, 0.18);
+    --NavBar-entry-borderColor-active: rgba(233, 70, 146, 0.4);
+    --NavBar-brand-color: #fff;
+
+    background-color: var(--ui-brian-navy);
+    background-image:
+        linear-gradient(125deg, rgba(1, 1, 27, 0.18), rgba(255, 189, 227, 0.26)),
+        url("/ui_brian_theme/static/src/img/caras.png"),
+        linear-gradient(110deg, rgba(1, 1, 27, 1), rgba(18, 20, 44, 0.94));
+    background-size: auto, 420px auto, cover;
+    background-repeat: no-repeat;
+    background-position: center, right center, center;
+    border-bottom: 1px solid rgba(233, 70, 146, 0.28);
+    box-shadow: 0 8px 20px rgba(1, 1, 27, 0.18);
+}
+
+.o_web_client .o_main_navbar .o_menu_toggle:hover,
+.o_web_client .o_main_navbar .o_menu_toggle:focus-visible,
+.o_web_client .o_main_navbar .o_menu_brand:hover,
+.o_web_client .o_main_navbar .o_menu_brand:focus-visible,
+.o_web_client .o_main_navbar .o_navbar_apps_menu .dropdown-toggle:hover,
+.o_web_client .o_main_navbar .o_navbar_apps_menu .dropdown-toggle:focus-visible,
+.o_web_client .o_main_navbar .o_menu_sections .o_nav_entry:hover,
+.o_web_client .o_main_navbar .o_menu_sections .o_nav_entry:focus-visible,
+.o_web_client .o_main_navbar .o_menu_sections .dropdown-toggle:hover,
+.o_web_client .o_main_navbar .o_menu_sections .dropdown-toggle:focus-visible,
+.o_web_client .o_main_navbar .o_menu_sections_more .dropdown-toggle:hover,
+.o_web_client .o_main_navbar .o_menu_sections_more .dropdown-toggle:focus-visible,
+.o_web_client .o_main_navbar .o_menu_systray button:hover,
+.o_web_client .o_main_navbar .o_menu_systray button:focus-visible,
+.o_web_client .o_main_navbar .o_menu_systray .btn:hover,
+.o_web_client .o_main_navbar .o_menu_systray .btn:focus-visible,
+.o_web_client .o_main_navbar .o_menu_systray .dropdown-toggle:hover,
+.o_web_client .o_main_navbar .o_menu_systray .dropdown-toggle:focus-visible,
+.o_web_client .o_main_navbar .o_menu_systray a:hover,
+.o_web_client .o_main_navbar .o_menu_systray a:focus-visible {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #fff !important;
+}
+
+.o_web_client .o_main_navbar .o_menu_toggle:hover svg,
+.o_web_client .o_main_navbar .o_menu_toggle:focus-visible svg,
+.o_web_client .o_main_navbar .o_menu_systray button:hover i,
+.o_web_client .o_main_navbar .o_menu_systray button:focus-visible i,
+.o_web_client .o_main_navbar .o_menu_sections_more .dropdown-toggle:hover i,
+.o_web_client .o_main_navbar .o_menu_sections_more .dropdown-toggle:focus-visible i {
+    color: #fff;
+}
+
+.o_web_client .o_main_navbar .dropdown-menu,
+.o_web_client .o_main_navbar .o-dropdown--menu {
+    border: 1px solid var(--ui-brian-border);
+    border-radius: var(--ui-brian-radius-md);
+    box-shadow: var(--ui-brian-shadow);
+}
+
+.o_web_client .o_control_panel {
+    border-bottom: 1px solid rgba(233, 70, 146, 0.14);
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow: 0 6px 16px rgba(3, 3, 31, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.o_web_client .breadcrumb,
+.o_web_client .o_breadcrumb {
+    color: var(--ui-brian-text-muted);
+}
+
+.o_web_client .breadcrumb-item.active,
+.o_web_client .o_last_breadcrumb_item,
+.o_web_client .o_control_panel .o_breadcrumb .active {
+    color: var(--ui-brian-navy);
+    font-weight: 600;
+}
+
+.o_web_client .btn-primary,
+.o_web_client .btn.btn-primary,
+.o_web_client .btn.oe_highlight,
+.o_web_client .o_control_panel .btn-primary {
+    border-color: var(--ui-brian-accent);
+    background: var(--ui-brian-accent);
+    box-shadow: none;
+    color: #fff;
+}
+
+.o_web_client .btn-primary:hover,
+.o_web_client .btn-primary:focus,
+.o_web_client .btn-primary:active,
+.o_web_client .btn-check:checked + .btn-primary,
+.o_web_client .btn.oe_highlight:hover,
+.o_web_client .btn.oe_highlight:focus,
+.o_web_client .btn.oe_highlight:active {
+    border-color: var(--ui-brian-accent-strong);
+    background: var(--ui-brian-accent-strong);
+    color: #fff;
+}
+
+.o_web_client .btn-secondary,
+.o_web_client .btn.btn-secondary,
+.o_web_client .btn-outline-secondary,
+.o_web_client .btn.btn-outline-secondary,
+.o_web_client .btn-light,
+.o_web_client .btn.btn-light {
+    border-color: var(--ui-brian-border-strong);
+    background: var(--ui-brian-surface);
+    color: var(--ui-brian-navy);
+    box-shadow: none;
+}
+
+.o_web_client .btn-secondary:hover,
+.o_web_client .btn-secondary:focus,
+.o_web_client .btn-outline-secondary:hover,
+.o_web_client .btn-outline-secondary:focus,
+.o_web_client .btn-light:hover,
+.o_web_client .btn-light:focus {
+    border-color: rgba(233, 70, 146, 0.32);
+    background: rgba(233, 70, 146, 0.08);
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .btn-link {
+    color: var(--ui-brian-accent);
+}
+
+.o_web_client .btn-link:hover,
+.o_web_client .btn-link:focus {
+    color: var(--ui-brian-accent-strong);
+}
+
+.o_web_client .form-control,
+.o_web_client .form-select,
+.o_web_client .o_input,
+.o_web_client .o-autocomplete--input,
+.o_web_client textarea.o_input,
+.o_web_client select.o_input {
+    border-color: rgba(3, 3, 31, 0.18);
+    border-radius: var(--ui-brian-radius-field);
+    background-color: var(--ui-brian-surface);
+    color: var(--ui-brian-text);
+    box-shadow: none;
+}
+
+.o_web_client .form-control:focus,
+.o_web_client .form-select:focus,
+.o_web_client .o_input:focus,
+.o_web_client .o-autocomplete--input:focus {
+    border-color: var(--ui-brian-accent);
+    box-shadow: 0 0 0 0.2rem rgba(233, 70, 146, 0.14);
+}
+
+.o_web_client .form-check-input:checked {
+    border-color: var(--ui-brian-accent);
+    background-color: var(--ui-brian-accent);
+}
+
+.o_web_client .form-check-input:focus {
+    border-color: var(--ui-brian-accent);
+    box-shadow: 0 0 0 0.2rem rgba(233, 70, 146, 0.14);
+}
+
+.o_web_client .o_form_view:not(.o_field_highlight)
+    .o_field_widget:not(.o_field_invalid):not(.o_field_highlight)
+    .o_input:not(:hover):not(:focus) {
+    --o-input-border-color: rgba(3, 3, 31, 0.16);
+}
+
+.o_web_client .o_searchview {
+    --SearchBar-background-color: #fff;
+
+    border: 1px solid rgba(3, 3, 31, 0.14);
+    border-radius: var(--ui-brian-radius-field);
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(3, 3, 31, 0.06);
+}
+
+.o_web_client .o_searchview:focus-within {
+    border-color: var(--ui-brian-accent);
+    box-shadow: 0 0 0 0.2rem rgba(233, 70, 146, 0.12);
+}
+
+.o_web_client .o_searchview_facet {
+    background: rgba(233, 70, 146, 0.08);
+    border-radius: var(--ui-brian-radius-field);
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .o_searchview_facet_label {
+    background: rgba(233, 70, 146, 0.16);
+    border-top-left-radius: var(--ui-brian-radius-field) !important;
+    border-bottom-left-radius: var(--ui-brian-radius-field) !important;
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .o_cp_searchview .o_searchview_dropdown_toggler,
+.o_web_client .o_cp_searchview .o_searchview_dropdown_toggler.btn,
+.o_web_client .o_cp_searchview .o_searchview_dropdown_toggler.btn.rounded-start-0 {
+    border-top-right-radius: var(--ui-brian-radius-field) !important;
+    border-bottom-right-radius: var(--ui-brian-radius-field) !important;
+}
+
+.o_web_client .o_mobile_search {
+    --mobileSearch-bg: var(--ui-brian-surface-alt);
+    --mobileSearch__header-bg: var(--ui-brian-navy);
+}
+
+.o_web_client .o_form_view .o_form_sheet {
+    border: 1px solid var(--ui-brian-border);
+    border-radius: var(--ui-brian-radius-lg);
+    box-shadow: var(--ui-brian-shadow);
+}
+
+.o_web_client .o_form_view .o_form_view_container,
+.o_web_client .o_form_view .o_form_sheet_bg,
+.o_web_client .o_form_view.o_form_nosheet,
+.o_web_client .o_form_view .o_form_nosheet {
+    background-color: transparent;
+    background-image: none;
+}
+
+.o_web_client .o_form_view .o_form_view_container,
+.o_web_client .o_form_view .o_form_sheet_bg {
+    min-height: 100%;
+}
+
+.o_web_client .o_form_view .o_form_sheet_bg {
+    background-color: transparent;
+}
+
+.o_web_client .o_form_view.o_form_nosheet,
+.o_web_client .o_form_view .o_form_nosheet {
+    border-radius: var(--ui-brian-radius-lg);
+    box-shadow: var(--ui-brian-shadow-soft);
+}
+
+.o_web_client .o_form_view .oe_title h1,
+.o_web_client .o_form_view h1,
+.o_web_client .o_form_view h2 {
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .nav-tabs {
+    border-bottom-color: rgba(3, 3, 31, 0.12);
+}
+
+.o_web_client .nav-tabs .nav-link {
+    color: var(--ui-brian-text-muted);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.o_web_client .nav-tabs .nav-link:hover,
+.o_web_client .nav-tabs .nav-link:focus {
+    color: var(--ui-brian-navy);
+    border-color: rgba(233, 70, 146, 0.12);
+}
+
+.o_web_client .nav-tabs .nav-link.active {
+    border-color: rgba(3, 3, 31, 0.12) rgba(3, 3, 31, 0.12) #fff;
+    background: #fff;
+    box-shadow: inset 0 -2px 0 var(--ui-brian-accent);
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .dropdown-menu,
+.o_web_client .o-dropdown--menu,
+.o_web_client .modal-content,
+.o_web_client .o_dialog .modal-content {
+    border: 1px solid var(--ui-brian-border);
+    border-radius: 16px;
+    box-shadow: var(--ui-brian-shadow);
+}
+
+.o_web_client .dropdown-item:hover,
+.o_web_client .dropdown-item:focus {
+    background: rgba(233, 70, 146, 0.08);
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .dropdown-item.active,
+.o_web_client .dropdown-item.selected {
+    background: rgba(233, 70, 146, 0.12);
+    color: var(--ui-brian-navy);
+}
+
+.o_web_client .modal-header,
+.o_web_client .modal-footer {
+    border-color: rgba(3, 3, 31, 0.08);
+}
+
+.o_web_client .o_list_renderer {
+    --ListRenderer-thead-bg-color: var(--ui-brian-navy);
+    --ListRenderer-thead-bg-active-color: #121530;
+}
+
+.o_web_client .o_list_renderer .o_list_table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.o_web_client .o_list_renderer .o_list_table thead th {
+    border-bottom: 0;
+    color: #fff;
+    font-weight: 600;
+}
+
+.o_web_client .o_form_view .o_field_widget .o_list_renderer .o_list_table thead,
+.o_web_client .o_form_view .o_field_widget .o_list_renderer .o_list_table thead th,
+.o_web_client .o_form_view .o_field_widget .o_list_renderer .o_list_table .o_column_sortable .o_list_sortable_caret {
+    background: var(--ui-brian-surface-muted);
+    background-color: var(--ui-brian-surface-muted);
+}
+
+.o_web_client .o_form_view .o_field_widget .o_list_renderer .o_list_table thead th,
+.o_web_client .o_form_view .o_field_widget .o_list_renderer .o_list_table .o_column_sortable .o_list_sortable_caret {
+    color: var(--ui-brian-text);
+}
+
+.o_web_client .o_ui_brian_form_actions {
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.o_web_client .o_ui_brian_form_actions .btn {
+    min-width: 112px;
+}
+
+.o_web_client .o_ui_brian_form_actions .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.o_web_client .o_ui_brian_view_title {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    max-width: 520px;
+    padding: 0.45rem 0.85rem;
+    overflow: hidden;
+    border: 1px solid var(--ui-brian-border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--ui-brian-navy);
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-shadow: var(--ui-brian-shadow-soft);
+}
+
+.o_web_client .o_ui_brian_view_title--form {
+    margin-left: 0.1rem;
+}
+
+.o_web_client .o_ui_brian_list_cp_extra {
+    min-height: 38px;
+}
+
+.o_web_client .o_ui_brian_list_toolbar,
+.o_web_client .o_ui_brian_calendar_toolbar {
+    min-width: 0;
+}
+
+.o_web_client .o_ui_brian_list_search,
+.o_web_client .o_ui_brian_calendar_search {
+    flex: 0 1 300px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.o_web_client .o_ui_brian_list_search .o_cp_searchview,
+.o_web_client .o_ui_brian_calendar_search .o_cp_searchview {
+    width: 100%;
+}
+
+.o_web_client .o_ui_brian_list_search .o_searchview,
+.o_web_client .o_ui_brian_calendar_search .o_searchview {
+    min-height: 36px;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    box-shadow: none;
+}
+
+.o_web_client .o_ui_brian_list_search .o_searchview_input_container,
+.o_web_client .o_ui_brian_calendar_search .o_searchview_input_container {
+    min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+    .o_web_client .o_ui_brian_form_actions {
+        flex-wrap: wrap;
+    }
+}
+
+.o_web_client .o_list_renderer .o_list_table thead tr th:first-child {
+    border-top-left-radius: 14px;
+}
+
+.o_web_client .o_list_renderer .o_list_table thead tr th:last-child {
+    border-top-right-radius: 14px;
+}
+
+.o_web_client .o_list_renderer .o_list_table .o_column_sortable .o_list_sortable_caret {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.o_web_client .o_list_renderer .o_list_table tbody tr {
+    background: #fff;
+}
+
+.o_web_client .o_list_renderer .o_list_table tbody tr:hover > td {
+    background: rgba(233, 70, 146, 0.04);
+}
+
+.o_web_client .o_list_renderer .o_list_table tbody tr:not(.o_data_row):not(.o_group_header):not(.o_field_x2many_list_row_add):not(.o_group_field_row_add) > td {
+    background: #fff;
+    border-bottom: 1px solid rgba(3, 3, 31, 0.08);
+    height: 44px;
+}
+
+.o_web_client .o_list_renderer .o_list_table tbody > tr > td {
+    border-bottom: 1px solid rgba(3, 3, 31, 0.08);
+}
+
+.o_web_client .o_kanban_renderer {
+    border-top: 0;
+    background: transparent;
+}
+
+.o_web_client .o_kanban_renderer .o_kanban_record:not(.o_legacy_kanban_record):not(.o_kanban_ghost) {
+    border-color: var(--ui-brian-border);
+    border-radius: var(--ui-brian-radius-lg);
+    box-shadow: var(--ui-brian-shadow-soft);
+}
+
+.o_web_client .alert.alert-info,
+.o_web_client .alert.alert-success,
+.o_web_client .alert.alert-warning,
+.o_web_client .alert.alert-danger {
+    border-left-width: 4px;
+}
+
+.o_web_client .o_calendar_widget .o_portalgestor_bucket.o_portalgestor_bucket--pending,
+.o_web_client .o_calendar_widget .fc-h-event.o_portalgestor_bucket--pending,
+.o_web_client .o_calendar_widget .fc-daygrid-event.o_portalgestor_bucket--pending,
+.o_web_client .o_portalgestor_bucket_dialog_badge.o_portalgestor_bucket_dialog_badge--pending,
+.o_web_client .o_portalgestor_bucket_record.o_portalgestor_bucket_record--pending {
+    border-color: #86efac !important;
+    background: #d1fae5 !important;
+    background-color: #d1fae5 !important;
+    color: #166534 !important;
+}
+
+.o_web_client .o_calendar_widget .o_portalgestor_bucket.o_portalgestor_bucket--pending .fc-event-main,
+.o_web_client .o_calendar_widget .fc-h-event.o_portalgestor_bucket--pending .fc-event-main,
+.o_web_client .o_calendar_widget .fc-daygrid-event.o_portalgestor_bucket--pending .fc-event-main {
+    color: #166534 !important;
+}
+
+.o_web_client .o_calendar_widget .o_portalgestor_bucket.o_portalgestor_bucket--missing,
+.o_web_client .o_calendar_widget .fc-h-event.o_portalgestor_bucket--missing,
+.o_web_client .o_calendar_widget .fc-daygrid-event.o_portalgestor_bucket--missing,
+.o_web_client .o_portalgestor_bucket_dialog_badge.o_portalgestor_bucket_dialog_badge--missing,
+.o_web_client .o_portalgestor_bucket_record.o_portalgestor_bucket_record--missing {
+    border-color: #fcd34d !important;
+    background: #fef3c7 !important;
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.o_web_client .o_calendar_widget .o_portalgestor_bucket.o_portalgestor_bucket--missing .fc-event-main,
+.o_web_client .o_calendar_widget .fc-h-event.o_portalgestor_bucket--missing .fc-event-main,
+.o_web_client .o_calendar_widget .fc-daygrid-event.o_portalgestor_bucket--missing .fc-event-main {
+    color: #92400e !important;
+}
+
+.o_web_client .o_calendar_widget .o_portalgestor_bucket.o_portalgestor_bucket--completed,
+.o_web_client .o_calendar_widget .fc-h-event.o_portalgestor_bucket--completed,
+.o_web_client .o_calendar_widget .fc-daygrid-event.o_portalgestor_bucket--completed,
+.o_web_client .o_portalgestor_bucket_dialog_badge.o_portalgestor_bucket_dialog_badge--completed,
+.o_web_client .o_portalgestor_bucket_record.o_portalgestor_bucket_record--completed {
+    border-color: #fca5a5 !important;
+    background: #fecaca !important;
+    background-color: #fecaca !important;
+    color: #991b1b !important;
+}
+
+.o_web_client .o_calendar_widget .o_portalgestor_bucket.o_portalgestor_bucket--completed .fc-event-main,
+.o_web_client .o_calendar_widget .fc-h-event.o_portalgestor_bucket--completed .fc-event-main,
+.o_web_client .o_calendar_widget .fc-daygrid-event.o_portalgestor_bucket--completed .fc-event-main {
+    color: #991b1b !important;
+}
+
+.o_web_client .o_portalgestor_bucket_dialog .modal-content {
+    overflow: hidden;
+}
+
+.o_web_client .o_portalgestor_bucket_dialog_body {
+    background: var(--ui-brian-surface-muted);
+}
+
+@media (max-width: 991.98px) {
+    .o_web_client .o_main_navbar {
+        background-size: auto, 300px auto, cover;
+    }
+}

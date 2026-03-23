@@ -1,0 +1,64 @@
+<odoo>
+    <data>
+        <record id="portalgestor_asignacion_mensual_demo_01" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_01"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 8.0, 'hora_fin': 16.0, 'trabajador_id': ref('trabajadores.trabajador_demo_01')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_02" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_02"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 7.5, 'hora_fin': 15.5, 'trabajador_id': ref('trabajadores.trabajador_demo_02')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_03" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_03"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 9.0, 'hora_fin': 17.0, 'trabajador_id': ref('trabajadores.trabajador_demo_03')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_04" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_04"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 10.0, 'hora_fin': 18.0, 'trabajador_id': ref('trabajadores.trabajador_demo_04')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_05" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_05"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 8.5, 'hora_fin': 14.5, 'trabajador_id': ref('trabajadores.trabajador_demo_05')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_06" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_06"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 8.0, 'hora_fin': 16.0, 'trabajador_id': ref('trabajadores.trabajador_demo_06')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_07" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_07"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 7.75, 'hora_fin': 15.75, 'trabajador_id': ref('trabajadores.trabajador_demo_07')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_08" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_08"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 9.5, 'hora_fin': 17.5, 'trabajador_id': ref('trabajadores.trabajador_demo_08')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_09" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_09"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 8.25, 'hora_fin': 16.25, 'trabajador_id': ref('trabajadores.trabajador_demo_09')})]"/>
+        </record>
+        <record id="portalgestor_asignacion_mensual_demo_10" model="portalgestor.asignacion.mensual">
+            <field name="usuario_id" ref="usuarios.usuario_demo_10"/>
+            <field name="fecha_inicio">2026-03-01</field>
+            <field name="fecha_fin">2026-03-31</field>
+            <field name="linea_fija_ids" eval="[(0, 0, {'hora_inicio': 11.0, 'hora_fin': 19.0, 'trabajador_id': ref('trabajadores.trabajador_demo_10')})]"/>
+        </record>
+    </data>
+</odoo>

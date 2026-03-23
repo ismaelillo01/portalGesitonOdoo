@@ -1,30 +1,114 @@
 <odoo>
     <data>
-<!--
-          <record id="object0" model="usuarios.usuarios">
-            <field name="name">Object 0</field>
-            <field name="value">0</field>
-          </record>
-
-          <record id="object1" model="usuarios.usuarios">
-            <field name="name">Object 1</field>
-            <field name="value">10</field>
-          </record>
-
-          <record id="object2" model="usuarios.usuarios">
-            <field name="name">Object 2</field>
-            <field name="value">20</field>
-          </record>
-
-          <record id="object3" model="usuarios.usuarios">
-            <field name="name">Object 3</field>
-            <field name="value">30</field>
-          </record>
-
-          <record id="object4" model="usuarios.usuarios">
-            <field name="name">Object 4</field>
-            <field name="value">40</field>
-          </record>
--->
+        <record id="usuario_demo_01" model="usuarios.usuario">
+            <field name="name">Alicia</field>
+            <field name="apellido1">Perez</field>
+            <field name="apellido2">Martin</field>
+            <field name="dni_nie">10000001A</field>
+            <field name="telefono">600000001</field>
+            <field name="direccion">Calle Mayor 1</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_palencia_capital"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_catering_comida')])]"/>
+        </record>
+        <record id="usuario_demo_02" model="usuarios.usuario">
+            <field name="name">Bruno</field>
+            <field name="apellido1">Gomez</field>
+            <field name="apellido2">Ruiz</field>
+            <field name="dni_nie">10000002B</field>
+            <field name="telefono">600000002</field>
+            <field name="direccion">Avenida Castilla 2</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_cerrato"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap')])]"/>
+        </record>
+        <record id="usuario_demo_03" model="usuarios.usuario">
+            <field name="name">Carla</field>
+            <field name="apellido1">Santos</field>
+            <field name="apellido2">Lopez</field>
+            <field name="dni_nie">10000003C</field>
+            <field name="telefono">600000003</field>
+            <field name="direccion">Plaza Nueva 3</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_tierra_de_campos"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_producto_apoyo')])]"/>
+        </record>
+        <record id="usuario_demo_04" model="usuarios.usuario">
+            <field name="name">Diego</field>
+            <field name="apellido1">Mendez</field>
+            <field name="apellido2">Gil</field>
+            <field name="dni_nie">10000004D</field>
+            <field name="telefono">600000004</field>
+            <field name="direccion">Calle Sol 4</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_norte"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_catering_cena')])]"/>
+        </record>
+        <record id="usuario_demo_05" model="usuarios.usuario">
+            <field name="name">Elena</field>
+            <field name="apellido1">Navarro</field>
+            <field name="apellido2">Ortega</field>
+            <field name="dni_nie">10000005E</field>
+            <field name="telefono">600000005</field>
+            <field name="direccion">Calle Rio 5</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_palencia_capital"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_catering_comida'), ref('usuarios_servicio_producto_apoyo')])]"/>
+        </record>
+        <record id="usuario_demo_06" model="usuarios.usuario">
+            <field name="name">Fabian</field>
+            <field name="apellido1">Herrera</field>
+            <field name="apellido2">Sanz</field>
+            <field name="dni_nie">10000006F</field>
+            <field name="telefono">600000006</field>
+            <field name="direccion">Avenida Norte 6</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_cerrato"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap')])]"/>
+        </record>
+        <record id="usuario_demo_07" model="usuarios.usuario">
+            <field name="name">Gabriela</field>
+            <field name="apellido1">Moreno</field>
+            <field name="apellido2">Iglesias</field>
+            <field name="dni_nie">10000007G</field>
+            <field name="telefono">600000007</field>
+            <field name="direccion">Paseo Sur 7</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_tierra_de_campos"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_catering_cena')])]"/>
+        </record>
+        <record id="usuario_demo_08" model="usuarios.usuario">
+            <field name="name">Hector</field>
+            <field name="apellido1">Alonso</field>
+            <field name="apellido2">Vega</field>
+            <field name="dni_nie">10000008H</field>
+            <field name="telefono">600000008</field>
+            <field name="direccion">Calle Luna 8</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_norte"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_producto_apoyo')])]"/>
+        </record>
+        <record id="usuario_demo_09" model="usuarios.usuario">
+            <field name="name">Ines</field>
+            <field name="apellido1">Roman</field>
+            <field name="apellido2">Diaz</field>
+            <field name="dni_nie">10000009I</field>
+            <field name="telefono">600000009</field>
+            <field name="direccion">Calle Real 9</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_palencia_capital"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_catering_comida')])]"/>
+        </record>
+        <record id="usuario_demo_10" model="usuarios.usuario">
+            <field name="name">Javier</field>
+            <field name="apellido1">Crespo</field>
+            <field name="apellido2">Lago</field>
+            <field name="dni_nie">10000010J</field>
+            <field name="telefono">600000010</field>
+            <field name="direccion">Avenida Central 10</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_id" ref="zonasTrabajo.zona_cerrato"/>
+            <field name="servicio_ids" eval="[(6, 0, [ref('usuarios_servicio_ap'), ref('usuarios_servicio_catering_comida'), ref('usuarios_servicio_catering_cena')])]"/>
+        </record>
     </data>
 </odoo>

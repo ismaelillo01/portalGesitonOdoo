@@ -1,30 +1,104 @@
 <odoo>
     <data>
-<!--
-          <record id="object0" model="trabajadores.trabajadores">
-            <field name="name">Object 0</field>
-            <field name="value">0</field>
-          </record>
-
-          <record id="object1" model="trabajadores.trabajadores">
-            <field name="name">Object 1</field>
-            <field name="value">10</field>
-          </record>
-
-          <record id="object2" model="trabajadores.trabajadores">
-            <field name="name">Object 2</field>
-            <field name="value">20</field>
-          </record>
-
-          <record id="object3" model="trabajadores.trabajadores">
-            <field name="name">Object 3</field>
-            <field name="value">30</field>
-          </record>
-
-          <record id="object4" model="trabajadores.trabajadores">
-            <field name="name">Object 4</field>
-            <field name="value">40</field>
-          </record>
--->
+        <record id="trabajador_demo_01" model="trabajadores.trabajador">
+            <field name="name">Cristobal</field>
+            <field name="apellido1">Mendez</field>
+            <field name="apellido2">Soto</field>
+            <field name="dni_nie">20000001A</field>
+            <field name="telefono">610000001</field>
+            <field name="direccion">Calle AP 1</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_palencia_capital')])]"/>
+        </record>
+        <record id="trabajador_demo_02" model="trabajadores.trabajador">
+            <field name="name">Lucia</field>
+            <field name="apellido1">Pastor</field>
+            <field name="apellido2">Nieto</field>
+            <field name="dni_nie">20000002B</field>
+            <field name="telefono">610000002</field>
+            <field name="direccion">Calle AP 2</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_cerrato')])]"/>
+        </record>
+        <record id="trabajador_demo_03" model="trabajadores.trabajador">
+            <field name="name">Marcos</field>
+            <field name="apellido1">Prieto</field>
+            <field name="apellido2">Leon</field>
+            <field name="dni_nie">20000003C</field>
+            <field name="telefono">610000003</field>
+            <field name="direccion">Calle AP 3</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_tierra_de_campos')])]"/>
+        </record>
+        <record id="trabajador_demo_04" model="trabajadores.trabajador">
+            <field name="name">Noelia</field>
+            <field name="apellido1">Serrano</field>
+            <field name="apellido2">Pardo</field>
+            <field name="dni_nie">20000004D</field>
+            <field name="telefono">610000004</field>
+            <field name="direccion">Calle AP 4</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_norte')])]"/>
+        </record>
+        <record id="trabajador_demo_05" model="trabajadores.trabajador">
+            <field name="name">Oscar</field>
+            <field name="apellido1">Fuentes</field>
+            <field name="apellido2">Bravo</field>
+            <field name="dni_nie">20000005E</field>
+            <field name="telefono">610000005</field>
+            <field name="direccion">Calle AP 5</field>
+            <field name="grupo">agusto</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_palencia_capital')])]"/>
+        </record>
+        <record id="trabajador_demo_06" model="trabajadores.trabajador">
+            <field name="name">Paula</field>
+            <field name="apellido1">Ramos</field>
+            <field name="apellido2">Mora</field>
+            <field name="dni_nie">20000006F</field>
+            <field name="telefono">610000006</field>
+            <field name="direccion">Calle AP 6</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_cerrato')])]"/>
+        </record>
+        <record id="trabajador_demo_07" model="trabajadores.trabajador">
+            <field name="name">Raul</field>
+            <field name="apellido1">Vicente</field>
+            <field name="apellido2">Cano</field>
+            <field name="dni_nie">20000007G</field>
+            <field name="telefono">610000007</field>
+            <field name="direccion">Calle AP 7</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_tierra_de_campos')])]"/>
+        </record>
+        <record id="trabajador_demo_08" model="trabajadores.trabajador">
+            <field name="name">Sara</field>
+            <field name="apellido1">Calvo</field>
+            <field name="apellido2">Pozo</field>
+            <field name="dni_nie">20000008H</field>
+            <field name="telefono">610000008</field>
+            <field name="direccion">Calle AP 8</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_norte')])]"/>
+        </record>
+        <record id="trabajador_demo_09" model="trabajadores.trabajador">
+            <field name="name">Tomas</field>
+            <field name="apellido1">Benito</field>
+            <field name="apellido2">Arias</field>
+            <field name="dni_nie">20000009I</field>
+            <field name="telefono">610000009</field>
+            <field name="direccion">Calle AP 9</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_palencia_capital')])]"/>
+        </record>
+        <record id="trabajador_demo_10" model="trabajadores.trabajador">
+            <field name="name">Valeria</field>
+            <field name="apellido1">Rey</field>
+            <field name="apellido2">Molinero</field>
+            <field name="dni_nie">20000010J</field>
+            <field name="telefono">610000010</field>
+            <field name="direccion">Calle AP 10</field>
+            <field name="grupo">intecum</field>
+            <field name="zona_trabajo_ids" eval="[(6, 0, [ref('zonasTrabajo.zona_cerrato')])]"/>
+        </record>
     </data>
 </odoo>

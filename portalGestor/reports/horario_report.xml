@@ -52,6 +52,7 @@
                                     <t t-set="total_horas_mes" t-value="0.0"/>
                                     <t t-foreach="lineas" t-as="linea">
                                         <t t-set="horas_linea" t-value="linea.hora_fin - linea.hora_inicio"/>
+                                        <t t-set="minutos_linea" t-value="int(round(horas_linea * 60))"/>
                                         <t t-set="total_horas_mes" t-value="total_horas_mes + horas_linea"/>
                                         <tr>
                                             <td><span t-esc="linea.asignacion_id.fecha.strftime('%d/%m/%Y')"/></td>
@@ -63,7 +64,7 @@
                                                 <span t-out="'%02d:%02d' % (int(linea.hora_fin), int((linea.hora_fin % 1) * 60))"/>
                                             </td>
                                             <td>
-                                                <span t-out="'%.2f' % horas_linea"/> h
+                                                <span t-out="'%d Horas y %02d minutos' % (minutos_linea // 60, minutos_linea % 60)"/>
                                             </td>
                                         </tr>
                                     </t>
@@ -71,7 +72,11 @@
                             </table>
 
                             <div class="mt-4 text-end" t-if="lineas">
+                                <t t-set="total_minutos_mes" t-value="int(round(total_horas_mes * 60))"/>
+                                <h4><strong>Total Horas del Periodo: <span t-out="'%d Horas y %02d minutos' % (total_minutos_mes // 60, total_minutos_mes % 60)"/></strong></h4>
+                                <t t-if="0">
                                 <h4><strong>Total Horas del Período: <span t-out="'%.2f' % total_horas_mes"/> h</strong></h4>
+                                </t>
                             </div>
                         </div>
                     </t>
