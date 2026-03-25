@@ -13,6 +13,7 @@ Catálogo común de zonas de trabajo usado por trabajadores, usuarios y portalGe
     'data': [
         'security/ir.model.access.csv',
         'data/zonas_trabajo_data.xml',
+        'views/views.xml',
     ],
     'installable': True,
     'application': False,

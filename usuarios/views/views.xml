@@ -51,19 +51,71 @@
       </field>
     </record>
 
+    <record model="ir.ui.view" id="usuarios.servicio_list">
+      <field name="name">usuarios.servicio.list</field>
+      <field name="model">usuarios.servicio</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence"/>
+          <field name="name"/>
+          <field name="code"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios.servicio_form">
+      <field name="name">usuarios.servicio.form</field>
+      <field name="model">usuarios.servicio</field>
+      <field name="arch" type="xml">
+        <form string="Servicio">
+          <sheet>
+            <group>
+              <field name="name"/>
+              <field name="code"/>
+              <field name="sequence"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
     <record model="ir.actions.act_window" id="usuarios.action_window">
       <field name="name">Usuarios</field>
       <field name="res_model">usuarios.usuario</field>
       <field name="view_mode">list,form</field>
     </record>
 
+    <record model="ir.actions.act_window" id="usuarios.action_servicios_window">
+      <field name="name">Servicios</field>
+      <field name="res_model">usuarios.servicio</field>
+      <field name="view_mode">list,form</field>
+      <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
+    </record>
+
     <menuitem name="Usuarios" id="usuarios.menu_root"/>
     <menuitem name="Usuarios" id="usuarios.menu_usuarios" parent="usuarios.menu_root" sequence="10"/>
+    <menuitem name="Configuración" id="usuarios.menu_configuracion" parent="usuarios.menu_root" sequence="30" groups="base.group_system"/>
     <menuitem
       name="Todos los Usuarios"
       id="usuarios.menu_1_list"
       parent="usuarios.menu_usuarios"
       action="usuarios.action_window"
+    />
+    <menuitem
+      name="Servicios"
+      id="usuarios.menu_servicios"
+      parent="usuarios.menu_configuracion"
+      action="usuarios.action_servicios_window"
+      sequence="10"
+      groups="base.group_system"
+    />
+    <menuitem
+      name="Zonas de Trabajo"
+      id="usuarios.menu_zonas_trabajo"
+      parent="usuarios.menu_configuracion"
+      action="zonasTrabajo.action_window"
+      sequence="20"
+      groups="base.group_system"
     />
   </data>
 </odoo>

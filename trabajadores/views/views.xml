@@ -10,6 +10,7 @@
           <field name="apellido1"/>
           <field name="dni_nie"/>
           <field name="telefono"/>
+          <field name="color" widget="color_picker" optional="hide"/>
           <field name="grupo"/>
           <field name="zona_trabajo_ids" widget="many2many_tags"/>
           <field name="baja"/>
@@ -39,6 +40,7 @@
             <group string="Datos Laborales">
               <group>
                 <field name="grupo"/>
+                <field name="color" widget="color_picker"/>
                 <field name="zona_trabajo_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               </group>
               <group>
@@ -64,7 +66,7 @@
 
     <!-- actions opening views on models -->
     <record model="ir.actions.act_window" id="trabajadores.action_window">
-      <field name="name">Trabajadores</field>
+      <field name="name">APs</field>
       <field name="res_model">trabajadores.trabajador</field>
       <field name="view_mode">list,form</field>
     </record>
@@ -85,7 +87,7 @@
         <field name="model">trabajadores.vacacion</field>
         <field name="arch" type="xml">
             <search string="Buscar Vacaciones">
-                <field name="trabajador_id" string="Trabajador" domain="[('baja', '=', False)]"/>
+                <field name="trabajador_id" string="AP" domain="[('baja', '=', False)]"/>
                 <searchpanel>
                     <field name="trabajador_id" icon="fa-users" enable_counters="1" select="multi"/>
                 </searchpanel>
@@ -111,21 +113,21 @@
     </record>
 
     <record model="ir.actions.act_window" id="trabajadores.action_vacacion_window">
-      <field name="name">Calendario de Vacaciones</field>
+      <field name="name">Vacaciones AP</field>
       <field name="res_model">trabajadores.vacacion</field>
       <field name="view_mode">calendar,list,form</field>
     </record>
 
     <!-- Top menu item -->
-    <menuitem name="Trabajadores" id="trabajadores.menu_root"/>
+    <menuitem name="AP" id="trabajadores.menu_root"/>
 
     <!-- menu categories -->
-    <menuitem name="Trabajadores" id="trabajadores.menu_trabajadores" parent="trabajadores.menu_root"/>
+    <menuitem name="AP" id="trabajadores.menu_trabajadores" parent="trabajadores.menu_root"/>
 
     <!-- actions -->
-    <menuitem name="Todos los Trabajadores" id="trabajadores.menu_1_list" parent="trabajadores.menu_trabajadores"
+    <menuitem name="Todos los APs" id="trabajadores.menu_1_list" parent="trabajadores.menu_trabajadores"
               action="trabajadores.action_window" sequence="10"/>
-    <menuitem name="Calendario Vacaciones" id="trabajadores.menu_vacaciones_cal" parent="trabajadores.menu_root"
+    <menuitem name="Vacaciones AP" id="trabajadores.menu_vacaciones_cal" parent="trabajadores.menu_root"
               action="trabajadores.action_vacacion_window" sequence="20"/>
   </data>
 </odoo>

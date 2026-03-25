@@ -1,0 +1,38 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="zona_list">
+      <field name="name">zonastrabajo.zona.list</field>
+      <field name="model">zonastrabajo.zona</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence"/>
+          <field name="name"/>
+          <field name="code"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="zona_form">
+      <field name="name">zonastrabajo.zona.form</field>
+      <field name="model">zonastrabajo.zona</field>
+      <field name="arch" type="xml">
+        <form string="Zona de Trabajo">
+          <sheet>
+            <group>
+              <field name="name"/>
+              <field name="code"/>
+              <field name="sequence"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_window">
+      <field name="name">Zonas de Trabajo</field>
+      <field name="res_model">zonastrabajo.zona</field>
+      <field name="view_mode">list,form</field>
+      <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
+    </record>
+  </data>
+</odoo>

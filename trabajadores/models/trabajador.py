@@ -4,7 +4,7 @@ from odoo import api, fields, models
 
 class Trabajador(models.Model):
     _name = 'trabajadores.trabajador'
-    _description = 'Trabajador'
+    _description = 'AP'
 
     name = fields.Char(string='Nombre', required=True)
     apellido1 = fields.Char(string='Primer Apellido')
@@ -13,6 +13,7 @@ class Trabajador(models.Model):
     telefono = fields.Char(string='Teléfono')
     direccion = fields.Char(string='Dirección')
     baja = fields.Boolean(string='Baja', default=False)
+    color = fields.Integer(string='Color', default=0)
     vacaciones_ids = fields.One2many('trabajadores.vacacion', 'trabajador_id', string='Vacaciones')
 
     grupo = fields.Selection([

@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_usuarios_usuario,usuarios.usuario,model_usuarios_usuario,base.group_user,1,1,1,1
-access_usuarios_servicio,usuarios.servicio,model_usuarios_servicio,base.group_user,1,0,0,0
+access_usuarios_servicio_user,usuarios.servicio,model_usuarios_servicio,base.group_user,1,0,0,0
+access_usuarios_servicio_admin,usuarios.servicio,model_usuarios_servicio,base.group_system,1,1,1,1

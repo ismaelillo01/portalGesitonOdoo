@@ -35,16 +35,17 @@
       <field name="name">Gestores</field>
       <field name="res_model">gestores.gestor</field>
       <field name="view_mode">list,form</field>
+      <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
     </record>
 
     <!-- Top menu item -->
-    <menuitem name="Gestores" id="gestores.menu_root"/>
+    <menuitem name="Gestores" id="gestores.menu_root" groups="base.group_system"/>
 
     <!-- menu categories -->
-    <menuitem name="Gestores" id="gestores.menu_gestores" parent="gestores.menu_root"/>
+    <menuitem name="Gestores" id="gestores.menu_gestores" parent="gestores.menu_root" groups="base.group_system"/>
 
     <!-- actions -->
     <menuitem name="Todos los Gestores" id="gestores.menu_1_list" parent="gestores.menu_gestores"
-              action="gestores.action_window"/>
+              action="gestores.action_window" groups="base.group_system"/>
   </data>
 </odoo>
