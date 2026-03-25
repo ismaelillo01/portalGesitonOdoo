@@ -360,7 +360,7 @@ class AsignacionMensualLinea(models.Model):
     hora_fin = fields.Float(string='Hora Fin', required=True)
     trabajador_id = fields.Many2one(
         'trabajadores.trabajador',
-        string='Trabajador',
+        string='AP',
         required=True,
         ondelete='restrict',
         index=True,

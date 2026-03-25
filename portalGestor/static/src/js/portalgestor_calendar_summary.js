@@ -30,10 +30,20 @@ const FILTER_CONFIG = {
     },
     [WORKER_FILTER_FIELD]: {
         model: "trabajadores.trabajador",
-        placeholder: "Buscar trabajador",
+        placeholder: "Buscar AP",
         domain: [["baja", "=", false]],
     },
 };
+
+const USER_OPTION_TEMPLATE = "portalGestor.UserAutocompleteOption";
+
+async function loadPortalGestorUserTypes(orm, userIds) {
+    const ids = [...new Set((userIds || []).filter(Boolean))];
+    if (!ids.length) {
+        return {};
+    }
+    return orm.call("usuarios.usuario", "get_portalgestor_user_types", [ids]);
+}
 
 export class PortalGestorBucketDialog extends Component {
     static template = "portalGestor.CalendarBucketDialog";
@@ -556,6 +566,11 @@ patch(CalendarFilterPanel.prototype, {
         return {
             ...props,
             placeholder: FILTER_CONFIG[section.fieldName].placeholder,
+            sources: props.sources?.map((source) =>
+                section.fieldName === USER_FILTER_FIELD
+                    ? { ...source, optionTemplate: USER_OPTION_TEMPLATE }
+                    : source
+            ),
         };
     },
 
@@ -577,10 +592,20 @@ patch(CalendarFilterPanel.prototype, {
             context: {},
         });
 
+        const userTypes =
+            section.fieldName === USER_FILTER_FIELD
+                ? await loadPortalGestorUserTypes(
+                      this.orm,
+                      records.map((result) => result[0])
+                  )
+                : {};
         const options = records.map((result) => ({
             value: result[0],
             label: result[1],
             model: config.model,
+            resModel: config.model,
+            portalGestorUserTypeBadge: userTypes[result[0]]?.badge || "",
+            portalGestorUserTypeLabel: userTypes[result[0]]?.label || "",
         }));
 
         if (records.length > 7) {

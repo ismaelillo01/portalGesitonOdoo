@@ -4,7 +4,7 @@ from odoo import fields, models
 
 class VacacionCalendarFilter(models.Model):
     _name = 'portalgestor.vacacion.calendar.filter'
-    _description = 'Filtro de calendario de vacaciones por trabajador'
+    _description = 'Filtro de calendario de vacaciones por AP'
 
     user_id = fields.Many2one(
         'res.users',
@@ -16,7 +16,7 @@ class VacacionCalendarFilter(models.Model):
     )
     trabajador_id = fields.Many2one(
         'trabajadores.trabajador',
-        string='Trabajador',
+        string='AP',
         required=True,
         ondelete='cascade',
         index=True,
@@ -30,6 +30,6 @@ class VacacionCalendarFilter(models.Model):
         (
             'uniq',
             'UNIQUE(user_id, trabajador_id)',
-            'No puedes tener el mismo trabajador repetido en el calendario.',
+            'No puedes tener el mismo AP repetido en el calendario.',
         ),
     ]

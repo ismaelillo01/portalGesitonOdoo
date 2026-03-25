@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <t t-name="portalGestor.UserAutocompleteOption">
+        <span class="o_portalgestor_user_option">
+            <span class="o_portalgestor_user_option_name">
+                <t t-esc="option.label"/>
+            </span>
+            <span
+                t-if="option.portalGestorUserTypeBadge"
+                class="o_portalgestor_user_option_badge"
+                t-att-title="option.portalGestorUserTypeLabel"
+            >
+                <t t-esc="option.portalGestorUserTypeBadge"/>
+            </span>
+        </span>
+    </t>
+
     <t t-name="portalGestor.CalendarBucketDialog">
         <Dialog
             title="props.title"
@@ -25,7 +40,18 @@
                             t-att-class="'o_portalgestor_bucket_record--' + props.bucketType"
                             t-on-click="() => this.openRecord(record)"
                         >
-                            <t t-esc="record.name"/>
+                            <span class="o_portalgestor_user_option">
+                                <span class="o_portalgestor_user_option_name">
+                                    <t t-esc="record.name"/>
+                                </span>
+                                <span
+                                    t-if="record.user_type_badge"
+                                    class="o_portalgestor_user_option_badge"
+                                    t-att-title="record.user_type_label"
+                                >
+                                    <t t-esc="record.user_type_badge"/>
+                                </span>
+                            </span>
                         </button>
                     </t>
                 </t>

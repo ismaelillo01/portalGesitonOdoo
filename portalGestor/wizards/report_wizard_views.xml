@@ -4,7 +4,7 @@
         <field name="name">portalgestor.report.wizard.form</field>
         <field name="model">portalgestor.report.wizard</field>
         <field name="arch" type="xml">
-            <form string="Exportar Horario PDF">
+            <form string="Exportar Horario AP PDF">
                 <sheet>
                     <group>
                         <field name="exportar_todos" widget="boolean_toggle"/>
@@ -22,7 +22,7 @@
     </record>
 
     <record id="action_portalgestor_report_wizard" model="ir.actions.act_window">
-        <field name="name">Exportar Horario PDF</field>
+        <field name="name">Exportar Horario AP PDF</field>
         <field name="res_model">portalgestor.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

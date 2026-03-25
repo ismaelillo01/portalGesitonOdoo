@@ -1,0 +1,5 @@
+<odoo>
+    <data noupdate="0">
+        <function model="res.users" name="set_portalgestor_home_action_for_internal_users"/>
+    </data>
+</odoo>

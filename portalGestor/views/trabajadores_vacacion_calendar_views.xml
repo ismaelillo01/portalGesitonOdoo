@@ -6,7 +6,7 @@
             <field name="inherit_id" ref="trabajadores.vacacion_calendar"/>
             <field name="arch" type="xml">
                 <xpath expr="//calendar/field[@name='trabajador_id']" position="attributes">
-                    <attribute name="string">Trabajador</attribute>
+                    <attribute name="string">AP</attribute>
                     <attribute name="write_model">portalgestor.vacacion.calendar.filter</attribute>
                     <attribute name="write_field">trabajador_id</attribute>
                     <attribute name="filter_field">trabajador_checked</attribute>

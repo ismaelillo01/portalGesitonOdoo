@@ -45,7 +45,7 @@ class AsignacionCalendarUsuarioFilter(models.Model):
 
 class AsignacionCalendarTrabajadorFilter(models.Model):
     _name = 'portalgestor.asignacion.calendar.trabajador.filter'
-    _description = 'Filtro de calendario de asignaciones por trabajador'
+    _description = 'Filtro de calendario de asignaciones por AP'
 
     user_id = fields.Many2one(
         'res.users',
@@ -57,7 +57,7 @@ class AsignacionCalendarTrabajadorFilter(models.Model):
     )
     trabajador_id = fields.Many2one(
         'trabajadores.trabajador',
-        string='Trabajador',
+        string='AP',
         required=True,
         ondelete='cascade',
         index=True,
@@ -71,6 +71,6 @@ class AsignacionCalendarTrabajadorFilter(models.Model):
         (
             'uniq_user_trabajador',
             'UNIQUE(user_id, trabajador_id)',
-            'No puedes tener el mismo trabajador repetido en el calendario.',
+            'No puedes tener el mismo AP repetido en el calendario.',
         ),
     ]

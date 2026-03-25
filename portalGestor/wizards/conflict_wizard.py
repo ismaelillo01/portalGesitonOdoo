@@ -33,13 +33,13 @@ class ConflictWizard(models.TransientModel):
                     f"{self._format_hora(record.linea_conflicto_id.hora_fin)}"
                 )
                 record.mensaje = (
-                    f"Atencion. El trabajador {trabajador} ya esta asignado al usuario "
+                    f"Atencion. El AP {trabajador} ya esta asignado al usuario "
                     f"{usuario_conflicto} en el horario {horas_conflicto}. Si confirmas, la franja "
-                    f"anterior quedara sin trabajador asignado para su revision."
+                    f"anterior quedara sin AP asignado para su revision."
                 )
             elif record.conflict_type == 'info_same_day':
                 record.mensaje = (
-                    "Los siguientes trabajadores ya tienen asignaciones el mismo dia "
+                    "Los siguientes APs ya tienen asignaciones el mismo dia "
                     "con otros usuarios. Puede que no haya tiempo de desplazamiento:\n\n"
                     + (record.info_resumen or '')
                     + "\n\nDeseas confirmar el horario de todas formas?"

@@ -43,18 +43,18 @@ class Asignacion(models.Model):
     confirmado = fields.Boolean(string='Horario Confirmado', default=False)
     trabajador_calendar_filter_id = fields.Many2one(
         'trabajadores.trabajador',
-        string='Trabajador',
+        string='AP',
         compute='_compute_calendar_worker_fields',
         search='_search_trabajador_calendar_filter_id',
     )
     trabajador_id = fields.Many2one(
         'trabajadores.trabajador',
-        string='Trabajador',
+        string='AP',
         compute='_compute_calendar_worker_fields',
         search='_search_trabajador_calendar_filter_id',
     )
     trabajador_resumen = fields.Char(
-        string='Cuidador',
+        string='AP',
         compute='_compute_lineas_resumen',
         store=True,
     )
@@ -356,11 +356,14 @@ class Asignacion(models.Model):
             ],
             order='name, id',
         )
+        user_types = self.env['usuarios.usuario'].get_portalgestor_user_types(records.mapped('usuario_id').ids)
         return [
             {
                 'id': record.id,
                 'name': record.usuario_id.display_name or record.usuario_id.name or record.name,
                 'form_title': f"Horario del usuario {record.usuario_id.display_name or record.usuario_id.name or record.name}",
+                'user_type_badge': user_types.get(record.usuario_id.id, {}).get('badge', ''),
+                'user_type_label': user_types.get(record.usuario_id.id, {}).get('label', ''),
             }
             for record in records
         ]
@@ -587,7 +590,7 @@ class AsignacionLinea(models.Model):
     asignacion_id = fields.Many2one('portalgestor.asignacion', ondelete='cascade', index=True)
     hora_inicio = fields.Float(string='Hora Inicio', required=True)
     hora_fin = fields.Float(string='Hora Fin', required=True)
-    trabajador_id = fields.Many2one('trabajadores.trabajador', string='Trabajador', index=True)
+    trabajador_id = fields.Many2one('trabajadores.trabajador', string='AP', index=True)
     asignacion_mensual_id = fields.Many2one(
         'portalgestor.asignacion.mensual',
         string='Trabajo fijo',

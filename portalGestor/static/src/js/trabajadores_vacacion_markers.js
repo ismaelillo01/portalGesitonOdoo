@@ -237,7 +237,7 @@ patch(CalendarFilterPanel.prototype, {
         }
         return {
             ...props,
-            placeholder: "Buscar trabajador",
+            placeholder: "Buscar AP",
         };
     },
 

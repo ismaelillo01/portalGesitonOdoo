@@ -2,7 +2,7 @@
 <odoo>
     <!-- Basic Report Action -->
     <record id="action_report_horario_trabajador" model="ir.actions.report">
-        <field name="name">Horario de Trabajador</field>
+        <field name="name">Horario de AP</field>
         <field name="model">portalgestor.report.wizard</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">portalGestor.report_horario_trabajador_template</field>
@@ -21,7 +21,7 @@
                         <div class="page" t-att-style="'page-break-after: always;' if not trabajador_last else ''">
                             <div class="text-center mb-4">
                                 <h2>Horario Mensual</h2>
-                                <h4>Trabajador: <t t-esc="trabajador.name"/></h4>
+                                <h4>AP: <t t-esc="trabajador.name"/></h4>
                             <p>Período: <span t-esc="doc._get_nombre_mes_anio()"/></p>
                             </div>
 

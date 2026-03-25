@@ -18,8 +18,8 @@ class ReportWizard(models.TransientModel):
     _name = 'portalgestor.report.wizard'
     _description = 'Asistente de Reporte de Horario'
 
-    exportar_todos = fields.Boolean(string='Exportar Todos los Trabajadores Activos', default=False)
-    trabajador_ids = fields.Many2many('trabajadores.trabajador', string='Trabajadores')
+    exportar_todos = fields.Boolean(string='Exportar Todos los AP Activos', default=False)
+    trabajador_ids = fields.Many2many('trabajadores.trabajador', string='APs')
 
     mes = fields.Selection(
         selection=[
@@ -77,7 +77,7 @@ class ReportWizard(models.TransientModel):
             trabajadores = self.trabajador_ids
 
         if not trabajadores:
-            raise ValidationError(_("No hay trabajadores seleccionados para imprimir."))
+            raise ValidationError(_("No hay APs seleccionados para imprimir."))
 
         # Si es un único trabajador, usamos el flujo nativo de PDF simple
         if len(trabajadores) == 1:
