@@ -20,6 +20,11 @@ class Usuario(models.Model):
     _name = 'usuarios.usuario'
     _description = 'Usuario'
 
+    _GROUP_UI_DATA = {
+        'agusto': {'badge': 'A', 'label': 'Agusto'},
+        'intecum': {'badge': 'I', 'label': 'Intecum'},
+    }
+
     name = fields.Char(string='Nombre', required=True)
     apellido1 = fields.Char(string='Primer Apellido')
     apellido2 = fields.Char(string='Segundo Apellido')
@@ -74,3 +79,15 @@ class Usuario(models.Model):
         return ', '.join(
             self.servicio_ids.sorted(key=lambda service: (service.sequence, service.name)).mapped('name')
         )
+
+    @api.model
+    def _get_group_ui_data(self, grupo):
+        return dict(self._GROUP_UI_DATA.get(grupo, {'badge': '', 'label': ''}))
+
+    @api.model
+    def get_portalgestor_user_types(self, user_ids):
+        users = self.browse(user_ids).exists()
+        return {
+            user.id: self._get_group_ui_data(user.grupo)
+            for user in users
+        }
