@@ -107,6 +107,23 @@
     box-shadow: var(--ui-brian-shadow);
 }
 
+.o_web_client .o_main_navbar .o_ui_brian_home_systray {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: auto;
+    padding: 0.25rem 0.45rem;
+    color: rgba(255, 255, 255, 0.92);
+    background: transparent !important;
+    box-shadow: none;
+}
+
+.o_web_client .o_main_navbar .o_ui_brian_home_systray i {
+    font-size: 0.98rem;
+    line-height: 1;
+}
+
 .o_web_client .o_control_panel {
     border-bottom: 1px solid rgba(233, 70, 146, 0.14);
     background: rgba(255, 255, 255, 0.84);
@@ -553,6 +570,21 @@
 
 .o_web_client .o_portalgestor_bucket_dialog_body {
     background: var(--ui-brian-surface-muted);
+}
+
+.o_web_client .o_calendar_renderer .fc-dayGridMonth-view .o-fc-week-header,
+.o_web_client .o_calendar_renderer .fc-dayGridMonth-view .o-fc-week,
+.o_web_client .o_calendar_renderer .fc-dayGridMonth-view .fc-daygrid-week-number,
+.o_web_client .o_calendar_renderer .fc-dayGridYear-view .fc-week-number {
+    display: none !important;
+}
+
+.o_web_client .o_datetime_picker {
+    --DateTimePicker__Day-template-columns: 7 !important;
+}
+
+.o_web_client .o_datetime_picker .o_week_number_cell {
+    display: none !important;
 }
 
 @media (max-width: 991.98px) {

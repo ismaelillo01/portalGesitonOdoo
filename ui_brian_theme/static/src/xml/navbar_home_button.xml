@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="ui_brian_theme.NavbarHomeButton">
+        <button
+            type="button"
+            class="o_ui_brian_home_systray btn border-0"
+            title="Portal Gestor"
+            aria-label="Portal Gestor"
+            t-on-click="goToPortalGestor">
+            <i class="fa fa-home" aria-hidden="true"/>
+        </button>
+    </t>
+
+</templates>
