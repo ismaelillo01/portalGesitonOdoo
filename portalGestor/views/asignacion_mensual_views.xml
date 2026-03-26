@@ -8,15 +8,16 @@
       <field name="arch" type="xml">
         <form string="Trabajo Fijo">
           <header>
-            <button name="action_verificar_y_confirmar" string="Verificar y Confirmar" type="object" class="oe_highlight" invisible="confirmado == True"/>
-            <button name="action_editar" string="Modificar Horario" type="object" invisible="confirmado == False"/>
+            <button name="action_verificar_y_confirmar" string="Verificar y Confirmar" type="object" class="oe_highlight" invisible="confirmado == True or manager_edit_blocked"/>
+            <button name="action_editar" string="Modificar Horario" type="object" invisible="confirmado == False or manager_edit_blocked"/>
           </header>
           <sheet>
+            <field name="manager_edit_blocked" invisible="1"/>
             <group>
               <group>
-                <field name="usuario_id" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" readonly="confirmado == True" context="{'portalgestor_show_user_group': True}"/>
-                <field name="fecha_inicio" readonly="confirmado == True"/>
-                <field name="fecha_fin" readonly="confirmado == True"/>
+                <field name="usuario_id" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" readonly="confirmado == True or manager_edit_blocked" context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid}"/>
+                <field name="fecha_inicio" readonly="confirmado == True or manager_edit_blocked"/>
+                <field name="fecha_fin" readonly="confirmado == True or manager_edit_blocked"/>
               </group>
               <group>
                 <field name="confirmado" readonly="1"/>
@@ -26,7 +27,7 @@
             </group>
             <notebook>
               <page string="Tramos Fijos">
-                <field name="linea_fija_ids" readonly="confirmado == True">
+                <field name="linea_fija_ids" readonly="confirmado == True or manager_edit_blocked">
                   <list editable="bottom">
                     <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
                     <field name="hora_fin" widget="float_time" placeholder="23:59"/>

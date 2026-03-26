@@ -12,6 +12,7 @@
                         string="Horario usuario"
                         type="object"
                         class="oe_highlight"
+                        invisible="manager_edit_blocked"
                         groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
                     />
                 </header>

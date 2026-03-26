@@ -9,15 +9,20 @@
                     <div class="alert alert-danger" role="alert" invisible="conflict_type != 'overlapping'">
                         <field name="mensaje" readonly="1" force_save="1"/>
                     </div>
+                    <div class="alert alert-danger" role="alert" invisible="conflict_type != 'protected_intecum_overlapping'">
+                        <field name="mensaje" readonly="1" force_save="1"/>
+                    </div>
                     <div class="alert alert-warning" role="alert" invisible="conflict_type != 'info_same_day'" style="white-space: pre-wrap;">
                         <field name="mensaje" readonly="1" force_save="1"/>
                     </div>
                     <field name="conflict_type" invisible="1"/>
+                    <field name="can_override" invisible="1"/>
                     <field name="info_resumen" invisible="1"/>
                 </sheet>
                 <footer>
-                    <button string="Confirmar y Proceder" type="object" name="action_confirm" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                    <button string="Confirmar y Proceder" type="object" name="action_confirm" class="btn-primary" invisible="can_override == False"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary" invisible="can_override == False"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary" invisible="can_override == True"/>
                 </footer>
             </form>
         </field>

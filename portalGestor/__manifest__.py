@@ -25,6 +25,7 @@
     'data': [
         'security/ir.model.access.csv',
         'security/portalgestor_security.xml',
+        'security/portalgestor_security_update.xml',
         'reports/horario_report.xml',
         'reports/usuario_horario_report.xml',
         'views/asignacion_views.xml',

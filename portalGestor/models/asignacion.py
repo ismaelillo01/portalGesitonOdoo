@@ -3,7 +3,7 @@ from collections import defaultdict
 from markupsafe import escape
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tools import create_index
 
 PORTALGESTOR_CALENDAR_CHANNEL = 'portalgestor.calendar'
@@ -85,6 +85,10 @@ class Asignacion(models.Model):
         compute='_compute_color_calendario',
         store=True,
     )
+    manager_edit_blocked = fields.Boolean(
+        string='Edicion bloqueada para el gestor actual',
+        compute='_compute_manager_edit_blocked',
+    )
 
     def init(self):
         super().init()
@@ -145,6 +149,11 @@ class Asignacion(models.Model):
         default_color = bucket_map['pending']['color']
         for record in self:
             record.color_calendario = bucket_map.get(record.calendar_bucket_type, {}).get('color', default_color)
+
+    @api.depends('usuario_grupo')
+    def _compute_manager_edit_blocked(self):
+        for record in self:
+            record.manager_edit_blocked = not self.env.user._can_manage_target_group(record.usuario_grupo)
 
     @api.depends('lineas_ids.trabajador_id')
     def _compute_calendar_worker_fields(self):
@@ -219,6 +228,15 @@ class Asignacion(models.Model):
     def _get_calendar_bucket_type(self):
         self.ensure_one()
         return self.calendar_bucket_type or self._calculate_calendar_bucket_type(self.lineas_ids)
+
+    def _ensure_current_user_can_manage_users(self, users):
+        forbidden_users = users.filtered(
+            lambda usuario: not self.env.user._can_manage_target_group(usuario.grupo)
+        )
+        if forbidden_users:
+            raise AccessError(
+                _("Los gestores Agusto no pueden crear, modificar ni eliminar horarios de usuarios de Intecum.")
+            )
 
     @api.model
     def _search_trabajador_calendar_filter_id(self, operator, value):
@@ -356,14 +374,26 @@ class Asignacion(models.Model):
             ],
             order='name, id',
         )
+        user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
+            records.mapped('usuario_id').ids
+        )
         user_types = self.env['usuarios.usuario'].get_portalgestor_user_types(records.mapped('usuario_id').ids)
         return [
             {
                 'id': record.id,
-                'name': record.usuario_id.display_name or record.usuario_id.name or record.name,
-                'form_title': f"Horario del usuario {record.usuario_id.display_name or record.usuario_id.name or record.name}",
+                'name': user_view_data.get(record.usuario_id.id, {}).get('display_name')
+                or record.usuario_id.display_name
+                or record.usuario_id.name
+                or record.name,
+                'form_title': _("Horario del usuario %s") % (
+                    user_view_data.get(record.usuario_id.id, {}).get('display_name')
+                    or record.usuario_id.display_name
+                    or record.usuario_id.name
+                    or record.name
+                ),
                 'user_type_badge': user_types.get(record.usuario_id.id, {}).get('badge', ''),
                 'user_type_label': user_types.get(record.usuario_id.id, {}).get('label', ''),
+                'can_edit': user_view_data.get(record.usuario_id.id, {}).get('can_edit', True),
             }
             for record in records
         ]
@@ -432,6 +462,11 @@ class Asignacion(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        usuario_ids = [vals.get('usuario_id') for vals in vals_list if vals.get('usuario_id')]
+        if usuario_ids:
+            self._ensure_current_user_can_manage_users(
+                self.env['usuarios.usuario'].browse(usuario_ids).exists()
+            )
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().create(vals_list)
 
@@ -445,6 +480,10 @@ class Asignacion(models.Model):
         return records.with_env(self.env)
 
     def write(self, vals):
+        target_users = self.mapped('usuario_id')
+        if vals.get('usuario_id'):
+            target_users |= self.env['usuarios.usuario'].browse(vals['usuario_id']).exists()
+        self._ensure_current_user_can_manage_users(target_users)
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().write(vals)
 
@@ -468,6 +507,7 @@ class Asignacion(models.Model):
         return result
 
     def unlink(self):
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().unlink()
 
@@ -483,6 +523,7 @@ class Asignacion(models.Model):
 
     def _get_verification_action(self, asignacion_mensual_id=False):
         self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
 
         lineas_con_trabajador = self.lineas_ids.filtered('trabajador_id').sorted(
             key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
@@ -501,6 +542,9 @@ class Asignacion(models.Model):
         otras_lineas_por_trabajador = defaultdict(list)
         for otra_linea in otras_lineas:
             otras_lineas_por_trabajador[otra_linea.trabajador_id.id].append(otra_linea)
+        user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
+            otras_lineas.mapped('asignacion_id.usuario_id').ids
+        )
 
         for linea in lineas_con_trabajador:
             for conflicto in otras_lineas_por_trabajador.get(linea.trabajador_id.id, []):
@@ -508,6 +552,13 @@ class Asignacion(models.Model):
                     linea.hora_inicio, conflicto.hora_inicio
                 )
                 if overlap > 0:
+                    if not self.env.user._can_manage_target_group(conflicto.asignacion_id.usuario_id.grupo):
+                        return self._launch_wizard(
+                            'protected_intecum_overlapping',
+                            linea.id,
+                            conflicto.id,
+                            asignacion_mensual_id=asignacion_mensual_id,
+                        )
                     return self._launch_wizard(
                         'overlapping',
                         linea.id,
@@ -519,9 +570,13 @@ class Asignacion(models.Model):
         avisos_set = set()
         for linea in lineas_con_trabajador:
             for otra in otras_lineas_por_trabajador.get(linea.trabajador_id.id, []):
+                usuario_conflicto = (
+                    user_view_data.get(otra.asignacion_id.usuario_id.id, {}).get('display_name')
+                    or otra.asignacion_id.usuario_id.display_name
+                )
                 aviso = (
                     f"- {linea.trabajador_id.name}: ya asignado a "
-                    f"{otra.asignacion_id.usuario_id.name} de "
+                    f"{usuario_conflicto} de "
                     f"{self._format_hora(otra.hora_inicio)} a {self._format_hora(otra.hora_fin)}"
                 )
                 if aviso not in avisos_set:
@@ -538,6 +593,7 @@ class Asignacion(models.Model):
 
     def action_verificar_y_confirmar(self):
         self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         result = self._get_verification_action()
         if isinstance(result, dict):
             return result
@@ -562,6 +618,7 @@ class Asignacion(models.Model):
 
     def action_editar(self):
         self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         self.confirmado = False
         return True
 
@@ -581,6 +638,20 @@ class Asignacion(models.Model):
             'view_mode': 'form',
             'target': 'new',
         }
+
+    def name_get(self):
+        user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
+            self.mapped('usuario_id').ids
+        )
+        return [
+            (
+                record.id,
+                user_view_data.get(record.usuario_id.id, {}).get('display_name')
+                or record.usuario_id.display_name
+                or record.name,
+            )
+            for record in self
+        ]
 
 
 class AsignacionLinea(models.Model):
@@ -612,6 +683,11 @@ class AsignacionLinea(models.Model):
         index=True,
     )
     fecha = fields.Date(related='asignacion_id.fecha', string='Fecha', store=True, index=True)
+
+    def _ensure_current_user_can_manage_parent_assignments(self, assignments):
+        self.env['portalgestor.asignacion']._ensure_current_user_can_manage_users(
+            assignments.mapped('usuario_id')
+        )
 
     def init(self):
         super().init()
@@ -770,6 +846,11 @@ class AsignacionLinea(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        assignment_ids = [vals.get('asignacion_id') for vals in vals_list if vals.get('asignacion_id')]
+        if assignment_ids:
+            self._ensure_current_user_can_manage_parent_assignments(
+                self.env['portalgestor.asignacion'].browse(assignment_ids).exists()
+            )
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().create(vals_list)
 
@@ -791,6 +872,10 @@ class AsignacionLinea(models.Model):
         return records
 
     def write(self, vals):
+        impacted_assignments_for_security = self.mapped('asignacion_id')
+        if vals.get('asignacion_id'):
+            impacted_assignments_for_security |= self.env['portalgestor.asignacion'].browse(vals['asignacion_id']).exists()
+        self._ensure_current_user_can_manage_parent_assignments(impacted_assignments_for_security)
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().write(vals)
 
@@ -815,6 +900,7 @@ class AsignacionLinea(models.Model):
         return result
 
     def unlink(self):
+        self._ensure_current_user_can_manage_parent_assignments(self.mapped('asignacion_id'))
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().unlink()
 

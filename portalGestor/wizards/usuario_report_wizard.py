@@ -7,7 +7,7 @@ import zipfile
 from datetime import date
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 MESES_ES = {
     '1': 'Enero',
@@ -124,12 +124,24 @@ class UsuarioReportWizard(models.TransientModel):
             raise ValidationError(_("Debes seleccionar al menos un usuario."))
         return usuarios
 
+    def _ensure_current_user_can_export_users(self, usuarios):
+        forbidden_users = usuarios.filtered(
+            lambda usuario: not self.env.user._can_manage_target_group(usuario.grupo)
+        )
+        if forbidden_users:
+            raise AccessError(
+                _("Los gestores Agusto no pueden generar reportes ni exportaciones de usuarios de Intecum.")
+            )
+
     def _get_report_users(self):
         self.ensure_one()
         single_usuario_id = self.env.context.get('single_usuario_id')
         if single_usuario_id:
-            return self.env['usuarios.usuario'].browse(single_usuario_id).exists()
-        return self._get_selected_users()
+            usuarios = self.env['usuarios.usuario'].browse(single_usuario_id).exists()
+        else:
+            usuarios = self._get_selected_users()
+        self._ensure_current_user_can_export_users(usuarios)
+        return usuarios
 
     @staticmethod
     def _format_hour(hour_float):
@@ -246,7 +258,7 @@ class UsuarioReportWizard(models.TransientModel):
 
     def action_print_report(self):
         self.ensure_one()
-        usuarios = self._get_selected_users()
+        usuarios = self._get_report_users()
         report_action = self.env.ref('portalGestor.action_report_horario_usuario')
         if len(usuarios) == 1:
             return report_action.report_action(self)
@@ -267,7 +279,7 @@ class UsuarioReportWizard(models.TransientModel):
 
     def action_export_csv(self):
         self.ensure_one()
-        usuarios = self._get_selected_users()
+        usuarios = self._get_report_users()
         if len(usuarios) == 1:
             usuario = usuarios[0]
             csv_bytes = self._build_csv_bytes_for_user(usuario)

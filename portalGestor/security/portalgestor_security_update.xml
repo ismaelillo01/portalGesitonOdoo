@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <function model="ir.rule" name="write">
+            <value model="ir.rule" search="[('id', '=', ref('portalGestor.rule_asignacion_gestor_agusto'))]"/>
+            <value eval="{'domain_force': &quot;[(1, '=', 1)]&quot;}"/>
+        </function>
+
+        <function model="ir.rule" name="write">
+            <value model="ir.rule" search="[('id', '=', ref('portalGestor.rule_asignacion_mensual_gestor_agusto'))]"/>
+            <value eval="{'domain_force': &quot;[(1, '=', 1)]&quot;}"/>
+        </function>
+
+        <function model="ir.rule" name="write">
+            <value model="ir.rule" search="[('id', '=', ref('portalGestor.rule_asignacion_mensual_linea_gestor_agusto'))]"/>
+            <value eval="{'domain_force': &quot;[(1, '=', 1)]&quot;}"/>
+        </function>
+
+        <function model="ir.rule" name="write">
+            <value model="ir.rule" search="[('id', '=', ref('portalGestor.rule_usuarios_gestor_agusto'))]"/>
+            <value eval="{'domain_force': &quot;[(1, '=', 1)]&quot;}"/>
+        </function>
+
+        <function model="ir.rule" name="write">
+            <value model="ir.rule" search="[('id', '=', ref('portalGestor.rule_trabajadores_gestor_agusto'))]"/>
+            <value eval="{'domain_force': &quot;[(1, '=', 1)]&quot;}"/>
+        </function>
+    </data>
+</odoo>

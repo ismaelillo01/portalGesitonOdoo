@@ -2,12 +2,12 @@
 <odoo>
     <data noupdate="1">
         
-        <!-- Record Rule para Agusto (Solo leen Usuarios que sean Agusto y sus asignaciones) -->
+        <!-- Record Rule para Agusto (lectura global; la soberania se controla en backend) -->
         <record id="rule_asignacion_gestor_agusto" model="ir.rule">
-            <field name="name">Asignaciones solo para usuarios Agusto si el gestor es Agusto</field>
+            <field name="name">Asignaciones globales para gestores Agusto</field>
             <field name="model_id" ref="model_portalgestor_asignacion"/>
             <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
-            <field name="domain_force">[('usuario_grupo', '=', 'agusto')]</field>
+            <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
         <!-- Record Rule general para Intecum / Admin (Leen todo en Asignaciones) -->
@@ -19,10 +19,10 @@
         </record>
 
         <record id="rule_asignacion_mensual_gestor_agusto" model="ir.rule">
-            <field name="name">Trabajos fijos solo para usuarios Agusto si el gestor es Agusto</field>
+            <field name="name">Trabajos fijos globales para gestores Agusto</field>
             <field name="model_id" ref="model_portalgestor_asignacion_mensual"/>
             <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
-            <field name="domain_force">[('usuario_grupo', '=', 'agusto')]</field>
+            <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
         <record id="rule_asignacion_mensual_gestor_intecum" model="ir.rule">
@@ -33,10 +33,10 @@
         </record>
 
         <record id="rule_asignacion_mensual_linea_gestor_agusto" model="ir.rule">
-            <field name="name">Tramos de trabajos fijos solo para usuarios Agusto si el gestor es Agusto</field>
+            <field name="name">Tramos de trabajos fijos globales para gestores Agusto</field>
             <field name="model_id" ref="model_portalgestor_asignacion_mensual_linea"/>
             <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
-            <field name="domain_force">[('asignacion_mensual_id.usuario_grupo', '=', 'agusto')]</field>
+            <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
         <record id="rule_asignacion_mensual_linea_gestor_intecum" model="ir.rule">
@@ -46,12 +46,12 @@
             <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
-        <!-- Record Rules para Usuarios y Trabajadores (Limitar vista a Agusto) -->
+        <!-- Record Rules para Usuarios y Trabajadores -->
         <record id="rule_usuarios_gestor_agusto" model="ir.rule">
-            <field name="name">Usuarios solo Agusto para gestores Agusto</field>
+            <field name="name">Usuarios globales para gestores Agusto</field>
             <field name="model_id" ref="usuarios.model_usuarios_usuario"/> <!-- Requiere dep usuarios -->
             <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
-            <field name="domain_force">[('grupo', '=', 'agusto')]</field>
+            <field name="domain_force">[(1, '=', 1)]</field>
         </record>
         
         <record id="rule_usuarios_gestor_intecum" model="ir.rule">
@@ -62,10 +62,10 @@
         </record>
 
         <record id="rule_trabajadores_gestor_agusto" model="ir.rule">
-            <field name="name">Trabajadores solo Agusto para gestores Agusto</field>
+            <field name="name">Trabajadores globales para gestores Agusto</field>
             <field name="model_id" ref="trabajadores.model_trabajadores_trabajador"/> <!-- Requiere dep trabajadores -->
             <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
-            <field name="domain_force">[('grupo', '=', 'agusto')]</field>
+            <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
         <record id="rule_trabajadores_gestor_intecum" model="ir.rule">

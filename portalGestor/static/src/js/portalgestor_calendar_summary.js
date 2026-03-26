@@ -83,7 +83,7 @@ export class PortalGestorBucketDialog extends Component {
             resModel: TARGET_RES_MODEL,
             resId: record.id,
             viewId: this.props.formViewId || false,
-            mode: "edit",
+            mode: record.can_edit === false ? "readonly" : "edit",
             title: record.form_title || record.name || _t("Horario"),
         });
         this.props.close();

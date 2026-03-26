@@ -4,12 +4,12 @@ from odoo.exceptions import ValidationError
 
 class Vacacion(models.Model):
     _name = 'trabajadores.vacacion'
-    _description = 'Vacaciones de Trabajador'
+    _description = 'Vacaciones de AP'
 
     name = fields.Char(string='Descripción', default='Vacaciones')
     trabajador_id = fields.Many2one(
         'trabajadores.trabajador',
-        string='Trabajador',
+        string='AP',
         required=True,
         ondelete='cascade',
         index=True,

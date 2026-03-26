@@ -2,7 +2,7 @@
 from datetime import timedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class AsignacionMensual(models.Model):
@@ -70,6 +70,10 @@ class AsignacionMensual(models.Model):
         string='Lineas generadas',
         compute='_compute_generation_totals',
     )
+    manager_edit_blocked = fields.Boolean(
+        string='Edicion bloqueada para el gestor actual',
+        compute='_compute_manager_edit_blocked',
+    )
 
     @api.depends('usuario_id.name', 'fecha_inicio', 'fecha_fin', 'linea_fija_ids')
     def _compute_name(self):
@@ -86,6 +90,20 @@ class AsignacionMensual(models.Model):
                 'fecha_fin': fields.Date.to_string(record.fecha_fin),
                 'tramos': len(record.linea_fija_ids),
             }
+
+    @api.depends('usuario_grupo')
+    def _compute_manager_edit_blocked(self):
+        for record in self:
+            record.manager_edit_blocked = not self.env.user._can_manage_target_group(record.usuario_grupo)
+
+    def _ensure_current_user_can_manage_users(self, users):
+        forbidden_users = users.filtered(
+            lambda usuario: not self.env.user._can_manage_target_group(usuario.grupo)
+        )
+        if forbidden_users:
+            raise AccessError(
+                _("Los gestores Agusto no pueden crear, modificar ni eliminar horarios de usuarios de Intecum.")
+            )
 
     @api.constrains('usuario_id')
     def _check_usuario_has_ap_service(self):
@@ -268,6 +286,11 @@ class AsignacionMensual(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        usuario_ids = [vals.get('usuario_id') for vals in vals_list if vals.get('usuario_id')]
+        if usuario_ids:
+            self._ensure_current_user_can_manage_users(
+                self.env['usuarios.usuario'].browse(usuario_ids).exists()
+            )
         vals_list = [dict(vals, confirmado=vals.get('confirmado', False)) for vals in vals_list]
         records = super(
             AsignacionMensual,
@@ -277,6 +300,10 @@ class AsignacionMensual(models.Model):
         return records
 
     def write(self, vals):
+        target_users = self.mapped('usuario_id')
+        if vals.get('usuario_id'):
+            target_users |= self.env['usuarios.usuario'].browse(vals['usuario_id']).exists()
+        self._ensure_current_user_can_manage_users(target_users)
         if set(vals) == {'confirmado'}:
             return super(
                 AsignacionMensual,
@@ -293,6 +320,7 @@ class AsignacionMensual(models.Model):
 
     def action_verificar_y_confirmar(self):
         self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         if not self.env.context.get('portalgestor_skip_fixed_sync_before_verify'):
             self._sync_generated_assignments()
         asignaciones_pendientes = self.asignacion_linea_ids.mapped('asignacion_id').exists().sorted(
@@ -310,11 +338,13 @@ class AsignacionMensual(models.Model):
 
     def action_editar(self):
         self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         self.confirmado = False
         self.asignacion_linea_ids.mapped('asignacion_id').write({'confirmado': False})
         return True
 
     def unlink(self):
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         touched_assignments = self.mapped('asignacion_linea_ids.asignacion_id')
         generated_lines = self.mapped('asignacion_linea_ids')
         exception_keys = {
@@ -334,6 +364,25 @@ class AsignacionMensual(models.Model):
             AsignacionMensual,
             self.with_context(portalgestor_skip_fixed_sync=True),
         ).unlink()
+
+    def name_get(self):
+        user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
+            self.mapped('usuario_id').ids
+        )
+        return [
+            (
+                record.id,
+                _('%(usuario)s | %(fecha_inicio)s -> %(fecha_fin)s (%(tramos)s tramos)') % {
+                    'usuario': user_view_data.get(record.usuario_id.id, {}).get('display_name')
+                    or record.usuario_id.display_name
+                    or record.usuario_id.name,
+                    'fecha_inicio': fields.Date.to_string(record.fecha_inicio),
+                    'fecha_fin': fields.Date.to_string(record.fecha_fin),
+                    'tramos': len(record.linea_fija_ids),
+                },
+            )
+            for record in self
+        ]
 
 
 class AsignacionMensualLinea(models.Model):
@@ -371,6 +420,11 @@ class AsignacionMensualLinea(models.Model):
         string='Asignaciones generadas',
     )
 
+    def _ensure_current_user_can_manage_parent_records(self, parent_records):
+        self.env['portalgestor.asignacion.mensual']._ensure_current_user_can_manage_users(
+            parent_records.mapped('usuario_id')
+        )
+
     def _get_generated_line_vals(self, assignment):
         self.ensure_one()
         return {
@@ -384,6 +438,11 @@ class AsignacionMensualLinea(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        parent_ids = [vals.get('asignacion_mensual_id') for vals in vals_list if vals.get('asignacion_mensual_id')]
+        if parent_ids:
+            self._ensure_current_user_can_manage_parent_records(
+                self.env['portalgestor.asignacion.mensual'].browse(parent_ids).exists()
+            )
         records = super().create(vals_list)
         if not self.env.context.get('portalgestor_skip_fixed_sync'):
             records.mapped('asignacion_mensual_id')._sync_generated_assignments()
@@ -391,6 +450,9 @@ class AsignacionMensualLinea(models.Model):
 
     def write(self, vals):
         parent_records = self.mapped('asignacion_mensual_id')
+        if vals.get('asignacion_mensual_id'):
+            parent_records |= self.env['portalgestor.asignacion.mensual'].browse(vals['asignacion_mensual_id']).exists()
+        self._ensure_current_user_can_manage_parent_records(parent_records)
         result = super().write(vals)
         if not self.env.context.get('portalgestor_skip_fixed_sync'):
             (parent_records | self.mapped('asignacion_mensual_id')).exists()._sync_generated_assignments()
@@ -398,6 +460,7 @@ class AsignacionMensualLinea(models.Model):
 
     def unlink(self):
         parent_records = self.mapped('asignacion_mensual_id')
+        self._ensure_current_user_can_manage_parent_records(parent_records)
         result = super().unlink()
         if not self.env.context.get('portalgestor_skip_fixed_sync'):
             parent_records.exists()._sync_generated_assignments()

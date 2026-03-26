@@ -24,26 +24,27 @@
       <field name="arch" type="xml">
         <form>
           <sheet>
+            <field name="manager_edit_blocked" invisible="1"/>
             <group>
               <group string="Datos Personales">
-                <field name="name"/>
-                <field name="apellido1"/>
-                <field name="apellido2"/>
-                <field name="dni_nie"/>
+                <field name="name" readonly="manager_edit_blocked"/>
+                <field name="apellido1" readonly="manager_edit_blocked"/>
+                <field name="apellido2" readonly="manager_edit_blocked"/>
+                <field name="dni_nie" readonly="manager_edit_blocked"/>
               </group>
               <group string="Datos de Contacto">
-                <field name="telefono"/>
-                <field name="direccion"/>
+                <field name="telefono" readonly="manager_edit_blocked"/>
+                <field name="direccion" readonly="manager_edit_blocked"/>
               </group>
             </group>
             <group string="Datos Asignacion">
               <group>
-                <field name="grupo"/>
-                <field name="zona_trabajo_id" options="{'no_create': True, 'no_open': True}"/>
-                <field name="servicio_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                <field name="grupo" readonly="manager_edit_blocked"/>
+                <field name="zona_trabajo_id" readonly="manager_edit_blocked" options="{'no_create': True, 'no_open': True}"/>
+                <field name="servicio_ids" readonly="manager_edit_blocked" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               </group>
               <group>
-                <field name="baja"/>
+                <field name="baja" readonly="manager_edit_blocked"/>
               </group>
             </group>
           </sheet>

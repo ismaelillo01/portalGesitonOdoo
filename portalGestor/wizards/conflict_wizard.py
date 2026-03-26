@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from odoo.exceptions import AccessError
 
 
 class ConflictWizard(models.TransientModel):
@@ -10,6 +11,7 @@ class ConflictWizard(models.TransientModel):
     asignacion_mensual_id = fields.Many2one('portalgestor.asignacion.mensual')
     conflict_type = fields.Selection([
         ('overlapping', 'Solapamiento de Horas'),
+        ('protected_intecum_overlapping', 'Solapamiento protegido de Intecum'),
         ('info_same_day', 'Aviso informativo: mismo dia'),
     ])
 
@@ -17,6 +19,7 @@ class ConflictWizard(models.TransientModel):
     linea_conflicto_id = fields.Many2one('portalgestor.asignacion.linea')
     info_resumen = fields.Text(string='Resumen de avisos')
     mensaje = fields.Text(compute='_compute_mensaje')
+    can_override = fields.Boolean(compute='_compute_can_override')
 
     @staticmethod
     def _format_hora(hora):
@@ -27,7 +30,7 @@ class ConflictWizard(models.TransientModel):
         for record in self:
             if record.conflict_type == 'overlapping':
                 trabajador = record.linea_actual_id.trabajador_id.name or ''
-                usuario_conflicto = record.linea_conflicto_id.asignacion_id.usuario_id.name or ''
+                usuario_conflicto = record.linea_conflicto_id.asignacion_id.usuario_id.display_name or ''
                 horas_conflicto = (
                     f"{self._format_hora(record.linea_conflicto_id.hora_inicio)} - "
                     f"{self._format_hora(record.linea_conflicto_id.hora_fin)}"
@@ -36,6 +39,17 @@ class ConflictWizard(models.TransientModel):
                     f"Atencion. El AP {trabajador} ya esta asignado al usuario "
                     f"{usuario_conflicto} en el horario {horas_conflicto}. Si confirmas, la franja "
                     f"anterior quedara sin AP asignado para su revision."
+                )
+            elif record.conflict_type == 'protected_intecum_overlapping':
+                trabajador = record.linea_actual_id.trabajador_id.name or ''
+                usuario_conflicto = record.linea_conflicto_id.asignacion_id.usuario_id.display_name or ''
+                horas_conflicto = (
+                    f"{self._format_hora(record.linea_conflicto_id.hora_inicio)} - "
+                    f"{self._format_hora(record.linea_conflicto_id.hora_fin)}"
+                )
+                record.mensaje = (
+                    f"El AP {trabajador} ya esta asignado a {usuario_conflicto} en el horario "
+                    f"{horas_conflicto}. Los gestores Agusto no pueden sobrescribir horarios de usuarios Intecum."
                 )
             elif record.conflict_type == 'info_same_day':
                 record.mensaje = (
@@ -47,6 +61,11 @@ class ConflictWizard(models.TransientModel):
             else:
                 record.mensaje = ''
 
+    @api.depends('conflict_type')
+    def _compute_can_override(self):
+        for record in self:
+            record.can_override = record.conflict_type in ('overlapping', 'info_same_day')
+
     def _resume_verification(self):
         self.ensure_one()
         if self.asignacion_mensual_id:
@@ -57,6 +76,8 @@ class ConflictWizard(models.TransientModel):
 
     def action_confirm(self):
         self.ensure_one()
+        if self.conflict_type == 'protected_intecum_overlapping':
+            raise AccessError("Los gestores Agusto no pueden sobrescribir horarios de usuarios Intecum.")
         if self.conflict_type == 'overlapping':
             self.linea_conflicto_id.write({'trabajador_id': False})
             result = self._resume_verification()
