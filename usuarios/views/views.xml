@@ -5,6 +5,7 @@
       <field name="model">usuarios.usuario</field>
       <field name="arch" type="xml">
         <list>
+          <field name="manager_edit_blocked" column_invisible="True"/>
           <field name="name"/>
           <field name="apellido1"/>
           <field name="apellido2"/>
@@ -25,6 +26,7 @@
         <form>
           <sheet>
             <field name="manager_edit_blocked" invisible="1"/>
+            <field name="group_selection_locked" invisible="1"/>
             <group>
               <group string="Datos Personales">
                 <field name="name" readonly="manager_edit_blocked"/>
@@ -39,7 +41,7 @@
             </group>
             <group string="Datos Asignacion">
               <group>
-                <field name="grupo" readonly="manager_edit_blocked"/>
+                <field name="grupo" readonly="manager_edit_blocked or group_selection_locked"/>
                 <field name="zona_trabajo_id" readonly="manager_edit_blocked" options="{'no_create': True, 'no_open': True}"/>
                 <field name="servicio_ids" readonly="manager_edit_blocked" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               </group>

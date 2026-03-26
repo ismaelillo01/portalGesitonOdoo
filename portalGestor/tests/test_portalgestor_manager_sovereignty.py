@@ -224,11 +224,12 @@ class TestPortalGestorManagerSovereignty(TransactionCase):
 
     def test_calendar_bucket_records_mask_intecum_user_for_agusto(self):
         fecha = fields.Date.to_date('2099-07-12')
-        self._create_assignment(
+        asignacion = self._create_assignment(
             self.usuario_intecum,
             fecha,
             [(8.0, 10.0, self.ap_intecum)],
         )
+        asignacion.write({'confirmado': True})
 
         records = self.env['portalgestor.asignacion'].with_user(self.gestor_agusto_user).get_calendar_bucket_records(
             fields.Date.to_string(fecha),
@@ -252,11 +253,12 @@ class TestPortalGestorManagerSovereignty(TransactionCase):
 
     def test_agusto_cannot_override_intecum_overlap(self):
         fecha = fields.Date.to_date('2099-07-14')
-        self._create_assignment(
+        asignacion_intecum = self._create_assignment(
             self.usuario_intecum,
             fecha,
             [(8.0, 10.0, self.ap_intecum)],
         )
+        asignacion_intecum.write({'confirmado': True})
         asignacion_agusto = self._create_assignment(
             self.usuario_agusto,
             fecha,
@@ -269,6 +271,11 @@ class TestPortalGestorManagerSovereignty(TransactionCase):
         self.assertEqual(wizard.conflict_type, 'protected_intecum_overlapping')
         with self.assertRaises(AccessError):
             wizard.action_confirm()
+        bucket_records = self.env['portalgestor.asignacion'].with_user(
+            self.gestor_agusto_user
+        ).get_calendar_bucket_records(fields.Date.to_string(fecha), 'completed')
+        self.assertEqual([record['id'] for record in bucket_records], [asignacion_intecum.id])
+        self.assertFalse(asignacion_agusto.confirmado)
 
     def test_agusto_can_override_agusto_overlap(self):
         fecha = fields.Date.to_date('2099-07-15')
@@ -323,3 +330,42 @@ class TestPortalGestorManagerSovereignty(TransactionCase):
 
         with self.assertRaises(AccessError):
             wizard.action_generate_report()
+
+    def test_portalgestor_calendar_only_shows_confirmed_assignments(self):
+        fecha = fields.Date.to_date('2099-07-17')
+        asignacion_confirmada = self._create_assignment(
+            self.usuario_agusto,
+            fecha,
+            [(8.0, 10.0, self.ap_agusto)],
+        )
+        asignacion_confirmada.write({'confirmado': True})
+        self._create_assignment(
+            self.usuario_agusto_secundario,
+            fecha,
+            [(10.0, 12.0, self.ap_intecum)],
+        )
+
+        summary = self.env['portalgestor.asignacion'].with_user(
+            self.gestor_agusto_user
+        ).get_calendar_bucket_summary(fields.Date.to_string(fecha), fields.Date.to_string(fecha))
+        records = self.env['portalgestor.asignacion'].with_user(
+            self.gestor_agusto_user
+        ).get_calendar_bucket_records(fields.Date.to_string(fecha), 'completed')
+
+        self.assertEqual(len(summary), 1)
+        self.assertEqual(summary[0]['count'], 1)
+        self.assertEqual([record['id'] for record in records], [asignacion_confirmada.id])
+
+    def test_agusto_group_field_is_locked_and_new_users_default_to_agusto(self):
+        values = self.usuario_agusto.with_user(self.gestor_agusto_user).read(
+            ['group_selection_locked']
+        )[0]
+        self.assertTrue(values['group_selection_locked'])
+
+        created_user = self.env['usuarios.usuario'].with_user(self.gestor_agusto_user).create({
+            'name': 'Nuevo Agusto',
+            'zona_trabajo_id': self.zone.id,
+            'servicio_ids': [(6, 0, [self.ap_service.id])],
+        })
+
+        self.assertEqual(created_user.grupo, 'agusto')

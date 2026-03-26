@@ -50,7 +50,7 @@ class Usuario(models.Model):
     grupo = fields.Selection([
         ('intecum', 'Intecum'),
         ('agusto', 'Agusto')
-    ], string='Grupo', required=True, index=True)
+    ], string='Grupo', required=True, index=True, default='agusto')
 
     zona_trabajo_id = fields.Many2one(
         'zonastrabajo.zona',
@@ -62,6 +62,10 @@ class Usuario(models.Model):
     manager_edit_blocked = fields.Boolean(
         string='Edicion bloqueada para el gestor actual',
         compute='_compute_manager_edit_blocked',
+    )
+    group_selection_locked = fields.Boolean(
+        string='Grupo bloqueado para el gestor actual',
+        compute='_compute_group_selection_locked',
     )
 
     def _get_security_viewer(self):
@@ -155,6 +159,13 @@ class Usuario(models.Model):
             record.manager_edit_blocked = (
                 record.grupo == 'intecum' and not viewer._can_manage_target_group('intecum')
             )
+
+    @api.depends_context('uid', 'portalgestor_viewer_uid')
+    def _compute_group_selection_locked(self):
+        viewer = self._get_security_viewer()
+        is_agusto_manager = viewer._get_gestor_management_scope() == 'agusto'
+        for record in self:
+            record.group_selection_locked = is_agusto_manager
 
     @api.depends('name', 'apellido1', 'apellido2', 'grupo')
     def _compute_display_name(self):

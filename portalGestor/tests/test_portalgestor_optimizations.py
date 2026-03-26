@@ -294,12 +294,12 @@ class TestPortalGestorOptimizations(TransactionCase):
             'servicio_ids': [(6, 0, [self.ap_service.id])],
         })
 
-        self._create_assignment(
+        asignacion_a = self._create_assignment(
             self.usuario_a,
             fecha,
             [(8.0, 10.0, None)],
         )
-        self._create_assignment(
+        asignacion_b = self._create_assignment(
             self.usuario_b,
             fecha,
             [
@@ -307,11 +307,12 @@ class TestPortalGestorOptimizations(TransactionCase):
                 (12.0, 14.0, None),
             ],
         )
-        self._create_assignment(
+        asignacion_c = self._create_assignment(
             usuario_c,
             fecha,
             [(14.0, 16.0, trabajador)],
         )
+        (asignacion_a | asignacion_b | asignacion_c).write({'confirmado': True})
 
         buckets = self.env['portalgestor.asignacion'].get_calendar_bucket_summary(
             fields.Date.to_string(fecha),
@@ -331,16 +332,17 @@ class TestPortalGestorOptimizations(TransactionCase):
         fecha = fields.Date.to_date('2099-03-27')
         trabajador = self._create_worker('Dialogo')
 
-        self._create_assignment(
+        asignacion_a = self._create_assignment(
             self.usuario_a,
             fecha,
             [(8.0, 10.0, trabajador)],
         )
-        self._create_assignment(
+        asignacion_b = self._create_assignment(
             self.usuario_b,
             fecha,
             [(10.0, 12.0, trabajador)],
         )
+        (asignacion_a | asignacion_b).write({'confirmado': True})
 
         records = self.env['portalgestor.asignacion'].get_calendar_bucket_records(
             fields.Date.to_string(fecha),
@@ -392,6 +394,7 @@ class TestPortalGestorOptimizations(TransactionCase):
             fecha,
             [(10.0, 12.0, trabajador)],
         )
+        (asignacion_pending | asignacion_completed).write({'confirmado': True})
 
         self.env.cr.execute(
             """
@@ -425,6 +428,7 @@ class TestPortalGestorOptimizations(TransactionCase):
             fecha,
             [(8.0, 10.0, trabajador)],
         )
+        asignacion.write({'confirmado': True})
 
         self.env.cr.execute(
             """
@@ -510,12 +514,14 @@ class TestPortalGestorOptimizations(TransactionCase):
                 fecha,
                 [(8.0, 10.0, trabajador)],
             )
+            self.assertEqual(mock_sendone.call_count, 0)
+            asignacion.write({'confirmado': True})
 
         self.assertEqual(mock_sendone.call_count, 1)
         __self, channel, notification_type, payload = mock_sendone.call_args.args
         self.assertEqual(channel, 'portalgestor.calendar')
         self.assertEqual(notification_type, 'portalgestor.calendar.updated')
-        self.assertEqual(payload['action_kind'], 'create')
+        self.assertEqual(payload['action_kind'], 'write')
         self.assertEqual(payload['assignment_ids'], [asignacion.id])
         self.assertEqual(payload['changed_dates'], [fields.Date.to_string(fecha)])
         self.assertEqual(payload['bucket_types'], ['completed'])
@@ -530,6 +536,7 @@ class TestPortalGestorOptimizations(TransactionCase):
             fecha_inicial,
             [(8.0, 10.0, trabajador)],
         )
+        asignacion.write({'confirmado': True})
 
         with patch.object(type(self.env['bus.bus']), '_sendone', autospec=True) as mock_sendone:
             asignacion.write({'fecha': fecha_nueva})
@@ -556,6 +563,7 @@ class TestPortalGestorOptimizations(TransactionCase):
             fecha,
             [(8.0, 10.0, trabajador)],
         )
+        asignacion.write({'confirmado': True})
 
         with patch.object(type(self.env['bus.bus']), '_sendone', autospec=True) as mock_sendone:
             asignacion.lineas_ids.write({'trabajador_id': False})

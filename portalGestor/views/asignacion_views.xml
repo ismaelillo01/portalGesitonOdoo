@@ -73,10 +73,10 @@
       <field name="name">Portal Gestor</field>
       <field name="res_model">portalgestor.asignacion</field>
       <field name="view_mode">calendar,list,form</field>
+      <field name="domain">[('confirmado', '=', True)]</field>
     </record>
 
-    <menuitem name="Portal Gestor" id="portalgestor_menu_root"/>
-    <menuitem name="Asignaciones" id="portalgestor_menu_asignaciones" parent="portalgestor_menu_root" action="action_portalgestor_asignacion"/>
+    <menuitem name="Portal Gestor" id="portalgestor_menu_root" action="action_portalgestor_asignacion"/>
 
   </data>
 </odoo>

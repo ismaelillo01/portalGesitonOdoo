@@ -20,6 +20,11 @@ Long description of module's purpose
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'zonasTrabajo'],
+    'assets': {
+        'web.assets_backend': [
+            'usuarios/static/src/js/usuario_security_ui.js',
+        ],
+    },
 
     # always loaded
     'data': [

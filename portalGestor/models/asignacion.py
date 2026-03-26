@@ -282,7 +282,7 @@ class Asignacion(models.Model):
 
     def _get_calendar_realtime_snapshot(self):
         snapshot = {}
-        for record in self.exists():
+        for record in self.exists().filtered('confirmado'):
             snapshot[record.id] = {
                 'date': fields.Date.to_string(record.fecha),
                 'bucket_type': record._get_calendar_bucket_type(),
@@ -335,6 +335,7 @@ class Asignacion(models.Model):
             [
                 ('fecha', '>=', start_date),
                 ('fecha', '<=', end_date),
+                ('confirmado', '=', True),
             ],
             ['fecha:day', 'calendar_bucket_type'],
             ['__count'],
@@ -371,6 +372,7 @@ class Asignacion(models.Model):
             [
                 ('fecha', '=', fecha),
                 ('calendar_bucket_type', '=', bucket_type),
+                ('confirmado', '=', True),
             ],
             order='name, id',
         )
