@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from datetime import timedelta
 
 from odoo import _, api, fields, models
@@ -57,6 +58,8 @@ class AsignacionMensual(models.Model):
         string='Asignaciones generadas',
     )
     confirmado = fields.Boolean(string='Horario Confirmado', default=False)
+    edit_session_pending = fields.Boolean(string='Edicion pendiente', default=False, copy=False)
+    edit_snapshot_data = fields.Text(string='Snapshot de edicion', copy=False)
     excepcion_ids = fields.One2many(
         'portalgestor.asignacion.mensual.excepcion',
         'asignacion_mensual_id',
@@ -143,6 +146,87 @@ class AsignacionMensual(models.Model):
             current_date += timedelta(days=1)
         return target_dates
 
+    def _get_edit_snapshot_payload(self):
+        self.ensure_one()
+        return {
+            'confirmado': bool(self.confirmado),
+            'usuario_id': self.usuario_id.id or False,
+            'fecha_inicio': fields.Date.to_string(self.fecha_inicio) if self.fecha_inicio else False,
+            'fecha_fin': fields.Date.to_string(self.fecha_fin) if self.fecha_fin else False,
+            'lineas': [
+                {
+                    'hora_inicio': linea.hora_inicio,
+                    'hora_fin': linea.hora_fin,
+                    'trabajador_id': linea.trabajador_id.id,
+                }
+                for linea in self.linea_fija_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id))
+            ],
+        }
+
+    def _set_edit_snapshot(self):
+        for record in self:
+            if record.edit_session_pending:
+                continue
+            record.write({
+                'edit_session_pending': True,
+                'edit_snapshot_data': json.dumps(record._get_edit_snapshot_payload()),
+            })
+
+    def _clear_edit_snapshot(self):
+        if not self:
+            return
+        self.write({
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+        })
+
+    def _restore_edit_snapshot(self):
+        FixedLine = self.env['portalgestor.asignacion.mensual.linea']
+        for record in self.exists().filtered(lambda monthly: monthly.edit_session_pending and monthly.edit_snapshot_data):
+            snapshot = json.loads(record.edit_snapshot_data)
+            restore_context = dict(
+                self.env.context,
+                portalgestor_skip_fixed_sync=True,
+                portalgestor_skip_fixed_draft_cleanup=True,
+            )
+            record.linea_fija_ids.with_context(**restore_context).unlink()
+            record.with_context(**restore_context).write({
+                'usuario_id': snapshot.get('usuario_id') or False,
+                'fecha_inicio': fields.Date.to_date(snapshot.get('fecha_inicio')),
+                'fecha_fin': fields.Date.to_date(snapshot.get('fecha_fin')),
+                'confirmado': bool(snapshot.get('confirmado', True)),
+                'edit_session_pending': False,
+                'edit_snapshot_data': False,
+            })
+            if snapshot.get('lineas'):
+                FixedLine.with_context(**restore_context).create([
+                    {
+                        'asignacion_mensual_id': record.id,
+                        'hora_inicio': line_data['hora_inicio'],
+                        'hora_fin': line_data['hora_fin'],
+                        'trabajador_id': line_data['trabajador_id'],
+                    }
+                    for line_data in snapshot['lineas']
+                ])
+            record.with_context(portalgestor_skip_fixed_draft_cleanup=True)._sync_generated_assignments()
+            if snapshot.get('confirmado', True):
+                record.asignacion_linea_ids.mapped('asignacion_id').write({'confirmado': True})
+                record.write({'confirmado': True})
+        return True
+
+    def action_descartar_edicion(self):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        self._restore_edit_snapshot()
+        return True
+
+    def action_eliminar_borrador_no_verificado(self):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        if not self.confirmado and not self.edit_session_pending:
+            self.unlink()
+        return True
+
     def _mark_unconfirmed(self):
         if not self:
             return
@@ -171,6 +255,18 @@ class AsignacionMensual(models.Model):
             for exception in exceptions
             if exception.fecha
         }
+
+    def _cleanup_invalid_drafts(self):
+        if self.env.context.get('portalgestor_skip_fixed_draft_cleanup'):
+            return self.browse()
+        records_to_remove = self.exists().filtered(
+            lambda record: not record.confirmado
+            and not record.edit_session_pending
+            and (not record.asignacion_linea_ids or not record.total_dias_generados or not record.total_lineas_generadas)
+        )
+        if records_to_remove:
+            records_to_remove.with_context(portalgestor_skip_fixed_sync=True).unlink()
+        return records_to_remove
 
     def _sync_generated_assignments(self):
         Assignment = self.env['portalgestor.asignacion']
@@ -273,16 +369,33 @@ class AsignacionMensual(models.Model):
                             ).write(line_vals)
                             touched_assignments |= existing_line.asignacion_id
                     else:
-                        generated_line = AssignmentLine.with_context(
-                            portalgestor_skip_fixed_sync=True,
-                            portalgestor_skip_fixed_exception=True,
-                        ).create(line_vals)
+                        matching_manual_line = assignment.lineas_ids.filtered(
+                            lambda line: not line.asignacion_mensual_linea_id
+                            and line.hora_inicio == fixed_line.hora_inicio
+                            and line.hora_fin == fixed_line.hora_fin
+                            and line.trabajador_id == fixed_line.trabajador_id
+                        )[:1]
+                        if matching_manual_line:
+                            matching_manual_line.with_context(
+                                portalgestor_skip_fixed_sync=True,
+                                portalgestor_skip_fixed_exception=True,
+                            ).write({
+                                'asignacion_mensual_id': record.id,
+                                'asignacion_mensual_linea_id': fixed_line.id,
+                            })
+                            generated_line = matching_manual_line
+                        else:
+                            generated_line = AssignmentLine.with_context(
+                                portalgestor_skip_fixed_sync=True,
+                                portalgestor_skip_fixed_exception=True,
+                            ).create(line_vals)
                         touched_assignments |= generated_line.asignacion_id
 
             if touched_assignments:
                 touched_assignments.cleanup_empty_assignments()
                 touched_assignments.exists().write({'confirmado': False})
                 record._mark_unconfirmed()
+        self._cleanup_invalid_drafts()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -304,7 +417,9 @@ class AsignacionMensual(models.Model):
         if vals.get('usuario_id'):
             target_users |= self.env['usuarios.usuario'].browse(vals['usuario_id']).exists()
         self._ensure_current_user_can_manage_users(target_users)
-        if set(vals) == {'confirmado'}:
+        if vals.get('confirmado') is True:
+            vals = dict(vals, edit_session_pending=False, edit_snapshot_data=False)
+        if set(vals).issubset({'confirmado', 'edit_session_pending', 'edit_snapshot_data'}):
             return super(
                 AsignacionMensual,
                 self.with_context(portalgestor_skip_fixed_sync=True),
@@ -327,21 +442,199 @@ class AsignacionMensual(models.Model):
             key=lambda asignacion: (asignacion.fecha, asignacion.id)
         ).filtered(lambda asignacion: not asignacion.confirmado)
 
+        batch_conflicts = self._collect_batch_overlap_conflicts(asignaciones_pendientes)
+        if batch_conflicts['protected']:
+            return self._launch_batch_conflict_wizard(
+                'protected_intecum_overlapping_batch',
+                batch_conflicts['protected'],
+                batch_conflicts['protected_summary'],
+            )
+        if batch_conflicts['overlapping']:
+            return self._launch_batch_conflict_wizard(
+                'overlapping_batch',
+                batch_conflicts['overlapping'],
+                batch_conflicts['overlap_summary'],
+            )
+
         for asignacion in asignaciones_pendientes:
             result = asignacion._get_verification_action(asignacion_mensual_id=self.id)
             if isinstance(result, dict):
                 return result
             asignacion.confirmado = True
 
-        self.confirmado = True
+        self.write({
+            'confirmado': True,
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+        })
         return True
+
+    def _get_pending_generated_lines_for_assignment(self, assignment):
+        self.ensure_one()
+        return assignment.lineas_ids.filtered(
+            lambda line: line.asignacion_mensual_id.id == self.id and line.trabajador_id
+        ).sorted(key=lambda line: (line.hora_inicio, line.hora_fin, line.id))
+
+    def _run_fixed_assignment_target_checks(self, assignment):
+        self.ensure_one()
+        if assignment.usuario_id.baja:
+            raise ValidationError(_("No puedes confirmar un horario para un usuario dado de baja."))
+        if not assignment.usuario_id.has_ap_service:
+            raise ValidationError(_("Solo puedes confirmar horarios para usuarios con el servicio AP activo."))
+
+        target_lines = self._get_pending_generated_lines_for_assignment(assignment)
+        if not target_lines:
+            return target_lines
+
+        vacaciones = self.env['trabajadores.vacacion'].search([
+            ('trabajador_id', 'in', target_lines.mapped('trabajador_id').ids),
+            ('date_start', '<=', assignment.fecha),
+            ('date_stop', '>=', assignment.fecha),
+        ])
+        vacaciones_por_trabajador = {vacacion.trabajador_id.id: vacacion for vacacion in vacaciones}
+        target_zone = assignment.usuario_id.zona_trabajo_id
+        lineas_por_trabajador = {}
+
+        for line in target_lines:
+            trabajador = line.trabajador_id
+            lineas_por_trabajador.setdefault(trabajador.id, []).append(line)
+            if trabajador.baja:
+                raise ValidationError(
+                    _("El AP %(worker)s esta dado de baja y no se puede confirmar en %(date)s.")
+                    % {
+                        'worker': trabajador.display_name or trabajador.name,
+                        'date': fields.Date.to_string(assignment.fecha),
+                    }
+                )
+            if target_zone and target_zone not in trabajador.zona_trabajo_ids:
+                raise ValidationError(
+                    _("El AP %(worker)s no pertenece a la zona %(zone)s del usuario.")
+                    % {
+                        'worker': trabajador.display_name or trabajador.name,
+                        'zone': target_zone.display_name or target_zone.name,
+                    }
+                )
+            vacacion = vacaciones_por_trabajador.get(trabajador.id)
+            if vacacion:
+                raise ValidationError(
+                    _("El AP %(worker)s tiene vacaciones el dia %(date)s y no se puede confirmar este horario.")
+                    % {
+                        'worker': trabajador.display_name or trabajador.name,
+                        'date': fields.Date.to_string(assignment.fecha),
+                    }
+                )
+
+        for worker_lines in lineas_por_trabajador.values():
+            previous_line = False
+            for line in sorted(worker_lines, key=lambda item: (item.hora_inicio, item.hora_fin, item.id)):
+                if previous_line and line.hora_inicio < previous_line.hora_fin:
+                    trabajador = line.trabajador_id or previous_line.trabajador_id
+                    raise ValidationError(
+                        _("El AP %(worker)s tiene dos tramos solapados dentro del mismo horario.")
+                        % {
+                            'worker': trabajador.display_name or trabajador.name,
+                        }
+                    )
+                previous_line = line
+
+        return target_lines
+
+    def _collect_batch_overlap_conflicts(self, assignments):
+        protected_ids = set()
+        overlap_ids = set()
+        protected_summary = []
+        overlap_summary = []
+        seen_conflict_ids = set()
+        viewer = self.env.user
+
+        for asignacion in assignments:
+            target_lines = self._run_fixed_assignment_target_checks(asignacion)
+            if not target_lines:
+                continue
+
+            current_line_ids = set(target_lines.ids)
+            otras_lineas = self.env['portalgestor.asignacion.linea'].search(
+                [
+                    ('trabajador_id', 'in', target_lines.mapped('trabajador_id').ids),
+                    ('fecha', '=', asignacion.fecha),
+                ],
+                order='asignacion_id, trabajador_id, hora_inicio, hora_fin, id',
+            ).filtered(
+                lambda line: line.id not in current_line_ids and line.trabajador_id
+            )
+            user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
+                otras_lineas.mapped('asignacion_id.usuario_id').ids
+            )
+            otras_por_trabajador = {}
+            for otra_linea in otras_lineas:
+                otras_por_trabajador.setdefault(otra_linea.trabajador_id.id, []).append(otra_linea)
+
+            for linea in target_lines:
+                for conflicto in otras_por_trabajador.get(linea.trabajador_id.id, []):
+                    overlap = min(linea.hora_fin, conflicto.hora_fin) - max(
+                        linea.hora_inicio, conflicto.hora_inicio
+                    )
+                    if overlap <= 0:
+                        continue
+                    if conflicto.id in seen_conflict_ids:
+                        continue
+                    seen_conflict_ids.add(conflicto.id)
+                    summary_line = _(
+                        "%(date)s | %(worker)s | %(start)s - %(end)s | %(user)s"
+                    ) % {
+                        'date': fields.Date.to_string(asignacion.fecha),
+                        'worker': linea.trabajador_id.display_name or linea.trabajador_id.name,
+                        'start': asignacion._format_hora(conflicto.hora_inicio),
+                        'end': asignacion._format_hora(conflicto.hora_fin),
+                        'user': (
+                            user_view_data.get(conflicto.asignacion_id.usuario_id.id, {}).get('display_name')
+                            or conflicto.asignacion_id.usuario_id.display_name
+                        ),
+                    }
+                    if not viewer._can_manage_target_group(conflicto.asignacion_id.usuario_id.grupo):
+                        protected_ids.add(conflicto.id)
+                        protected_summary.append(summary_line)
+                    else:
+                        overlap_ids.add(conflicto.id)
+                        overlap_summary.append(summary_line)
+
+        return {
+            'protected': sorted(protected_ids),
+            'overlapping': sorted(overlap_ids),
+            'protected_summary': "\n".join(protected_summary),
+            'overlap_summary': "\n".join(overlap_summary),
+        }
+
+    def _launch_batch_conflict_wizard(self, conflict_type, conflict_line_ids, summary_text):
+        wizard = self.env['portalgestor.conflict.wizard'].create({
+            'asignacion_mensual_id': self.id,
+            'conflict_type': conflict_type,
+            'batch_conflict_line_ids': [(6, 0, conflict_line_ids)],
+            'info_resumen': summary_text,
+        })
+        return {
+            'name': 'Conflicto de Horario',
+            'type': 'ir.actions.act_window',
+            'res_model': 'portalgestor.conflict.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
 
     def action_editar(self):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        if self.confirmado and not self.edit_session_pending:
+            self._set_edit_snapshot()
         self.confirmado = False
         self.asignacion_linea_ids.mapped('asignacion_id').write({'confirmado': False})
         return True
+
+    def action_eliminar_horario(self):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        self.unlink()
+        return {'type': 'ir.actions.act_window_close'}
 
     def unlink(self):
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from odoo import fields
@@ -601,7 +601,9 @@ class TestPortalGestorOptimizations(TransactionCase):
             [(8.0, 10.0, trabajador_baja)],
         )
 
-        trabajador_baja.write({'baja': True})
+        trabajador_baja.with_context(
+            portalgestor_cutoff_datetime=datetime.combine(hoy, datetime.min.time()),
+        ).write({'baja': True})
 
         lineas_hoy = asignacion_hoy.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.id))
         self.assertEqual(asignacion_pasada.lineas_ids.trabajador_id, trabajador_baja)
@@ -638,7 +640,9 @@ class TestPortalGestorOptimizations(TransactionCase):
             [(10.0, 12.0, trabajador)],
         )
 
-        self.usuario_a.write({'baja': True})
+        self.usuario_a.with_context(
+            portalgestor_cutoff_datetime=datetime.combine(hoy, datetime.min.time()),
+        ).write({'baja': True})
 
         self.assertTrue(asignacion_pasada.exists())
         self.assertFalse(asignacion_hoy.exists())
@@ -778,6 +782,27 @@ class TestPortalGestorOptimizations(TransactionCase):
         )
         self.assertTrue(all(asignaciones.mapped('confirmado')))
 
+    def test_fixed_assignment_verification_confirms_midnight_range(self):
+        trabajador = self._create_worker('Fijo Medianoche')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fields.Date.to_date('2099-05-20'),
+            fields.Date.to_date('2099-05-22'),
+            [(0.0, 1.0, trabajador)],
+        )
+
+        result = trabajo_fijo.action_verificar_y_confirmar()
+
+        self.assertTrue(result)
+        self.assertTrue(trabajo_fijo.confirmado)
+        self.assertEqual(trabajo_fijo.total_dias_generados, 3)
+        self.assertEqual(trabajo_fijo.total_lineas_generadas, 3)
+        self.assertTrue(all(
+            self.env['portalgestor.asignacion'].browse(
+                trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id').ids
+            ).mapped('confirmado')
+        ))
+
     def test_fixed_assignment_verification_detects_overlapping_assignments(self):
         fecha = fields.Date.to_date('2099-05-22')
         trabajador = self._create_worker('Fijo Verificar Solape')
@@ -798,7 +823,45 @@ class TestPortalGestorOptimizations(TransactionCase):
         self.assertEqual(action['res_model'], 'portalgestor.conflict.wizard')
         wizard = self.env[action['res_model']].browse(action['res_id'])
         self.assertEqual(wizard.asignacion_mensual_id, trabajo_fijo)
-        self.assertEqual(wizard.conflict_type, 'overlapping')
+        self.assertEqual(wizard.conflict_type, 'overlapping_batch')
+        self.assertEqual(len(wizard.batch_conflict_line_ids), 1)
+
+    def test_fixed_assignment_verification_batches_same_user_overwrites(self):
+        fecha_inicio = fields.Date.to_date('2099-05-24')
+        fecha_fin = fields.Date.to_date('2099-05-26')
+        trabajador = self._create_worker('Fijo Batch Mismo Usuario')
+
+        trabajo_fijo_original = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha_inicio,
+            fecha_fin,
+            [(0.0, 1.0, trabajador)],
+        )
+        trabajo_fijo_original.action_verificar_y_confirmar()
+
+        trabajo_fijo_nuevo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha_inicio,
+            fecha_fin,
+            [(0.0, 1.0, trabajador)],
+        )
+
+        action = trabajo_fijo_nuevo.action_verificar_y_confirmar()
+
+        self.assertEqual(action['res_model'], 'portalgestor.conflict.wizard')
+        wizard = self.env[action['res_model']].browse(action['res_id'])
+        self.assertEqual(wizard.conflict_type, 'overlapping_batch')
+        self.assertEqual(len(wizard.batch_conflict_line_ids), 3)
+
+        result = wizard.action_confirm()
+
+        self.assertEqual(result['type'], 'ir.actions.act_window_close')
+        self.assertTrue(trabajo_fijo_nuevo.confirmado)
+        self.assertTrue(all(
+            self.env['portalgestor.asignacion'].browse(
+                trabajo_fijo_nuevo.asignacion_linea_ids.mapped('asignacion_id').ids
+            ).mapped('confirmado')
+        ))
 
     def test_fixed_assignment_verification_keeps_same_day_warning(self):
         fecha = fields.Date.to_date('2099-05-23')
@@ -1114,7 +1177,9 @@ class TestPortalGestorOptimizations(TransactionCase):
             ('fecha', '=', manana),
         ])
 
-        trabajador.write({'baja': True})
+        trabajador.with_context(
+            portalgestor_cutoff_datetime=datetime.combine(hoy, datetime.min.time()),
+        ).write({'baja': True})
 
         self.assertEqual(asignacion_pasada.lineas_ids.trabajador_id, trabajador)
         self.assertEqual(asignacion_pasada.lineas_ids.asignacion_mensual_id, trabajo_fijo)
@@ -1160,7 +1225,9 @@ class TestPortalGestorOptimizations(TransactionCase):
             ('fecha', '=', manana),
         ])
 
-        self.usuario_a.write({'baja': True})
+        self.usuario_a.with_context(
+            portalgestor_cutoff_datetime=datetime.combine(hoy, datetime.min.time()),
+        ).write({'baja': True})
 
         self.assertTrue(asignacion_pasada.exists())
         self.assertFalse(asignacion_hoy.exists())
@@ -1176,6 +1243,130 @@ class TestPortalGestorOptimizations(TransactionCase):
                 ('fecha', '=', hoy + timedelta(days=2)),
             ])
         )
+
+    def test_worker_baja_only_clears_future_hours_for_today(self):
+        hoy = fields.Date.to_date(fields.Date.context_today(self.env['portalgestor.asignacion']))
+        manana = hoy + timedelta(days=1)
+        trabajador_baja = self._create_worker('Baja Horas Trabajador')
+        trabajador_soporte = self._create_worker('Baja Horas Soporte')
+
+        asignacion_hoy = self._create_assignment(
+            self.usuario_a,
+            hoy,
+            [
+                (8.0, 12.0, trabajador_baja),
+                (12.0, 15.0, trabajador_baja),
+                (15.0, 17.0, trabajador_soporte),
+            ],
+        )
+        asignacion_manana = self._create_assignment(
+            self.usuario_a,
+            manana,
+            [(8.0, 10.0, trabajador_baja)],
+        )
+
+        trabajador_baja.with_context(
+            portalgestor_cutoff_datetime=datetime.combine(hoy, datetime.min.time()).replace(hour=12, minute=30),
+        ).write({'baja': True})
+
+        asignacion_hoy = self.env['portalgestor.asignacion'].browse(asignacion_hoy.id)
+        horas_hoy = sorted(
+            (
+                linea.hora_inicio,
+                linea.hora_fin,
+                linea.trabajador_id.id or False,
+            )
+            for linea in asignacion_hoy.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.id))
+        )
+        self.assertEqual(
+            horas_hoy,
+            [
+                (8.0, 12.0, trabajador_baja.id),
+                (12.0, 12.5, trabajador_baja.id),
+                (12.5, 15.0, False),
+                (15.0, 17.0, trabajador_soporte.id),
+            ],
+        )
+        self.assertFalse(self.env['portalgestor.asignacion'].browse(asignacion_manana.id).lineas_ids.trabajador_id)
+
+    def test_user_baja_only_clears_future_hours_for_today(self):
+        hoy = fields.Date.to_date(fields.Date.context_today(self.env['portalgestor.asignacion']))
+        manana = hoy + timedelta(days=1)
+        trabajador = self._create_worker('Baja Horas Usuario')
+
+        asignacion_hoy = self._create_assignment(
+            self.usuario_a,
+            hoy,
+            [
+                (8.0, 12.0, trabajador),
+                (12.0, 15.0, trabajador),
+            ],
+        )
+        asignacion_manana = self._create_assignment(
+            self.usuario_a,
+            manana,
+            [(8.0, 10.0, trabajador)],
+        )
+
+        self.usuario_a.with_context(
+            portalgestor_cutoff_datetime=datetime.combine(hoy, datetime.min.time()).replace(hour=12, minute=30),
+        ).write({'baja': True})
+
+        asignacion_hoy = self.env['portalgestor.asignacion'].browse(asignacion_hoy.id)
+        self.assertTrue(asignacion_hoy.exists())
+        self.assertEqual(
+            sorted(
+                (
+                    linea.hora_inicio,
+                    linea.hora_fin,
+                    linea.trabajador_id.id,
+                )
+                for linea in asignacion_hoy.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.id))
+            ),
+            [(8.0, 12.0, trabajador.id), (12.0, 12.5, trabajador.id)],
+        )
+        self.assertFalse(self.env['portalgestor.asignacion'].browse(asignacion_manana.id).exists())
+
+    def test_assignment_verification_rechecks_worker_vacations_after_date_change(self):
+        fecha_libre = fields.Date.to_date('2099-08-10')
+        fecha_vacacion = fields.Date.to_date('2099-08-11')
+        trabajador = self._create_worker('Cambio Fecha Vacacion')
+
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fecha_vacacion,
+            'date_stop': fecha_vacacion,
+        })
+
+        asignacion = self._create_assignment(
+            self.usuario_a,
+            fecha_libre,
+            [(8.0, 10.0, trabajador)],
+        )
+        asignacion.write({'fecha': fecha_vacacion})
+
+        with self.assertRaises(ValidationError):
+            asignacion.action_verificar_y_confirmar()
+
+    def test_fixed_assignment_verification_rechecks_worker_vacations(self):
+        fecha = fields.Date.to_date('2099-08-12')
+        trabajador = self._create_worker('Fijo Vacacion Verificar')
+
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fecha,
+            'date_stop': fecha,
+        })
+
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha,
+            fecha,
+            [(8.0, 10.0, trabajador)],
+        )
+
+        with self.assertRaises(ValidationError):
+            trabajo_fijo.action_verificar_y_confirmar()
 
     def test_worker_search_excludes_vacations_from_fixed_range_context(self):
         fecha_inicio = fields.Date.to_date('2099-07-01')
@@ -1201,6 +1392,81 @@ class TestPortalGestorOptimizations(TransactionCase):
         form_arch = self.env.ref('portalGestor.portalgestor_asignacion_mensual_form').arch_db
         self.assertIn('exclude_vacaciones_fecha_inicio', form_arch)
         self.assertIn("('baja', '=', False)", form_arch)
+
+    def test_assignment_forms_include_delete_button(self):
+        asignacion_form_arch = self.env.ref('portalGestor.portalgestor_asignacion_form').arch_db
+        asignacion_mensual_form_arch = self.env.ref('portalGestor.portalgestor_asignacion_mensual_form').arch_db
+
+        self.assertIn('action_eliminar_horario', asignacion_form_arch)
+        self.assertIn('action_eliminar_horario', asignacion_mensual_form_arch)
+
+    def test_confirmed_assignment_restore_snapshot_when_edit_is_discarded(self):
+        fecha_confirmada = fields.Date.to_date('2099-08-20')
+        fecha_editada = fields.Date.to_date('2099-08-21')
+        trabajador = self._create_worker('Snapshot Diario')
+        asignacion = self._create_assignment(
+            self.usuario_a,
+            fecha_confirmada,
+            [(8.0, 10.0, trabajador)],
+        )
+        asignacion.write({'confirmado': True})
+
+        asignacion.action_editar()
+        asignacion.write({
+            'fecha': fecha_editada,
+            'lineas_ids': [(1, asignacion.lineas_ids.id, {'hora_inicio': 9.0, 'hora_fin': 11.0})],
+        })
+        asignacion.action_descartar_edicion()
+        asignacion.invalidate_recordset(['fecha', 'confirmado', 'edit_session_pending', 'edit_snapshot_data', 'lineas_ids'])
+
+        self.assertTrue(asignacion.confirmado)
+        self.assertFalse(asignacion.edit_session_pending)
+        self.assertFalse(asignacion.edit_snapshot_data)
+        self.assertEqual(asignacion.fecha, fecha_confirmada)
+        self.assertEqual(asignacion.lineas_ids.hora_inicio, 8.0)
+        self.assertEqual(asignacion.lineas_ids.hora_fin, 10.0)
+        self.assertEqual(asignacion.lineas_ids.trabajador_id, trabajador)
+
+    def test_confirmed_fixed_assignment_restore_snapshot_when_edit_is_discarded(self):
+        fecha_inicio = fields.Date.to_date('2099-08-22')
+        fecha_fin = fields.Date.to_date('2099-08-24')
+        trabajador_1 = self._create_worker('Snapshot Fijo 1')
+        trabajador_2 = self._create_worker('Snapshot Fijo 2')
+        trabajo_fijo = self._create_fixed_assignment(
+            self.usuario_a,
+            fecha_inicio,
+            fecha_fin,
+            [(8.0, 10.0, trabajador_1)],
+        )
+        trabajo_fijo.write({'confirmado': True})
+        trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id').write({'confirmado': True})
+
+        trabajo_fijo.action_editar()
+        trabajo_fijo.write({
+            'linea_fija_ids': [(1, trabajo_fijo.linea_fija_ids.id, {'trabajador_id': trabajador_2.id})],
+        })
+        trabajo_fijo.action_descartar_edicion()
+        trabajo_fijo.invalidate_recordset(['confirmado', 'edit_session_pending', 'edit_snapshot_data', 'linea_fija_ids'])
+
+        self.assertTrue(trabajo_fijo.confirmado)
+        self.assertFalse(trabajo_fijo.edit_session_pending)
+        self.assertFalse(trabajo_fijo.edit_snapshot_data)
+        self.assertEqual(trabajo_fijo.linea_fija_ids.trabajador_id, trabajador_1)
+        self.assertTrue(all(trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id.confirmado')))
+
+    def test_vacation_calendar_uses_worker_internal_color(self):
+        trabajador = self._create_worker('Color Vacaciones')
+        trabajador.write({'color': 4})
+        vacacion = self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fields.Date.to_date('2099-08-25'),
+            'date_stop': fields.Date.to_date('2099-08-25'),
+        })
+
+        calendar_arch = self.env.ref('trabajadores.vacacion_calendar').arch_db
+
+        self.assertEqual(vacacion.trabajador_color, 4)
+        self.assertIn('color="trabajador_color"', calendar_arch)
 
     def test_assignment_rejects_usuario_without_ap_service(self):
         usuario_sin_ap = self.env['usuarios.usuario'].create({

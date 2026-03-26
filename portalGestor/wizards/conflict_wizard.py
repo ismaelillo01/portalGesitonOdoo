@@ -11,12 +11,21 @@ class ConflictWizard(models.TransientModel):
     asignacion_mensual_id = fields.Many2one('portalgestor.asignacion.mensual')
     conflict_type = fields.Selection([
         ('overlapping', 'Solapamiento de Horas'),
+        ('overlapping_batch', 'Solapamiento de Horas en lote'),
         ('protected_intecum_overlapping', 'Solapamiento protegido de Intecum'),
+        ('protected_intecum_overlapping_batch', 'Solapamiento protegido de Intecum en lote'),
         ('info_same_day', 'Aviso informativo: mismo dia'),
     ])
 
     linea_actual_id = fields.Many2one('portalgestor.asignacion.linea')
     linea_conflicto_id = fields.Many2one('portalgestor.asignacion.linea')
+    batch_conflict_line_ids = fields.Many2many(
+        'portalgestor.asignacion.linea',
+        'portalgestor_conflict_wizard_line_rel',
+        'wizard_id',
+        'line_id',
+        string='Lineas en conflicto',
+    )
     info_resumen = fields.Text(string='Resumen de avisos')
     mensaje = fields.Text(compute='_compute_mensaje')
     can_override = fields.Boolean(compute='_compute_can_override')
@@ -40,6 +49,13 @@ class ConflictWizard(models.TransientModel):
                     f"{usuario_conflicto} en el horario {horas_conflicto}. Si confirmas, la franja "
                     f"anterior quedara sin AP asignado para su revision."
                 )
+            elif record.conflict_type == 'overlapping_batch':
+                total = len(record.batch_conflict_line_ids)
+                record.mensaje = (
+                    f"Atencion. Se van a reemplazar {total} tramos ya asignados en el trabajo fijo. "
+                    "Si confirmas, esas franjas anteriores quedaran sin AP asignado para su revision.\n\n"
+                    + (record.info_resumen or '')
+                )
             elif record.conflict_type == 'protected_intecum_overlapping':
                 trabajador = record.linea_actual_id.trabajador_id.name or ''
                 usuario_conflicto = record.linea_conflicto_id.asignacion_id.usuario_id.display_name or ''
@@ -50,6 +66,12 @@ class ConflictWizard(models.TransientModel):
                 record.mensaje = (
                     f"El AP {trabajador} ya esta asignado a {usuario_conflicto} en el horario "
                     f"{horas_conflicto}. Los gestores Agusto no pueden sobrescribir horarios de usuarios Intecum."
+                )
+            elif record.conflict_type == 'protected_intecum_overlapping_batch':
+                record.mensaje = (
+                    "Hay tramos del trabajo fijo que ya pertenecen a usuarios Intecum. "
+                    "Los gestores Agusto no pueden sobrescribirlos.\n\n"
+                    + (record.info_resumen or '')
                 )
             elif record.conflict_type == 'info_same_day':
                 record.mensaje = (
@@ -64,7 +86,7 @@ class ConflictWizard(models.TransientModel):
     @api.depends('conflict_type')
     def _compute_can_override(self):
         for record in self:
-            record.can_override = record.conflict_type in ('overlapping', 'info_same_day')
+            record.can_override = record.conflict_type in ('overlapping', 'overlapping_batch', 'info_same_day')
 
     def _resume_verification(self):
         self.ensure_one()
@@ -76,7 +98,7 @@ class ConflictWizard(models.TransientModel):
 
     def action_confirm(self):
         self.ensure_one()
-        if self.conflict_type == 'protected_intecum_overlapping':
+        if self.conflict_type in ('protected_intecum_overlapping', 'protected_intecum_overlapping_batch'):
             raise AccessError("Los gestores Agusto no pueden sobrescribir horarios de usuarios Intecum.")
         if self.conflict_type == 'overlapping':
             self.linea_conflicto_id.write({'trabajador_id': False})
@@ -84,9 +106,19 @@ class ConflictWizard(models.TransientModel):
             if isinstance(result, dict):
                 return result
             return {'type': 'ir.actions.act_window_close'}
+        if self.conflict_type == 'overlapping_batch':
+            self.batch_conflict_line_ids.write({'trabajador_id': False})
+            result = self._resume_verification()
+            if isinstance(result, dict):
+                return result
+            return {'type': 'ir.actions.act_window_close'}
 
         if self.conflict_type == 'info_same_day':
-            self.asignacion_id.confirmado = True
+            self.asignacion_id.write({
+                'confirmado': True,
+                'edit_session_pending': False,
+                'edit_snapshot_data': False,
+            })
             if self.asignacion_mensual_id:
                 result = self._resume_verification()
                 if isinstance(result, dict):

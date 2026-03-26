@@ -14,6 +14,7 @@
         'web.assets_backend': [
             'portalGestor/static/src/js/portalgestor_float_time_input.js',
             'portalGestor/static/src/js/portalgestor_calendar_order.js',
+            'portalGestor/static/src/js/portalgestor_edit_session_guard.js',
             'portalGestor/static/src/js/portalgestor_user_badges.js',
             'portalGestor/static/src/js/trabajadores_vacacion_markers.js',
             'portalGestor/static/src/js/portalgestor_calendar_summary.js',

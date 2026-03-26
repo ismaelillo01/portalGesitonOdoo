@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from collections import defaultdict
 from markupsafe import escape
 
@@ -41,6 +42,8 @@ class Asignacion(models.Model):
     fecha = fields.Date(string='Fecha', required=True, default=fields.Date.context_today, index=True)
     lineas_ids = fields.One2many('portalgestor.asignacion.linea', 'asignacion_id', string='Horarios')
     confirmado = fields.Boolean(string='Horario Confirmado', default=False)
+    edit_session_pending = fields.Boolean(string='Edicion pendiente', default=False, copy=False)
+    edit_snapshot_data = fields.Text(string='Snapshot de edicion', copy=False)
     trabajador_calendar_filter_id = fields.Many2one(
         'trabajadores.trabajador',
         string='AP',
@@ -289,6 +292,114 @@ class Asignacion(models.Model):
             }
         return snapshot
 
+    def _get_edit_snapshot_payload(self):
+        self.ensure_one()
+        return {
+            'confirmado': bool(self.confirmado),
+            'fecha': fields.Date.to_string(self.fecha) if self.fecha else False,
+            'usuario_id': self.usuario_id.id or False,
+            'lineas': [
+                {
+                    'hora_inicio': linea.hora_inicio,
+                    'hora_fin': linea.hora_fin,
+                    'trabajador_id': linea.trabajador_id.id or False,
+                    'asignacion_mensual_id': linea.asignacion_mensual_id.id or False,
+                    'asignacion_mensual_linea_id': linea.asignacion_mensual_linea_id.id or False,
+                }
+                for linea in self.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id))
+            ],
+        }
+
+    def _set_edit_snapshot(self):
+        for record in self:
+            if record.edit_session_pending:
+                continue
+            record.write({
+                'edit_session_pending': True,
+                'edit_snapshot_data': json.dumps(record._get_edit_snapshot_payload()),
+            })
+
+    def _clear_edit_snapshot(self):
+        if not self:
+            return
+        self.write({
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+        })
+
+    def _restore_edit_snapshot(self):
+        AsignacionLinea = self.env['portalgestor.asignacion.linea']
+        for record in self.exists().filtered(lambda assignment: assignment.edit_session_pending and assignment.edit_snapshot_data):
+            before_state = record._get_calendar_realtime_snapshot()
+            snapshot = json.loads(record.edit_snapshot_data)
+            current_date = record.fecha
+            snapshot_date = fields.Date.to_date(snapshot.get('fecha'))
+            snapshot_monthly_ids = {
+                line_data.get('asignacion_mensual_id')
+                for line_data in snapshot.get('lineas', [])
+                if line_data.get('asignacion_mensual_id')
+            }
+
+            record.lineas_ids.with_context(
+                portalgestor_skip_calendar_notify=True,
+                portalgestor_skip_fixed_exception=True,
+            ).unlink()
+            record.with_context(portalgestor_skip_calendar_notify=True).write({
+                'usuario_id': snapshot.get('usuario_id') or False,
+                'fecha': snapshot_date,
+                'confirmado': bool(snapshot.get('confirmado', True)),
+            })
+
+            line_values = []
+            for line_data in snapshot.get('lineas', []):
+                line_values.append({
+                    'asignacion_id': record.id,
+                    'hora_inicio': line_data['hora_inicio'],
+                    'hora_fin': line_data['hora_fin'],
+                    'trabajador_id': line_data.get('trabajador_id') or False,
+                    'asignacion_mensual_id': line_data.get('asignacion_mensual_id') or False,
+                    'asignacion_mensual_linea_id': line_data.get('asignacion_mensual_linea_id') or False,
+                })
+            if line_values:
+                AsignacionLinea.with_context(
+                    portalgestor_skip_calendar_notify=True,
+                    portalgestor_skip_fixed_exception=True,
+                ).create(line_values)
+
+            if snapshot_monthly_ids:
+                exceptions = self.env['portalgestor.asignacion.mensual.excepcion'].search([
+                    ('asignacion_mensual_id', 'in', sorted(snapshot_monthly_ids)),
+                    ('fecha', 'in', list({date_value for date_value in [current_date, snapshot_date] if date_value})),
+                ])
+                if exceptions:
+                    exceptions.unlink()
+                monthly_records = self.env['portalgestor.asignacion.mensual'].browse(sorted(snapshot_monthly_ids)).exists()
+                for monthly in monthly_records:
+                    has_unconfirmed_generated = monthly.asignacion_linea_ids.mapped('asignacion_id').filtered(
+                        lambda asignacion: not asignacion.confirmado
+                    )
+                    if not has_unconfirmed_generated:
+                        monthly.write({'confirmado': True})
+
+            record.with_context(portalgestor_skip_calendar_notify=True).write({
+                'edit_session_pending': False,
+                'edit_snapshot_data': False,
+            })
+            record._send_calendar_update_notification(
+                record._build_calendar_update_payload(
+                    before_state=before_state,
+                    after_state=record.exists()._get_calendar_realtime_snapshot(),
+                    action_kind='write',
+                )
+            )
+        return True
+
+    def action_descartar_edicion(self):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        self._restore_edit_snapshot()
+        return True
+
     @api.model
     def _build_calendar_update_payload(self, before_state=None, after_state=None, action_kind='write'):
         before_state = before_state or {}
@@ -405,13 +516,61 @@ class Asignacion(models.Model):
         return fields.Date.to_date(start_date) or fields.Date.to_date(fields.Date.context_today(self))
 
     @api.model
-    def release_future_worker_assignments(self, worker_ids, start_date=None):
+    def _normalize_calendar_cutoff_hour(self, start_hour):
+        if start_hour is None:
+            return None
+        return min(max(float(start_hour), 0.0), 24.0)
+
+    @api.model
+    def _get_future_calendar_cutoff(self, start_date=None, start_hour=None):
+        cutoff_date = fields.Date.to_date(start_date)
+        cutoff_hour = self._normalize_calendar_cutoff_hour(start_hour)
+        if cutoff_date is not None and cutoff_hour is None:
+            return cutoff_date, 0.0
+
+        context_cutoff = self.env.context.get('portalgestor_cutoff_datetime')
+        if cutoff_date is None or cutoff_hour is None:
+            cutoff_datetime = (
+                fields.Datetime.to_datetime(context_cutoff)
+                if context_cutoff
+                else fields.Datetime.now()
+            )
+            cutoff_datetime = fields.Datetime.context_timestamp(self, cutoff_datetime)
+            if cutoff_date is None:
+                cutoff_date = cutoff_datetime.date()
+            if cutoff_hour is None:
+                cutoff_hour = (
+                    cutoff_datetime.hour
+                    + cutoff_datetime.minute / 60.0
+                    + cutoff_datetime.second / 3600.0
+                )
+        return cutoff_date, self._normalize_calendar_cutoff_hour(cutoff_hour) or 0.0
+
+    @api.model
+    def _mark_fixed_lines_as_manual_exception(self, lineas):
+        fixed_lines = lineas.filtered('asignacion_mensual_id')
+        if not fixed_lines:
+            return fixed_lines
+
+        self.env['portalgestor.asignacion.linea']._ensure_fixed_day_exceptions(
+            {
+                (linea.asignacion_mensual_id.id, linea.fecha)
+                for linea in fixed_lines
+                if linea.asignacion_mensual_id and linea.fecha
+            },
+            'manual',
+        )
+        fixed_lines.mapped('asignacion_mensual_id')._mark_unconfirmed()
+        return fixed_lines
+
+    @api.model
+    def release_future_worker_assignments(self, worker_ids, start_date=None, start_hour=None):
         worker_ids = worker_ids.ids if hasattr(worker_ids, 'ids') else worker_ids
         worker_ids = [worker_id for worker_id in worker_ids if worker_id]
         if not worker_ids:
             return self.env['portalgestor.asignacion.linea']
 
-        fecha_inicio = self._get_future_calendar_start_date(start_date)
+        fecha_inicio, hora_inicio = self._get_future_calendar_cutoff(start_date, start_hour)
         lineas = self.env['portalgestor.asignacion.linea'].search([
             ('trabajador_id', 'in', worker_ids),
             ('fecha', '>=', fecha_inicio),
@@ -419,36 +578,96 @@ class Asignacion(models.Model):
         if not lineas:
             return lineas
 
-        lineas_fijas = lineas.filtered('asignacion_mensual_linea_id')
-        lineas_individuales = lineas - lineas_fijas
-        if lineas_individuales:
-            lineas_individuales.write({'trabajador_id': False})
-        if lineas_fijas:
-            lineas_fijas.with_context(
-                portalgestor_skip_fixed_exception=True,
-            ).write({
-                'trabajador_id': False,
-                'asignacion_mensual_id': False,
-                'asignacion_mensual_linea_id': False,
-            })
+        lineas_futuras = lineas.filtered(
+            lambda linea: linea.fecha > fecha_inicio or linea.hora_inicio >= hora_inicio
+        )
+        lineas_partidas = lineas.filtered(
+            lambda linea: linea.fecha == fecha_inicio and linea.hora_inicio < hora_inicio < linea.hora_fin
+        )
+
+        if lineas_futuras:
+            lineas_futuras_fijas = lineas_futuras.filtered('asignacion_mensual_linea_id')
+            lineas_futuras_individuales = lineas_futuras - lineas_futuras_fijas
+            if lineas_futuras_individuales:
+                lineas_futuras_individuales.write({'trabajador_id': False})
+            if lineas_futuras_fijas:
+                lineas_futuras_fijas.mapped('asignacion_mensual_id')._mark_unconfirmed()
+                lineas_futuras_fijas.with_context(
+                    portalgestor_skip_fixed_exception=True,
+                ).write({
+                    'trabajador_id': False,
+                    'asignacion_mensual_id': False,
+                    'asignacion_mensual_linea_id': False,
+                })
+
+        if lineas_partidas:
+            self._mark_fixed_lines_as_manual_exception(lineas_partidas)
+            for linea in lineas_partidas.sorted(key=lambda item: (item.fecha, item.hora_inicio, item.id)):
+                original_end = linea.hora_fin
+                write_vals = {'hora_fin': hora_inicio}
+                if linea.asignacion_mensual_linea_id:
+                    write_vals.update({
+                        'asignacion_mensual_id': False,
+                        'asignacion_mensual_linea_id': False,
+                    })
+                linea.with_context(
+                    portalgestor_skip_fixed_exception=True,
+                ).write(write_vals)
+                if hora_inicio < original_end:
+                    self.env['portalgestor.asignacion.linea'].with_context(
+                        portalgestor_skip_fixed_exception=True,
+                    ).create({
+                        'asignacion_id': linea.asignacion_id.id,
+                        'hora_inicio': hora_inicio,
+                        'hora_fin': original_end,
+                        'trabajador_id': False,
+                    })
         return lineas
 
     @api.model
-    def cancel_future_user_assignments(self, usuario_ids, start_date=None):
+    def cancel_future_user_assignments(self, usuario_ids, start_date=None, start_hour=None):
         usuario_ids = usuario_ids.ids if hasattr(usuario_ids, 'ids') else usuario_ids
         usuario_ids = [usuario_id for usuario_id in usuario_ids if usuario_id]
         if not usuario_ids:
             return self
 
-        fecha_inicio = self._get_future_calendar_start_date(start_date)
+        fecha_inicio, hora_inicio = self._get_future_calendar_cutoff(start_date, start_hour)
         asignaciones = self.search([
             ('usuario_id', 'in', usuario_ids),
             ('fecha', '>=', fecha_inicio),
         ])
-        if asignaciones:
-            asignaciones.with_context(
+        if not asignaciones:
+            return asignaciones
+
+        asignaciones_hoy = asignaciones.filtered(lambda asignacion: asignacion.fecha == fecha_inicio)
+        asignaciones_futuras = asignaciones.filtered(lambda asignacion: asignacion.fecha > fecha_inicio)
+        if asignaciones_futuras:
+            asignaciones_futuras.with_context(
                 portalgestor_skip_fixed_exception=True,
             ).unlink()
+
+        for asignacion in asignaciones_hoy.exists():
+            lineas_futuras = asignacion.lineas_ids.filtered(lambda linea: linea.hora_inicio >= hora_inicio)
+            lineas_partidas = asignacion.lineas_ids.filtered(
+                lambda linea: linea.hora_inicio < hora_inicio < linea.hora_fin
+            )
+            self._mark_fixed_lines_as_manual_exception(lineas_partidas)
+            if lineas_futuras:
+                lineas_futuras.filtered('asignacion_mensual_id').mapped('asignacion_mensual_id')._mark_unconfirmed()
+                lineas_futuras.with_context(
+                    portalgestor_skip_fixed_exception=True,
+                ).unlink()
+            for linea in lineas_partidas.sorted(key=lambda item: (item.hora_inicio, item.id)):
+                write_vals = {'hora_fin': hora_inicio}
+                if linea.asignacion_mensual_linea_id:
+                    write_vals.update({
+                        'asignacion_mensual_id': False,
+                        'asignacion_mensual_linea_id': False,
+                    })
+                linea.with_context(
+                    portalgestor_skip_fixed_exception=True,
+                ).write(write_vals)
+            asignacion.cleanup_empty_assignments()
         return asignaciones
 
     def cleanup_empty_assignments(self):
@@ -486,6 +705,8 @@ class Asignacion(models.Model):
         if vals.get('usuario_id'):
             target_users |= self.env['usuarios.usuario'].browse(vals['usuario_id']).exists()
         self._ensure_current_user_can_manage_users(target_users)
+        if vals.get('confirmado') is True:
+            vals = dict(vals, edit_session_pending=False, edit_snapshot_data=False)
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             return super().write(vals)
 
@@ -527,9 +748,7 @@ class Asignacion(models.Model):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
 
-        lineas_con_trabajador = self.lineas_ids.filtered('trabajador_id').sorted(
-            key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
-        )
+        lineas_con_trabajador = self._run_verification_checks()
         if not lineas_con_trabajador:
             return True
 
@@ -599,8 +818,79 @@ class Asignacion(models.Model):
         result = self._get_verification_action()
         if isinstance(result, dict):
             return result
-        self.confirmado = True
+        self.write({
+            'confirmado': True,
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+        })
         return True
+
+    def _run_verification_checks(self):
+        self.ensure_one()
+        if self.usuario_id.baja:
+            raise ValidationError(_("No puedes confirmar un horario para un usuario dado de baja."))
+        if not self.usuario_id.has_ap_service:
+            raise ValidationError(_("Solo puedes confirmar horarios para usuarios con el servicio AP activo."))
+
+        lineas_con_trabajador = self.lineas_ids.filtered('trabajador_id').sorted(
+            key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
+        )
+        if not lineas_con_trabajador:
+            return lineas_con_trabajador
+
+        vacaciones = self.env['trabajadores.vacacion'].search([
+            ('trabajador_id', 'in', lineas_con_trabajador.mapped('trabajador_id').ids),
+            ('date_start', '<=', self.fecha),
+            ('date_stop', '>=', self.fecha),
+        ])
+        vacaciones_por_trabajador = {vacacion.trabajador_id.id: vacacion for vacacion in vacaciones}
+        target_zone = self.usuario_id.zona_trabajo_id
+        lineas_por_trabajador = defaultdict(list)
+
+        for linea in lineas_con_trabajador:
+            trabajador = linea.trabajador_id
+            lineas_por_trabajador[trabajador.id].append(linea)
+            if trabajador.baja:
+                raise ValidationError(
+                    _("El AP %(worker)s esta dado de baja y no se puede confirmar en %(date)s.")
+                    % {
+                        'worker': trabajador.display_name or trabajador.name,
+                        'date': fields.Date.to_string(self.fecha),
+                    }
+                )
+            if target_zone and target_zone not in trabajador.zona_trabajo_ids:
+                raise ValidationError(
+                    _("El AP %(worker)s no pertenece a la zona %(zone)s del usuario.")
+                    % {
+                        'worker': trabajador.display_name or trabajador.name,
+                        'zone': target_zone.display_name or target_zone.name,
+                    }
+                )
+            vacacion = vacaciones_por_trabajador.get(trabajador.id)
+            if vacacion:
+                raise ValidationError(
+                    _("El AP %(worker)s tiene vacaciones el dia %(date)s y no se puede confirmar este horario.")
+                    % {
+                        'worker': trabajador.display_name or trabajador.name,
+                        'date': fields.Date.to_string(self.fecha),
+                    }
+                )
+
+        for trabajador_id, worker_lines in lineas_por_trabajador.items():
+            ordered_lines = sorted(worker_lines, key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id))
+            previous_line = False
+            for linea in ordered_lines:
+                if previous_line and linea.hora_inicio < previous_line.hora_fin:
+                    trabajador = linea.trabajador_id or previous_line.trabajador_id
+                    raise ValidationError(
+                        _("El AP %(worker)s tiene dos tramos solapados dentro del mismo horario.")
+                        % {
+                            'worker': trabajador.display_name or trabajador.name,
+                        }
+                    )
+                previous_line = linea
+
+        return lineas_con_trabajador
 
     def _launch_info_wizard(self, resumen, asignacion_mensual_id=False):
         wizard = self.env['portalgestor.conflict.wizard'].create({
@@ -621,8 +911,16 @@ class Asignacion(models.Model):
     def action_editar(self):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        if self.confirmado and not self.edit_session_pending:
+            self._set_edit_snapshot()
         self.confirmado = False
         return True
+
+    def action_eliminar_horario(self):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        self.unlink()
+        return {'type': 'ir.actions.act_window_close'}
 
     def _launch_wizard(self, conflict_type, linea_actual_id, linea_conflicto_id, asignacion_mensual_id=False):
         wizard = self.env['portalgestor.conflict.wizard'].create({

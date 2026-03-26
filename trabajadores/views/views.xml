@@ -76,8 +76,9 @@
         <field name="name">vacacion.calendar</field>
         <field name="model">trabajadores.vacacion</field>
         <field name="arch" type="xml">
-            <calendar string="Vacaciones" date_start="date_start" date_stop="date_stop" color="trabajador_id" mode="month" quick_create="False">
+            <calendar string="Vacaciones" date_start="date_start" date_stop="date_stop" color="trabajador_color" mode="month" quick_create="False">
                 <field name="trabajador_id"/>
+                <field name="trabajador_color" invisible="1"/>
             </calendar>
         </field>
     </record>

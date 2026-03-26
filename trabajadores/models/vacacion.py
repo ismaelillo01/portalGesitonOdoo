@@ -14,6 +14,12 @@ class Vacacion(models.Model):
         ondelete='cascade',
         index=True,
     )
+    trabajador_color = fields.Integer(
+        related='trabajador_id.color',
+        string='Color del AP',
+        store=True,
+        readonly=True,
+    )
     date_start = fields.Date(string='Fecha Inicio', required=True, index=True)
     date_stop = fields.Date(string='Fecha Fin', required=True, index=True)
 
