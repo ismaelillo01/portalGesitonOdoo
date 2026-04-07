@@ -7,6 +7,7 @@ import { patch } from "@web/core/utils/patch";
 import { user } from "@web/core/user";
 import { useOwnedDialogs, useService } from "@web/core/utils/hooks";
 import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
+import { CalendarController } from "@web/views/calendar/calendar_controller";
 import { CalendarModel } from "@web/views/calendar/calendar_model";
 import { CalendarCommonRenderer } from "@web/views/calendar/calendar_common/calendar_common_renderer";
 import { CalendarFilterPanel } from "@web/views/calendar/filter_panel/calendar_filter_panel";
@@ -21,6 +22,7 @@ const PORTAL_GESTOR_REALTIME_DEBOUNCE = 150;
 const USER_FILTER_FIELD = "usuario_id";
 const WORKER_FILTER_FIELD = "trabajador_calendar_filter_id";
 const FILTER_FIELDS = [USER_FILTER_FIELD, WORKER_FILTER_FIELD];
+const ONLY_MINE_STORAGE_KEY = `${TARGET_RES_MODEL}.onlyMine`;
 
 const FILTER_CONFIG = {
     [USER_FILTER_FIELD]: {
@@ -45,6 +47,41 @@ async function loadPortalGestorUserTypes(orm, userIds) {
     return orm.call("usuarios.usuario", "get_portalgestor_user_types", [ids]);
 }
 
+function getPortalGestorOnlyMineStorageKey() {
+    return `${ONLY_MINE_STORAGE_KEY}.${user.userId}`;
+}
+
+function getPortalGestorOnlyMineStoredValue() {
+    const rawValue = browser.sessionStorage.getItem(getPortalGestorOnlyMineStorageKey());
+    return rawValue ? JSON.parse(rawValue) : false;
+}
+
+function setPortalGestorOnlyMineStoredValue(value) {
+    browser.sessionStorage.setItem(getPortalGestorOnlyMineStorageKey(), JSON.stringify(Boolean(value)));
+}
+
+function getPortalGestorOwnerName(rawRecord) {
+    const ownerValue = rawRecord?.gestor_owner_id;
+    return Array.isArray(ownerValue) ? ownerValue[1] || "" : "";
+}
+
+function wrapPortalGestorEventContent(content, ownerName) {
+    if (!content?.domNodes?.length || !ownerName) {
+        return content;
+    }
+    const wrapper = document.createElement("div");
+    wrapper.className = "o_portalgestor_event_content";
+    for (const node of content.domNodes) {
+        wrapper.appendChild(node);
+    }
+    const ownerNode = document.createElement("span");
+    ownerNode.className = "o_portalgestor_event_owner";
+    ownerNode.textContent = ownerName;
+    ownerNode.title = `${_t("Gestor")}: ${ownerName}`;
+    wrapper.appendChild(ownerNode);
+    return { domNodes: [wrapper] };
+}
+
 export class PortalGestorBucketDialog extends Component {
     static template = "portalGestor.CalendarBucketDialog";
     static components = { Dialog };
@@ -55,6 +92,7 @@ export class PortalGestorBucketDialog extends Component {
         count: Number,
         formViewId: { type: [Number, Boolean], optional: true },
         label: String,
+        portalGestorContext: { type: Object, optional: true },
         records: Array,
         title: String,
     };
@@ -99,10 +137,12 @@ export class PortalGestorBucketDialog extends Component {
     }
 
     async reloadRecords() {
-        const records = await this.orm.call(TARGET_RES_MODEL, "get_calendar_bucket_records", [
-            this.props.bucketDate,
-            this.props.bucketType,
-        ]);
+        const records = await this.orm.call(
+            TARGET_RES_MODEL,
+            "get_calendar_bucket_records",
+            [this.props.bucketDate, this.props.bucketType],
+            { context: this.props.portalGestorContext || {} }
+        );
         this.state.records = records;
         this.state.count = records.length;
     }
@@ -152,8 +192,8 @@ function clonePortalGestorBuckets(buckets = []) {
     return buckets.map((bucket) => ({ ...bucket }));
 }
 
-function getPortalGestorRangeKey(startISO, endISO) {
-    return `${startISO}|${endISO}`;
+function getPortalGestorRangeKey(startISO, endISO, scopeKey = "all") {
+    return `${startISO}|${endISO}|${scopeKey}`;
 }
 
 function mergePortalGestorPayload(currentPayload, nextPayload) {
@@ -191,6 +231,16 @@ patch(CalendarModel.prototype, {
 
     get portalGestorBucketEvents() {
         return this.data.portalGestorBucketEvents || [];
+    },
+
+    isPortalGestorOnlyMineEnabled() {
+        return Boolean(this.meta.context?.portalgestor_only_my_schedules);
+    },
+
+    getPortalGestorOrmContext() {
+        return this.isPortalGestorOnlyMineEnabled()
+            ? { portalgestor_only_my_schedules: true }
+            : {};
     },
 
     makeContextDefaults(rawRecord) {
@@ -252,7 +302,11 @@ patch(CalendarModel.prototype, {
     },
 
     async loadPortalGestorBucketSummary(startISO, endISO, { force = false } = {}) {
-        const key = getPortalGestorRangeKey(startISO, endISO);
+        const key = getPortalGestorRangeKey(
+            startISO,
+            endISO,
+            this.isPortalGestorOnlyMineEnabled() ? `mine:${user.userId}` : "all"
+        );
         if (force) {
             this.portalGestorBucketCache.delete(key);
         }
@@ -265,7 +319,9 @@ patch(CalendarModel.prototype, {
 
         const cacheVersion = this.portalGestorBucketCacheVersion;
         const request = this.orm
-            .call(this.resModel, "get_calendar_bucket_summary", [startISO, endISO])
+            .call(this.resModel, "get_calendar_bucket_summary", [startISO, endISO], {
+                context: this.getPortalGestorOrmContext(),
+            })
             .then((buckets) => {
                 const normalizedBuckets = clonePortalGestorBuckets(buckets);
                 if (cacheVersion === this.portalGestorBucketCacheVersion) {
@@ -294,6 +350,27 @@ patch(CalendarModel.prototype, {
             this.loadPortalGestorBucketSummary(range.start.toISODate(), range.end.toISODate()).catch(() => [])
         );
         void Promise.allSettled(promises);
+    },
+
+    computeDomain(data) {
+        const domain = super.computeDomain(...arguments);
+        if (this.resModel !== TARGET_RES_MODEL || !this.isPortalGestorOnlyMineEnabled()) {
+            return domain;
+        }
+        return [...domain, ["gestor_owner_id", "=", user.userId]];
+    },
+
+    fetchRecords(data) {
+        if (this.resModel !== TARGET_RES_MODEL) {
+            return super.fetchRecords(...arguments);
+        }
+        const { fieldNames, resModel } = this.meta;
+        return this.orm.searchRead(
+            resModel,
+            this.computeDomain(data),
+            [...new Set([...fieldNames, ...Object.keys(this.meta.activeFields)])],
+            { context: this.getPortalGestorOrmContext() }
+        );
     },
 
     queuePortalGestorRealtimeRefresh(payload) {
@@ -443,6 +520,45 @@ patch(CalendarModel.prototype, {
     },
 });
 
+patch(CalendarController.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this.portalGestorOnlyMineState = useState({
+            onlyMine: this.props.resModel === TARGET_RES_MODEL ? getPortalGestorOnlyMineStoredValue() : false,
+        });
+    },
+
+    onWillStartModel() {
+        super.onWillStartModel(...arguments);
+        if (this.props.resModel !== TARGET_RES_MODEL) {
+            return;
+        }
+        this.model.meta.context = {
+            ...(this.model.meta.context || {}),
+            portalgestor_only_my_schedules: this.portalGestorOnlyMineState.onlyMine,
+        };
+    },
+
+    get showPortalGestorOnlyMineToggle() {
+        return this.props.resModel === TARGET_RES_MODEL;
+    },
+
+    async togglePortalGestorOnlyMine() {
+        if (!this.showPortalGestorOnlyMineToggle) {
+            return;
+        }
+        const nextValue = !this.portalGestorOnlyMineState.onlyMine;
+        this.portalGestorOnlyMineState.onlyMine = nextValue;
+        setPortalGestorOnlyMineStoredValue(nextValue);
+        await this.model.load({
+            context: {
+                ...(this.model.meta.context || {}),
+                portalgestor_only_my_schedules: nextValue,
+            },
+        });
+    },
+});
+
 patch(CalendarCommonRenderer.prototype, {
     setup() {
         super.setup(...arguments);
@@ -500,7 +616,15 @@ patch(CalendarCommonRenderer.prototype, {
                     title.textContent = arg.event.title || "";
                     return { domNodes: [title] };
                 }
-                return originalEventContent?.(arg);
+                const content = originalEventContent?.(arg);
+                const record = this.props.model.records[arg.event.id];
+                if (!record?.isMonth) {
+                    return content;
+                }
+                return wrapPortalGestorEventContent(
+                    content,
+                    getPortalGestorOwnerName(record.rawRecord)
+                );
             },
         };
     },
@@ -530,10 +654,12 @@ patch(CalendarCommonRenderer.prototype, {
     },
 
     async openPortalGestorBucket(bucket) {
-        const records = await this.orm.call(TARGET_RES_MODEL, "get_calendar_bucket_records", [
-            bucket.portalGestorBucketDate,
-            bucket.portalGestorBucketType,
-        ]);
+        const records = await this.orm.call(
+            TARGET_RES_MODEL,
+            "get_calendar_bucket_records",
+            [bucket.portalGestorBucketDate, bucket.portalGestorBucketType],
+            { context: this.props.model.getPortalGestorOrmContext() }
+        );
 
         this.addDialog(PortalGestorBucketDialog, {
             bucketDate: bucket.portalGestorBucketDate,
@@ -542,6 +668,7 @@ patch(CalendarCommonRenderer.prototype, {
             count: bucket.portalGestorBucketCount,
             bucketType: bucket.portalGestorBucketType,
             formViewId: this.props.model.formViewId,
+            portalGestorContext: this.props.model.getPortalGestorOrmContext(),
             records,
         });
     },

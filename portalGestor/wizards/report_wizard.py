@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
 import base64
 import calendar
 import io
 import zipfile
 from datetime import date
-from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
+
+from odoo import _, api, fields, models
+from odoo.exceptions import AccessError, ValidationError
 
 # Nombres de meses en español para el nombre de archivo y reporte
 MESES_ES = {
@@ -18,8 +20,13 @@ class ReportWizard(models.TransientModel):
     _name = 'portalgestor.report.wizard'
     _description = 'Asistente de Reporte de Horario'
 
-    exportar_todos = fields.Boolean(string='Exportar Todos los AP Activos', default=False)
+    exportar_todos = fields.Boolean(string='Exportar todos los APs del periodo', default=False)
     trabajador_ids = fields.Many2many('trabajadores.trabajador', string='APs')
+    available_trabajador_ids = fields.Many2many(
+        'trabajadores.trabajador',
+        string='APs disponibles',
+        compute='_compute_available_trabajador_ids',
+    )
 
     mes = fields.Selection(
         selection=[
@@ -39,7 +46,6 @@ class ReportWizard(models.TransientModel):
         default=lambda self: str(date.today().year),
     )
 
-    # Campos computados que reemplazan los antiguos fecha_inicio / fecha_fin
     fecha_inicio = fields.Date(string='Fecha Inicio', compute='_compute_fechas')
     fecha_fin = fields.Date(string='Fecha Fin', compute='_compute_fechas')
 
@@ -52,39 +58,106 @@ class ReportWizard(models.TransientModel):
     def _compute_fechas(self):
         for record in self:
             if record.mes and record.anio:
-                m = int(record.mes)
-                y = int(record.anio)
-                ultimo_dia = calendar.monthrange(y, m)[1]  # maneja bisiestos
-                record.fecha_inicio = date(y, m, 1)
-                record.fecha_fin = date(y, m, ultimo_dia)
+                month = int(record.mes)
+                year = int(record.anio)
+                last_day = calendar.monthrange(year, month)[1]
+                record.fecha_inicio = date(year, month, 1)
+                record.fecha_fin = date(year, month, last_day)
             else:
                 record.fecha_inicio = False
                 record.fecha_fin = False
+
+    @api.depends('mes', 'anio')
+    def _compute_available_trabajador_ids(self):
+        for record in self:
+            record.available_trabajador_ids = record._get_available_trabajadores()
+
+    def _is_current_user_portalgestor_report_admin(self):
+        return self.env.user._get_gestor_management_scope() == 'admin'
 
     def _get_nombre_mes_anio(self):
         """Devuelve el string 'NombreMes Año', ej: 'Marzo 2026'."""
         return f"{MESES_ES.get(self.mes, '')} {self.anio}"
 
-    def action_print_report(self):
-        # Determinar los trabajadores a exportar
-        if self.exportar_todos:
-            domain = [('baja', '=', False)]
-            user = self.env.user
-            if user.has_group('gestores.group_gestores_agusto') and not user.has_group('gestores.group_gestores_intecum') and not user.has_group('gestores.group_gestores_administrador'):
-                domain.append(('grupo', '=', 'agusto'))
-            trabajadores = self.env['trabajadores.trabajador'].search(domain)
-        else:
-            trabajadores = self.trabajador_ids
+    def _get_owned_assignment_line_domain(self):
+        self.ensure_one()
+        domain = [
+            ('fecha', '>=', self.fecha_inicio),
+            ('fecha', '<=', self.fecha_fin),
+            ('asignacion_id.confirmado', '=', True),
+        ]
+        if not self._is_current_user_portalgestor_report_admin():
+            domain.append(('gestor_owner_id', '=', self.env.user.id))
+        return domain
 
+    def _get_available_trabajadores(self):
+        self.ensure_one()
+        Trabajador = self.env['trabajadores.trabajador']
+        if not self.fecha_inicio or not self.fecha_fin:
+            return Trabajador.browse()
+        if self._is_current_user_portalgestor_report_admin():
+            return Trabajador.search([('baja', '=', False)], order='name, id')
+
+        owned_lines = self.env['portalgestor.asignacion.linea'].search(
+            self._get_owned_assignment_line_domain(),
+            order='fecha asc, hora_inicio asc, hora_fin asc, id asc',
+        )
+        trabajador_ids = sorted({line.trabajador_id.id for line in owned_lines if line.trabajador_id})
+        if not trabajador_ids:
+            return Trabajador.browse()
+        return Trabajador.browse(trabajador_ids).exists().sorted(
+            key=lambda trabajador: (trabajador.name or '', trabajador.id)
+        )
+
+    @api.onchange('mes', 'anio', 'exportar_todos')
+    def _onchange_report_scope(self):
+        for record in self:
+            available_workers = record._get_available_trabajadores()
+            if record.trabajador_ids:
+                record.trabajador_ids = record.trabajador_ids & available_workers
+
+    def _get_report_lines_for_worker(self, trabajador):
+        self.ensure_one()
+        domain = [('trabajador_id', '=', trabajador.id)] + self._get_owned_assignment_line_domain()
+        return self.env['portalgestor.asignacion.linea'].search(
+            domain,
+            order='fecha asc, hora_inicio asc, hora_fin asc, id asc',
+        )
+
+    def _get_selected_workers(self):
+        self.ensure_one()
+        if self.exportar_todos:
+            if self._is_current_user_portalgestor_report_admin():
+                trabajadores = self.env['trabajadores.trabajador'].search(
+                    [('baja', '=', False)],
+                    order='name, id',
+                )
+            else:
+                trabajadores = self._get_available_trabajadores()
+            if not trabajadores:
+                raise ValidationError(_("No hay APs disponibles para imprimir en este periodo."))
+            return trabajadores
+
+        trabajadores = self.trabajador_ids.sorted(key=lambda trabajador: (trabajador.name or '', trabajador.id))
         if not trabajadores:
             raise ValidationError(_("No hay APs seleccionados para imprimir."))
 
-        # Si es un único trabajador, usamos el flujo nativo de PDF simple
+        if self._is_current_user_portalgestor_report_admin():
+            return trabajadores
+
+        available_workers = self._get_available_trabajadores()
+        forbidden_workers = trabajadores - available_workers
+        if forbidden_workers:
+            raise AccessError(_("Solo puedes sacar PDF de horarios asignados por ti."))
+        return trabajadores
+
+    def action_print_report(self):
+        trabajadores = self._get_selected_workers()
+
         if len(trabajadores) == 1:
             self.trabajador_ids = trabajadores
             return self.env.ref('portalGestor.action_report_horario_trabajador').report_action(self)
 
-        # Si son varios, generamos un ZIP en memoria
         nombre_periodo = self._get_nombre_mes_anio()
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:

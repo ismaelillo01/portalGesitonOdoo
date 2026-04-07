@@ -45,6 +45,13 @@
                                     <t t-esc="record.name"/>
                                 </span>
                                 <span
+                                    t-if="record.gestor_name"
+                                    class="o_portalgestor_user_option_badge o_portalgestor_user_option_badge--owner"
+                                    t-att-title="'Gestor: ' + record.gestor_name"
+                                >
+                                    <t t-esc="record.gestor_name"/>
+                                </span>
+                                <span
                                     t-if="record.user_type_badge"
                                     class="o_portalgestor_user_option_badge"
                                     t-att-title="record.user_type_label"
@@ -60,5 +67,20 @@
                 </t>
             </div>
         </Dialog>
+    </t>
+
+    <t t-inherit="web.CalendarController" t-inherit-mode="extension">
+        <xpath expr="//button[contains(@class, 'o_calendar_button_today')]" position="after">
+            <button
+                t-if="showPortalGestorOnlyMineToggle"
+                type="button"
+                class="btn d-print-none o_portalgestor_only_mine_toggle"
+                t-att-class="portalGestorOnlyMineState.onlyMine ? 'btn-primary' : 'btn-secondary'"
+                t-on-click="togglePortalGestorOnlyMine"
+            >
+                <i class="fa fa-user-o me-1"/>
+                <span>Ver mis horarios</span>
+            </button>
+        </xpath>
     </t>
 </templates>

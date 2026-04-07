@@ -11,6 +11,7 @@
                 <field name="usuario_id" write_model="portalgestor.asignacion.calendar.usuario.filter" write_field="usuario_id" filter_field="usuario_checked"/>
                 <field name="trabajador_calendar_filter_id" string="AP" invisible="1" filters="1" write_model="portalgestor.asignacion.calendar.trabajador.filter" write_field="trabajador_id" filter_field="trabajador_checked"/>
                 <field name="trabajador_id" invisible="1"/>
+                <field name="gestor_owner_id" invisible="1"/>
                 <field name="calendar_popover_html" widget="html" nolabel="1"/>
             </calendar>
         </field>
@@ -34,10 +35,15 @@
               invisible="manager_edit_blocked"
             />
           </header>
-          <sheet>
+          <sheet class="o_portalgestor_assignment_sheet">
             <field name="manager_edit_blocked" invisible="1"/>
             <field name="edit_session_pending" invisible="1"/>
             <field name="edit_snapshot_data" invisible="1"/>
+            <field name="gestor_owner_id" invisible="1"/>
+            <div class="o_portalgestor_assignment_owner_corner" invisible="not gestor_owner_id">
+              <span class="o_portalgestor_assignment_owner_corner_caption">Gestor</span>
+              <field name="gestor_owner_label" readonly="1" nolabel="1" class="o_portalgestor_assignment_owner_corner_value"/>
+            </div>
             <group>
               <group>
                 <field name="usuario_id" readonly="confirmado == True or manager_edit_blocked" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid}"/>

@@ -106,6 +106,13 @@
     padding: 0 4px;
 }
 
+.o_portalgestor_user_option_badge--owner {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .o_portalgestor_bucket_record--pending {
     background: #d1fae5;
     border-color: #86efac;
@@ -156,4 +163,88 @@
 
 .o_cw_popover .o_portalgestor_calendar_detail_empty {
     color: #6b7280;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_owner {
+    align-items: center;
+    border-top: 1px solid #e5e7eb;
+    color: #6b7280;
+    display: flex;
+    font-size: 11px;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 2px;
+    padding-top: 6px;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_owner_label {
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.o_calendar_widget .o_portalgestor_event_content {
+    min-width: 0;
+    padding-right: 44px;
+    position: relative;
+    width: 100%;
+}
+
+.o_calendar_widget .o_portalgestor_event_owner {
+    color: rgba(17, 24, 39, 0.72);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.1;
+    max-width: 42px;
+    overflow: hidden;
+    position: absolute;
+    right: 0;
+    text-align: right;
+    text-overflow: ellipsis;
+    top: 1px;
+    white-space: nowrap;
+}
+
+.o_portalgestor_only_mine_toggle {
+    margin-left: 8px;
+}
+
+.o_form_view .o_portalgestor_assignment_sheet {
+    position: relative;
+}
+
+.o_form_view .o_portalgestor_assignment_owner_corner {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #f3d4da;
+    border-radius: 999px;
+    color: #8f2330;
+    display: inline-flex;
+    gap: 8px;
+    padding: 6px 12px;
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    z-index: 2;
+}
+
+.o_form_view .o_portalgestor_assignment_owner_corner_caption {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.o_form_view .o_portalgestor_assignment_owner_corner_value.o_field_widget,
+.o_form_view .o_portalgestor_assignment_owner_corner_value .o_field_char,
+.o_form_view .o_portalgestor_assignment_owner_corner_value span {
+    color: #8f2330;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    .o_form_view .o_portalgestor_assignment_owner_corner {
+        margin-bottom: 8px;
+        position: static;
+    }
 }

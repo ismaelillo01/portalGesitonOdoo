@@ -114,11 +114,7 @@ class ConflictWizard(models.TransientModel):
             return {'type': 'ir.actions.act_window_close'}
 
         if self.conflict_type == 'info_same_day':
-            self.asignacion_id.write({
-                'confirmado': True,
-                'edit_session_pending': False,
-                'edit_snapshot_data': False,
-            })
+            self.asignacion_id._apply_confirmation_as_current_manager()
             if self.asignacion_mensual_id:
                 result = self._resume_verification()
                 if isinstance(result, dict):

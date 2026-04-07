@@ -8,7 +8,15 @@
                 <sheet>
                     <group>
                         <field name="exportar_todos" widget="boolean_toggle"/>
-                        <field name="trabajador_ids" widget="many2many_tags" options="{'no_create': True}" invisible="exportar_todos == True" required="exportar_todos == False"/>
+                        <field name="available_trabajador_ids" invisible="1"/>
+                        <field
+                            name="trabajador_ids"
+                            widget="many2many_tags"
+                            options="{'no_create': True}"
+                            domain="[('id', 'in', available_trabajador_ids)]"
+                            invisible="exportar_todos == True"
+                            required="exportar_todos == False"
+                        />
                         <field name="mes"/>
                         <field name="anio"/>
                     </group>

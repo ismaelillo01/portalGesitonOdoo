@@ -42,6 +42,18 @@ class Asignacion(models.Model):
     fecha = fields.Date(string='Fecha', required=True, default=fields.Date.context_today, index=True)
     lineas_ids = fields.One2many('portalgestor.asignacion.linea', 'asignacion_id', string='Horarios')
     confirmado = fields.Boolean(string='Horario Confirmado', default=False)
+    gestor_owner_id = fields.Many2one(
+        'res.users',
+        string='Gestor propietario',
+        default=lambda self: self.env.user,
+        ondelete='set null',
+        index=True,
+        copy=False,
+    )
+    gestor_owner_label = fields.Char(
+        string='Gestor propietario',
+        compute='_compute_gestor_owner_label',
+    )
     edit_session_pending = fields.Boolean(string='Edicion pendiente', default=False, copy=False)
     edit_snapshot_data = fields.Text(string='Snapshot de edicion', copy=False)
     trabajador_calendar_filter_id = fields.Many2one(
@@ -113,6 +125,19 @@ class Asignacion(models.Model):
             tablename=self._table,
             expressions=['fecha', 'calendar_bucket_type'],
         )
+        create_index(
+            self.env.cr,
+            indexname='portalgestor_asig_owner_fecha_idx',
+            tablename=self._table,
+            expressions=['gestor_owner_id', 'fecha desc', 'id desc'],
+        )
+        self.env.cr.execute(
+            f"""
+                UPDATE {self._table}
+                   SET gestor_owner_id = COALESCE(write_uid, create_uid)
+                 WHERE gestor_owner_id IS NULL
+            """
+        )
 
     @api.depends('usuario_id.name', 'fecha')
     def _compute_name(self):
@@ -157,6 +182,11 @@ class Asignacion(models.Model):
     def _compute_manager_edit_blocked(self):
         for record in self:
             record.manager_edit_blocked = not self.env.user._can_manage_target_group(record.usuario_grupo)
+
+    @api.depends('gestor_owner_id')
+    def _compute_gestor_owner_label(self):
+        for record in self:
+            record.gestor_owner_label = record._get_owner_display_name()
 
     @api.depends('lineas_ids.trabajador_id')
     def _compute_calendar_worker_fields(self):
@@ -218,9 +248,18 @@ class Asignacion(models.Model):
                     f'<span class="o_portalgestor_calendar_detail_worker">{escape(trabajador)}</span>'
                     '</div>'
                 )
+            owner_html = ''
+            if record.gestor_owner_id:
+                owner_html = (
+                    '<div class="o_portalgestor_calendar_detail_owner">'
+                    '<span class="o_portalgestor_calendar_detail_owner_label">Gestor</span>'
+                    f'<span class="o_portalgestor_calendar_detail_owner_value">{escape(record.gestor_owner_id.display_name or record.gestor_owner_id.name)}</span>'
+                    '</div>'
+                )
             record.calendar_popover_html = (
                 '<div class="o_portalgestor_calendar_detail">'
                 + ''.join(rows)
+                + owner_html
                 + '</div>'
             )
 
@@ -231,6 +270,27 @@ class Asignacion(models.Model):
     def _get_calendar_bucket_type(self):
         self.ensure_one()
         return self.calendar_bucket_type or self._calculate_calendar_bucket_type(self.lineas_ids)
+
+    @api.model
+    def _get_calendar_owner_filter_domain(self):
+        if self.env.context.get('portalgestor_only_my_schedules'):
+            return [('gestor_owner_id', '=', self.env.user.id)]
+        return []
+
+    def _get_owner_display_name(self):
+        self.ensure_one()
+        return self.gestor_owner_id.display_name or self.gestor_owner_id.name or _('Sin gestor')
+
+    def _apply_confirmation_as_current_manager(self):
+        if not self:
+            return True
+        self.write({
+            'confirmado': True,
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+            'gestor_owner_id': self.env.user.id,
+        })
+        return True
 
     def _ensure_current_user_can_manage_users(self, users):
         forbidden_users = users.filtered(
@@ -442,12 +502,14 @@ class Asignacion(models.Model):
             return []
 
         bucket_map = self._get_calendar_bucket_map()
+        domain = [
+            ('fecha', '>=', start_date),
+            ('fecha', '<=', end_date),
+            ('confirmado', '=', True),
+        ]
+        domain += self._get_calendar_owner_filter_domain()
         grouped = self._read_group(
-            [
-                ('fecha', '>=', start_date),
-                ('fecha', '<=', end_date),
-                ('confirmado', '=', True),
-            ],
+            domain,
             ['fecha:day', 'calendar_bucket_type'],
             ['__count'],
             order='fecha:day ASC, calendar_bucket_type ASC',
@@ -484,7 +546,7 @@ class Asignacion(models.Model):
                 ('fecha', '=', fecha),
                 ('calendar_bucket_type', '=', bucket_type),
                 ('confirmado', '=', True),
-            ],
+            ] + self._get_calendar_owner_filter_domain(),
             order='name, id',
         )
         user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
@@ -507,6 +569,7 @@ class Asignacion(models.Model):
                 'user_type_badge': user_types.get(record.usuario_id.id, {}).get('badge', ''),
                 'user_type_label': user_types.get(record.usuario_id.id, {}).get('label', ''),
                 'can_edit': user_view_data.get(record.usuario_id.id, {}).get('can_edit', True),
+                'gestor_name': record._get_owner_display_name(),
             }
             for record in records
         ]
@@ -818,12 +881,7 @@ class Asignacion(models.Model):
         result = self._get_verification_action()
         if isinstance(result, dict):
             return result
-        self.write({
-            'confirmado': True,
-            'edit_session_pending': False,
-            'edit_snapshot_data': False,
-        })
-        return True
+        return self._apply_confirmation_as_current_manager()
 
     def _run_verification_checks(self):
         self.ensure_one()
@@ -983,6 +1041,14 @@ class AsignacionLinea(models.Model):
         index=True,
     )
     fecha = fields.Date(related='asignacion_id.fecha', string='Fecha', store=True, index=True)
+    gestor_owner_id = fields.Many2one(
+        'res.users',
+        related='asignacion_id.gestor_owner_id',
+        string='Gestor propietario',
+        store=True,
+        readonly=True,
+        index=True,
+    )
 
     def _ensure_current_user_can_manage_parent_assignments(self, assignments):
         self.env['portalgestor.asignacion']._ensure_current_user_can_manage_users(
@@ -1008,6 +1074,21 @@ class AsignacionLinea(models.Model):
             indexname='portalgestor_linea_mensual_linea_fecha_idx',
             tablename=self._table,
             expressions=['asignacion_mensual_linea_id', 'fecha'],
+        )
+        create_index(
+            self.env.cr,
+            indexname='portalgestor_linea_owner_fecha_idx',
+            tablename=self._table,
+            expressions=['gestor_owner_id', 'fecha'],
+        )
+        self.env.cr.execute(
+            """
+                UPDATE portalgestor_asignacion_linea linea
+                   SET gestor_owner_id = asignacion.gestor_owner_id
+                  FROM portalgestor_asignacion asignacion
+                 WHERE asignacion.id = linea.asignacion_id
+                   AND linea.gestor_owner_id IS DISTINCT FROM asignacion.gestor_owner_id
+            """
         )
 
     def _get_impacted_calendar_assignments(self, vals_list=None):

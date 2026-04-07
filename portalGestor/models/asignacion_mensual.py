@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
+from odoo.tools import create_index
 
 
 class AsignacionMensual(models.Model):
@@ -58,6 +59,18 @@ class AsignacionMensual(models.Model):
         string='Asignaciones generadas',
     )
     confirmado = fields.Boolean(string='Horario Confirmado', default=False)
+    gestor_owner_id = fields.Many2one(
+        'res.users',
+        string='Gestor propietario',
+        default=lambda self: self.env.user,
+        ondelete='set null',
+        index=True,
+        copy=False,
+    )
+    gestor_owner_label = fields.Char(
+        string='Gestor propietario',
+        compute='_compute_gestor_owner_label',
+    )
     edit_session_pending = fields.Boolean(string='Edicion pendiente', default=False, copy=False)
     edit_snapshot_data = fields.Text(string='Snapshot de edicion', copy=False)
     excepcion_ids = fields.One2many(
@@ -77,6 +90,22 @@ class AsignacionMensual(models.Model):
         string='Edicion bloqueada para el gestor actual',
         compute='_compute_manager_edit_blocked',
     )
+
+    def init(self):
+        super().init()
+        create_index(
+            self.env.cr,
+            indexname='portalgestor_asig_mensual_owner_fecha_idx',
+            tablename=self._table,
+            expressions=['gestor_owner_id', 'fecha_inicio desc', 'id desc'],
+        )
+        self.env.cr.execute(
+            f"""
+                UPDATE {self._table}
+                   SET gestor_owner_id = COALESCE(write_uid, create_uid)
+                 WHERE gestor_owner_id IS NULL
+            """
+        )
 
     @api.depends('usuario_id.name', 'fecha_inicio', 'fecha_fin', 'linea_fija_ids')
     def _compute_name(self):
@@ -98,6 +127,15 @@ class AsignacionMensual(models.Model):
     def _compute_manager_edit_blocked(self):
         for record in self:
             record.manager_edit_blocked = not self.env.user._can_manage_target_group(record.usuario_grupo)
+
+    @api.depends('gestor_owner_id')
+    def _compute_gestor_owner_label(self):
+        for record in self:
+            record.gestor_owner_label = (
+                record.gestor_owner_id.display_name
+                or record.gestor_owner_id.name
+                or _('Sin gestor')
+            )
 
     def _ensure_current_user_can_manage_users(self, users):
         forbidden_users = users.filtered(
@@ -218,6 +256,20 @@ class AsignacionMensual(models.Model):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         self._restore_edit_snapshot()
+        return True
+
+    def _apply_confirmation_as_current_manager(self):
+        if not self:
+            return True
+        generated_assignments = self.asignacion_linea_ids.mapped('asignacion_id').exists()
+        if generated_assignments:
+            generated_assignments.write({'gestor_owner_id': self.env.user.id})
+        self.write({
+            'confirmado': True,
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+            'gestor_owner_id': self.env.user.id,
+        })
         return True
 
     def action_eliminar_borrador_no_verificado(self):
@@ -460,14 +512,9 @@ class AsignacionMensual(models.Model):
             result = asignacion._get_verification_action(asignacion_mensual_id=self.id)
             if isinstance(result, dict):
                 return result
-            asignacion.confirmado = True
+            asignacion._apply_confirmation_as_current_manager()
 
-        self.write({
-            'confirmado': True,
-            'edit_session_pending': False,
-            'edit_snapshot_data': False,
-        })
-        return True
+        return self._apply_confirmation_as_current_manager()
 
     def _get_pending_generated_lines_for_assignment(self, assignment):
         self.ensure_one()

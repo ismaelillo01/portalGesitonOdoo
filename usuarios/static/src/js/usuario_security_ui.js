@@ -46,7 +46,7 @@ patch(ListController.prototype, {
         if (this.props.resModel === TARGET_RES_MODEL && isBlockedUserRecord(record?.data)) {
             const dirty = await record.isDirty();
             if (dirty) {
-                await record.save();
+                await record.discard();
             }
             const activeIds = this.model.root.records.map((datapoint) => datapoint.resId);
             return this.props.selectRecord(record.resId, { activeIds, force, mode: "readonly" });
