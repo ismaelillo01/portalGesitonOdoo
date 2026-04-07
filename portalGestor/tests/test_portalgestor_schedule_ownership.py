@@ -146,17 +146,24 @@ class TestPortalGestorScheduleOwnership(TransactionCase):
 
         trabajo_fijo.with_user(self.gestor_1).action_verificar_y_confirmar()
         generated_assignments = trabajo_fijo.asignacion_linea_ids.mapped('asignacion_id').exists()
-        generated_assignments.invalidate_recordset(['gestor_owner_id'])
+        generated_assignments.invalidate_recordset(['gestor_owner_id', 'confirmado'])
         self.assertTrue(generated_assignments)
+        self.assertTrue(all(generated_assignments.mapped('confirmado')))
         self.assertEqual(set(generated_assignments.mapped('gestor_owner_id').ids), {self.gestor_1.id})
+        summary = self.env['portalgestor.asignacion'].with_user(self.gestor_1).get_calendar_bucket_summary(
+            fields.Date.to_string(fecha_inicio),
+            fields.Date.to_string(fecha_inicio),
+        )
+        self.assertEqual(summary[0]['count'], 1)
 
         trabajo_fijo.with_user(self.gestor_2).action_editar()
         trabajo_fijo.with_user(self.gestor_2).write({
             'linea_fija_ids': [(1, trabajo_fijo.linea_fija_ids.id, {'trabajador_id': self.worker_b.id})],
         })
         trabajo_fijo.with_user(self.gestor_2).action_verificar_y_confirmar()
-        generated_assignments.invalidate_recordset(['gestor_owner_id'])
+        generated_assignments.invalidate_recordset(['gestor_owner_id', 'confirmado'])
 
+        self.assertTrue(all(generated_assignments.mapped('confirmado')))
         self.assertEqual(set(generated_assignments.mapped('gestor_owner_id').ids), {self.gestor_2.id})
 
     def test_calendar_bucket_summary_and_records_can_be_filtered_to_current_owner(self):

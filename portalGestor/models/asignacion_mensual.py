@@ -471,7 +471,7 @@ class AsignacionMensual(models.Model):
         self._ensure_current_user_can_manage_users(target_users)
         if vals.get('confirmado') is True:
             vals = dict(vals, edit_session_pending=False, edit_snapshot_data=False)
-        if set(vals).issubset({'confirmado', 'edit_session_pending', 'edit_snapshot_data'}):
+        if set(vals).issubset({'confirmado', 'edit_session_pending', 'edit_snapshot_data', 'gestor_owner_id'}):
             return super(
                 AsignacionMensual,
                 self.with_context(portalgestor_skip_fixed_sync=True),
