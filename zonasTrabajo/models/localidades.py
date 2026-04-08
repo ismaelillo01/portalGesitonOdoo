@@ -487,11 +487,33 @@ def _repair_name(value):
     return repaired
 
 
+def _normalize_trailing_article(value):
+    for article in ('El', 'La', 'Los', 'Las'):
+        suffix = f" ({article})"
+        if value.endswith(suffix):
+            base = value[:-len(suffix)].strip()
+            if base:
+                return f"{article} {base}"
+    return value
+
+
+def get_localidad_rename_map():
+    rename_map = {}
+    for raw_name in LOCALIDADES_RAW.splitlines():
+        repaired_name = _repair_name(raw_name.strip())
+        if not repaired_name:
+            continue
+        normalized_name = _normalize_trailing_article(repaired_name)
+        if normalized_name != repaired_name:
+            rename_map[repaired_name] = normalized_name
+    return rename_map
+
+
 def get_localidad_names():
     seen = set()
     names = []
     for raw_name in LOCALIDADES_RAW.splitlines():
-        name = _repair_name(raw_name.strip())
+        name = _normalize_trailing_article(_repair_name(raw_name.strip()))
         if not name or name in seen:
             continue
         seen.add(name)
@@ -513,6 +535,35 @@ class ZonaTrabajoLocalidad(models.Model):
 
     def init(self):
         super().init()
+        rename_map = get_localidad_rename_map()
+        for source_name, target_name in rename_map.items():
+            self.env.cr.execute(f"SELECT id FROM {self._table} WHERE name = %s", [source_name])
+            source_row = self.env.cr.fetchone()
+            if not source_row:
+                continue
+
+            source_id = source_row[0]
+            self.env.cr.execute(f"SELECT id FROM {self._table} WHERE name = %s", [target_name])
+            target_row = self.env.cr.fetchone()
+            if target_row:
+                target_id = target_row[0]
+                if target_id != source_id:
+                    self.env.cr.execute(
+                        "UPDATE usuarios_usuario SET localidad_id = %s WHERE localidad_id = %s",
+                        [target_id, source_id],
+                    )
+                    self.env.cr.execute(
+                        "UPDATE trabajadores_trabajador SET localidad_id = %s WHERE localidad_id = %s",
+                        [target_id, source_id],
+                    )
+                    self.env.cr.execute(f"DELETE FROM {self._table} WHERE id = %s", [source_id])
+                continue
+
+            self.env.cr.execute(
+                f"UPDATE {self._table} SET name = %s WHERE id = %s",
+                [target_name, source_id],
+            )
+
         locality_names = get_localidad_names()
         self.env.cr.execute(f"SELECT name FROM {self._table}")
         existing_names = {name for (name,) in self.env.cr.fetchall()}
