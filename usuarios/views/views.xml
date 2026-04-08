@@ -12,6 +12,7 @@
           <field name="dni_nie"/>
           <field name="telefono"/>
           <field name="localidad_id"/>
+          <field name="gestor_id" optional="show" groups="base.group_system"/>
           <field name="servicio_ids" widget="many2many_tags"/>
           <field name="grupo"/>
           <field name="zona_trabajo_id"/>
@@ -46,6 +47,7 @@
               <group>
                 <field name="grupo" readonly="manager_edit_blocked or group_selection_locked"/>
                 <field name="zona_trabajo_id" readonly="manager_edit_blocked" options="{'no_create': True, 'no_open': True}"/>
+                <field name="gestor_id" readonly="manager_edit_blocked" domain="[('grupo', '!=', 'administrador')]" options="{'no_create': True}" groups="base.group_system"/>
                 <field name="servicio_ids" readonly="manager_edit_blocked" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               </group>
               <group>
@@ -91,6 +93,13 @@
       <field name="view_mode">list,form</field>
     </record>
 
+    <record model="ir.actions.act_window" id="usuarios.action_my_users_window">
+      <field name="name">Ver mis usuarios</field>
+      <field name="res_model">usuarios.usuario</field>
+      <field name="view_mode">list,form</field>
+      <field name="domain">[('gestor_id.user_id', '=', uid)]</field>
+    </record>
+
     <record model="ir.actions.act_window" id="usuarios.action_servicios_window">
       <field name="name">Servicios</field>
       <field name="res_model">usuarios.servicio</field>
@@ -106,6 +115,13 @@
       id="usuarios.menu_1_list"
       parent="usuarios.menu_usuarios"
       action="usuarios.action_window"
+    />
+    <menuitem
+      name="Ver mis usuarios"
+      id="usuarios.menu_my_users"
+      parent="usuarios.menu_usuarios"
+      action="usuarios.action_my_users_window"
+      sequence="20"
     />
     <menuitem
       name="Servicios"

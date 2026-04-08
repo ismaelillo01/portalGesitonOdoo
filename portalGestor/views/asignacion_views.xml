@@ -47,7 +47,7 @@
             </div>
             <group>
               <group>
-                <field name="usuario_id" readonly="confirmado == True or manager_edit_blocked" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid}"/>
+                <field name="usuario_id" readonly="confirmado == True or manager_edit_blocked" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid, 'portalgestor_user_selector': True}"/>
                 <field name="fecha" readonly="confirmado == True or manager_edit_blocked"/>
               </group>
               <group>

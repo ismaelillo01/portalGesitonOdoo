@@ -20,6 +20,7 @@ class UsuarioServicio(models.Model):
 class Usuario(models.Model):
     _name = 'usuarios.usuario'
     _description = 'Usuario'
+    _order = 'name, apellido1, apellido2, id'
 
     _GROUP_UI_DATA = {
         'agusto': {'badge': 'A', 'label': 'Agusto'},
@@ -65,6 +66,13 @@ class Usuario(models.Model):
         ondelete='restrict',
         index=True,
     )
+    gestor_id = fields.Many2one(
+        'gestores.gestor',
+        string='Gestor',
+        ondelete='set null',
+        index=True,
+        copy=False,
+    )
     manager_edit_blocked = fields.Boolean(
         string='Edicion bloqueada para el gestor actual',
         compute='_compute_manager_edit_blocked',
@@ -81,6 +89,30 @@ class Usuario(models.Model):
             if viewer:
                 return viewer
         return self.env.user
+
+    def _is_portalgestor_user_selector_context(self):
+        return bool(self.env.context.get('portalgestor_user_selector'))
+
+    def _sort_for_portalgestor_user_selector(self, records, viewer=None):
+        if not records:
+            return records
+
+        viewer = viewer or self._get_security_viewer()
+        priority_gestor_id = viewer._get_linked_gestor_id_for_user_priority()
+        safe_names = records._get_safe_display_name_map(viewer)
+        gestor_rows = self.sudo().browse(records.ids).read(['gestor_id'])
+        gestor_by_user_id = {
+            row['id']: row['gestor_id'][0] if row.get('gestor_id') else False
+            for row in gestor_rows
+        }
+        ordered_records = records.sorted(
+            key=lambda record: (
+                0 if priority_gestor_id and gestor_by_user_id.get(record.id) == priority_gestor_id else 1,
+                (safe_names.get(record.id, record._get_full_name()) or '').casefold(),
+                record.id,
+            )
+        )
+        return self.browse(ordered_records.ids)
 
     def _get_intecum_safe_sequence_map(self, user_ids):
         if not user_ids:
@@ -201,9 +233,70 @@ class Usuario(models.Model):
         safe_names = self._get_safe_display_name_map()
         return [(record.id, safe_names.get(record.id, record._get_full_name())) for record in self]
 
+    @api.constrains('gestor_id')
+    def _check_gestor_not_admin(self):
+        for record in self:
+            if record.gestor_id and record.gestor_id.grupo == 'administrador':
+                raise AccessError(_("No se puede relacionar un usuario con un gestor administrador."))
+
     def read(self, fields=None, load='_classic_read'):
         values_list = super().read(fields=fields, load=load)
         return self._mask_read_results_for_viewer(values_list)
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        if not self._is_portalgestor_user_selector_context():
+            return super().name_search(name=name, args=args, operator=operator, limit=limit)
+
+        results = super().name_search(name=name, args=args, operator=operator, limit=None)
+        if not results:
+            return results
+
+        label_by_id = dict(results)
+        ordered_records = self._sort_for_portalgestor_user_selector(
+            self.browse([record_id for record_id, __label in results]).exists()
+        )
+        if limit:
+            ordered_records = ordered_records[:limit]
+        return [(record.id, label_by_id.get(record.id, record.display_name)) for record in ordered_records]
+
+    @api.model
+    @api.readonly
+    def web_search_read(self, domain, specification, offset=0, limit=None, order=None, count_limit=None):
+        if not self._is_portalgestor_user_selector_context():
+            return super().web_search_read(
+                domain,
+                specification,
+                offset=offset,
+                limit=limit,
+                order=order,
+                count_limit=count_limit,
+            )
+
+        fields_to_fetch = {
+            'name',
+            'apellido1',
+            'apellido2',
+            'gestor_id',
+            'grupo',
+        }
+        fields_to_fetch.update(
+            field_name
+            for field_name in specification.keys()
+            if field_name in self._fields and field_name != 'display_name'
+        )
+        records = self.search_fetch(domain, fields_to_fetch, order=order or self._order)
+        records = self._sort_for_portalgestor_user_selector(records)
+        total_length = len(records)
+        if offset:
+            records = records[offset:]
+        if limit is not None:
+            records = records[:limit]
+        values_records = records.web_read(specification)
+        return {
+            'length': total_length,
+            'records': values_records,
+        }
 
     @api.model
     def _get_group_ui_data(self, grupo):

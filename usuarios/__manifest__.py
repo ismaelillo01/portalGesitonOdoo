@@ -19,7 +19,7 @@ Long description of module's purpose
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'zonasTrabajo'],
+    'depends': ['base', 'gestores', 'zonasTrabajo'],
     'assets': {
         'web.assets_backend': [
             'usuarios/static/src/js/usuario_security_ui.js',

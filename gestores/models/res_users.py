@@ -5,6 +5,25 @@ from odoo import models
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
+    def _get_linked_gestor_record(self):
+        self.ensure_one()
+        gestores = self.env['gestores.gestor'].sudo().search([('user_id', '=', self.id), ('grupo', '!=', 'administrador')])
+        if not gestores:
+            return self.env['gestores.gestor']
+
+        scope = self._get_gestor_management_scope()
+        if scope in ('agusto', 'intecum'):
+            scoped_gestor = gestores.filtered(lambda gestor: gestor.grupo == scope)[:1]
+            if scoped_gestor:
+                return scoped_gestor
+        return gestores[:1]
+
+    def _get_linked_gestor_id_for_user_priority(self):
+        self.ensure_one()
+        if self._get_gestor_management_scope() not in ('agusto', 'intecum'):
+            return False
+        return self._get_linked_gestor_record().id or False
+
     def _get_gestor_management_scope(self):
         self.ensure_one()
         if self.has_group('base.group_system') or self.has_group('gestores.group_gestores_administrador'):
