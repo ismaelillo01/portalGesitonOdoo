@@ -27,6 +27,11 @@ class AsignacionMensual(models.Model):
         readonly=True,
         index=True,
     )
+    usuario_localidad_id = fields.Many2one(
+        related='usuario_id.localidad_id',
+        string='Localidad del Usuario',
+        readonly=True,
+    )
     usuario_zona_trabajo_id = fields.Many2one(
         'zonastrabajo.zona',
         related='usuario_id.zona_trabajo_id',

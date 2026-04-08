@@ -39,6 +39,11 @@ class Asignacion(models.Model):
         readonly=True,
         index=True,
     )
+    usuario_localidad_id = fields.Many2one(
+        related='usuario_id.localidad_id',
+        string='Localidad del Usuario',
+        readonly=True,
+    )
     fecha = fields.Date(string='Fecha', required=True, default=fields.Date.context_today, index=True)
     lineas_ids = fields.One2many('portalgestor.asignacion.linea', 'asignacion_id', string='Horarios')
     confirmado = fields.Boolean(string='Horario Confirmado', default=False)

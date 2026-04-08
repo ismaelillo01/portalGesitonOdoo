@@ -32,6 +32,12 @@ class Usuario(models.Model):
     dni_nie = fields.Char(string='DNI o NIE')
     telefono = fields.Char(string='Telefono')
     direccion = fields.Char(string='Direccion')
+    localidad_id = fields.Many2one(
+        'zonastrabajo.localidad',
+        string='Localidad',
+        ondelete='restrict',
+        index=True,
+    )
     baja = fields.Boolean(string='Baja', default=False)
     servicio_ids = fields.Many2many(
         'usuarios.servicio',
@@ -138,6 +144,8 @@ class Usuario(models.Model):
                 values['telefono'] = ''
             if 'direccion' in values:
                 values['direccion'] = ''
+            if 'localidad_id' in values:
+                values['localidad_id'] = False
             if 'display_name' in values:
                 values['display_name'] = safe_name
         return values_list

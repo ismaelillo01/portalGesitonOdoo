@@ -11,6 +11,7 @@
           <field name="apellido2"/>
           <field name="dni_nie"/>
           <field name="telefono"/>
+          <field name="localidad_id"/>
           <field name="servicio_ids" widget="many2many_tags"/>
           <field name="grupo"/>
           <field name="zona_trabajo_id"/>
@@ -37,6 +38,8 @@
               <group string="Datos de Contacto">
                 <field name="telefono" readonly="manager_edit_blocked"/>
                 <field name="direccion" readonly="manager_edit_blocked"/>
+                <field name="localidad_id" readonly="manager_edit_blocked" groups="base.group_system"/>
+                <field name="localidad_id" readonly="manager_edit_blocked" options="{'no_create': True, 'no_open': True}" groups="base.group_user,!base.group_system"/>
               </group>
             </group>
             <group string="Datos Asignacion">
@@ -118,6 +121,14 @@
       parent="usuarios.menu_configuracion"
       action="zonasTrabajo.action_window"
       sequence="20"
+      groups="base.group_system"
+    />
+    <menuitem
+      name="Localidades"
+      id="usuarios.menu_localidades"
+      parent="usuarios.menu_configuracion"
+      action="zonasTrabajo.action_localidad_window"
+      sequence="30"
       groups="base.group_system"
     />
   </data>

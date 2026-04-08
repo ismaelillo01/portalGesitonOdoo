@@ -6,10 +6,12 @@
       <field name="model">trabajadores.trabajador</field>
       <field name="arch" type="xml">
         <list>
-          <field name="name"/>
-          <field name="apellido1"/>
+          <field name="nombre_completo"/>
           <field name="dni_nie"/>
           <field name="telefono"/>
+          <field name="localidad_id" optional="show"/>
+          <field name="carnet_conducir" optional="show"/>
+          <field name="observaciones" optional="hide"/>
           <field name="color" widget="color_picker" optional="hide"/>
           <field name="grupo"/>
           <field name="zona_trabajo_ids" widget="many2many_tags"/>
@@ -35,16 +37,20 @@
               <group string="Datos de Contacto">
                 <field name="telefono"/>
                 <field name="direccion"/>
+                <field name="localidad_id" groups="base.group_system"/>
+                <field name="localidad_id" options="{'no_create': True, 'no_open': True}" groups="base.group_user,!base.group_system"/>
               </group>
             </group>
             <group string="Datos Laborales">
               <group>
                 <field name="grupo"/>
+                <field name="carnet_conducir"/>
                 <field name="color" widget="color_picker"/>
                 <field name="zona_trabajo_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               </group>
               <group>
                 <field name="baja"/>
+                <field name="observaciones"/>
               </group>
             </group>
             <!-- Añado nueva pestaña para las vacaciones si no está de baja -->
@@ -69,6 +75,33 @@
       <field name="name">APs</field>
       <field name="res_model">trabajadores.trabajador</field>
       <field name="view_mode">list,form</field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores.trabajador_portalgestor_selector_list">
+      <field name="name">trabajador.portalgestor.selector.list</field>
+      <field name="model">trabajadores.trabajador</field>
+      <field name="arch" type="xml">
+        <list string="Buscar AP">
+          <field name="nombre_completo" string="Nombre Apellidos"/>
+          <field name="telefono"/>
+          <field name="localidad_id"/>
+          <field name="carnet_conducir"/>
+          <field name="observaciones"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores.trabajador_portalgestor_selector_search">
+      <field name="name">trabajador.portalgestor.selector.search</field>
+      <field name="model">trabajadores.trabajador</field>
+      <field name="arch" type="xml">
+        <search string="Buscar AP">
+          <field name="nombre_completo"/>
+          <field name="telefono"/>
+          <field name="localidad_id"/>
+          <filter name="carnet_conducir" string="Con carnet" domain="[('carnet_conducir', '=', True)]"/>
+        </search>
+      </field>
     </record>
 
     <!-- views for vacacion -->

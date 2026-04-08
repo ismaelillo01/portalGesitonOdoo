@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_zonastrabajo_zona_user,zonastrabajo.zona,model_zonastrabajo_zona,base.group_user,1,0,0,0
 access_zonastrabajo_zona_admin,zonastrabajo.zona,model_zonastrabajo_zona,base.group_system,1,1,1,1
+access_zonastrabajo_localidad_user,zonastrabajo.localidad,model_zonastrabajo_localidad,base.group_user,1,0,0,0
+access_zonastrabajo_localidad_admin,zonastrabajo.localidad,model_zonastrabajo_localidad,base.group_system,1,1,1,1

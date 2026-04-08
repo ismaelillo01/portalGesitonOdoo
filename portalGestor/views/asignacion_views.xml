@@ -40,6 +40,7 @@
             <field name="edit_session_pending" invisible="1"/>
             <field name="edit_snapshot_data" invisible="1"/>
             <field name="gestor_owner_id" invisible="1"/>
+            <field name="usuario_localidad_id" invisible="1"/>
             <div class="o_portalgestor_assignment_owner_corner" invisible="not gestor_owner_id">
               <span class="o_portalgestor_assignment_owner_corner_caption">Gestor</span>
               <field name="gestor_owner_label" readonly="1" nolabel="1" class="o_portalgestor_assignment_owner_corner_value"/>
@@ -61,7 +62,18 @@
                     <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
                     <field name="hora_fin" widget="float_time" placeholder="23:59"/>
                     <field name="usuario_zona_trabajo_id" column_invisible="True"/>
-                    <field name="trabajador_id" options="{'no_create': True}" context="{'exclude_vacaciones_fecha': parent.fecha}" domain="[('zona_trabajo_ids', 'in', [usuario_zona_trabajo_id]), ('baja', '=', False)]"/>
+                    <field
+                      name="trabajador_id"
+                      options="{'no_create': True}"
+                      context="{
+                        'exclude_vacaciones_fecha': parent.fecha,
+                        'portalgestor_worker_selector': True,
+                        'portalgestor_usuario_localidad': parent.usuario_localidad_id,
+                        'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                        'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                      }"
+                      domain="[('zona_trabajo_ids', 'in', [usuario_zona_trabajo_id]), ('baja', '=', False)]"
+                    />
                   </list>
                 </field>
               </page>
