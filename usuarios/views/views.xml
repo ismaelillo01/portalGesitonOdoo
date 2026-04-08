@@ -5,6 +5,14 @@
       <field name="model">usuarios.usuario</field>
       <field name="arch" type="xml">
         <list>
+          <header>
+            <button
+              name="%(usuarios.action_my_users_window)d"
+              type="action"
+              string="Ver mis usuarios"
+              display="always"
+            />
+          </header>
           <field name="manager_edit_blocked" column_invisible="True"/>
           <field name="name"/>
           <field name="apellido1"/>
@@ -115,13 +123,6 @@
       id="usuarios.menu_1_list"
       parent="usuarios.menu_usuarios"
       action="usuarios.action_window"
-    />
-    <menuitem
-      name="Ver mis usuarios"
-      id="usuarios.menu_my_users"
-      parent="usuarios.menu_usuarios"
-      action="usuarios.action_my_users_window"
-      sequence="20"
     />
     <menuitem
       name="Servicios"
