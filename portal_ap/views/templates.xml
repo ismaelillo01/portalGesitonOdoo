@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="login" name="Portal AP Login">
+        <t t-call="web.layout">
+            <t t-set="html_data" t-value="{'style': 'height: 100%;'}"/>
+            <t t-set="body_classname" t-value="'o_portal_ap_body o_portal_ap_login_body'"/>
+            <t t-set="title">Portal AP</t>
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend" t-js="false"/>
+            </t>
+
+            <main class="o_portal_ap_login_page">
+                <section class="o_portal_ap_login_shell">
+                    <div class="o_portal_ap_login_brand">
+                        <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian" class="o_portal_ap_login_logo"/>
+                    </div>
+
+                    <form action="/ap/login" method="post" class="o_portal_ap_login_form" autocomplete="off">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                        <div class="o_portal_ap_login_intro">
+                            <p class="o_portal_ap_login_kicker">Portal AP</p>
+                            <h1>Consulta tu horario</h1>
+                            <p>Introduce tu DNI/NIE para ver tus servicios confirmados y vacaciones.</p>
+                        </div>
+
+                        <div class="o_portal_ap_field">
+                            <label for="portal_ap_dni">DNI/NIE</label>
+                            <input
+                                id="portal_ap_dni"
+                                name="dni_nie"
+                                type="text"
+                                t-att-value="dni_nie"
+                                placeholder="12345678X o X1234567L"
+                                required="required"
+                                autocapitalize="characters"
+                                inputmode="text"
+                            />
+                            <span>Se aceptan espacios o guiones; los normalizamos automaticamente.</span>
+                        </div>
+
+                        <p class="o_portal_ap_error" t-if="error" role="alert">
+                            <t t-esc="error"/>
+                        </p>
+
+                        <button type="submit" class="o_portal_ap_primary_button">Entrar</button>
+                    </form>
+                </section>
+            </main>
+        </t>
+    </template>
+
+    <template id="schedule" name="Portal AP Horario">
+        <t t-call="web.layout">
+            <t t-set="body_classname" t-value="'o_portal_ap_body o_portal_ap_schedule_body'"/>
+            <t t-set="title">Horario AP</t>
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend" t-js="false"/>
+            </t>
+
+            <main class="o_portal_ap_schedule_page">
+                <header class="o_portal_ap_schedule_header">
+                    <div class="o_portal_ap_schedule_identity">
+                        <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
+                        <div>
+                            <span>Horario AP</span>
+                            <strong t-esc="worker_name"/>
+                        </div>
+                    </div>
+                    <form action="/ap/logout" method="post">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                        <button type="submit" class="o_portal_ap_logout_button">Salir</button>
+                    </form>
+                </header>
+
+                <section class="o_portal_ap_month_card">
+                    <nav class="o_portal_ap_month_nav" aria-label="Navegacion mensual">
+                        <a t-att-href="previous['url']" aria-label="Mes anterior">Anterior</a>
+                        <div>
+                            <h1><t t-esc="month_label"/> <t t-esc="year"/></h1>
+                            <p><t t-esc="month_start"/> - <t t-esc="month_end"/></p>
+                        </div>
+                        <a t-att-href="next['url']" aria-label="Mes siguiente">Siguiente</a>
+                    </nav>
+
+                    <div class="o_portal_ap_weekdays">
+                        <t t-foreach="weekday_labels" t-as="weekday">
+                            <span t-esc="weekday"/>
+                        </t>
+                    </div>
+
+                    <div class="o_portal_ap_calendar_grid">
+                        <t t-foreach="weeks" t-as="week">
+                            <t t-foreach="week" t-as="day">
+                                <article t-att-class="'o_portal_ap_day' + ('' if day['in_month'] else ' o_portal_ap_day--out') + (' o_portal_ap_day--today' if day['is_today'] else '') + (' o_portal_ap_day--filled' if day['has_content'] else '')">
+                                    <t t-if="day['in_month']">
+                                        <div class="o_portal_ap_day_number">
+                                            <span t-esc="day['day']"/>
+                                            <small t-if="day['is_today']">Hoy</small>
+                                        </div>
+
+                                        <div class="o_portal_ap_day_content">
+                                            <t t-foreach="day['vacations']" t-as="vacation">
+                                                <div class="o_portal_ap_vacation">
+                                                    <t t-esc="vacation['label']"/>
+                                                </div>
+                                            </t>
+
+                                            <t t-foreach="day['work_items']" t-as="item">
+                                                <div class="o_portal_ap_work_item">
+                                                    <strong t-esc="item['time_range']"/>
+                                                    <span>---- <t t-esc="item['usuario']"/></span>
+                                                </div>
+                                            </t>
+
+                                            <p class="o_portal_ap_empty_day" t-if="not day['has_content']">Sin servicios</p>
+                                        </div>
+                                    </t>
+                                </article>
+                            </t>
+                        </t>
+                    </div>
+                </section>
+            </main>
+        </t>
+    </template>
+</odoo>
