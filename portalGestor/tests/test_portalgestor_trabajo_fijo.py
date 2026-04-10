@@ -109,6 +109,60 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(action['context']['default_trabajo_fijo_id'], fixed.id)
         self.assertEqual(action['context']['default_fecha'], '2026-04-06')
 
+    def test_open_day_lines_starts_safe_edit_session_for_confirmed_fixed(self):
+        fixed = self._create_fixed()
+        self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-04-06'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+        self.assertTrue(fixed.confirmado)
+        self.assertFalse(fixed.edit_session_pending)
+
+        fixed.action_open_day_lines('2026-04-06')
+
+        fixed.invalidate_recordset(['edit_session_pending', 'edit_snapshot_data'])
+        self.assertTrue(fixed.edit_session_pending)
+        self.assertTrue(fixed.edit_snapshot_data)
+
+    def test_reconfirm_reuses_generated_line_when_day_tramo_is_recreated(self):
+        fixed = self._create_fixed()
+        template_line = self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-04-06'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+        generated_line = self.env['portalgestor.asignacion.linea'].search([
+            ('trabajo_fijo_id', '=', fixed.id),
+            ('fecha', '=', fields.Date.to_date('2026-04-06')),
+        ], limit=1)
+        generated_line_id = generated_line.id
+
+        fixed.action_editar()
+        template_line.unlink()
+        new_template_line = self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-04-06'),
+            'hora_inicio': 9.0,
+            'hora_fin': 11.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+
+        generated_line = self.env['portalgestor.asignacion.linea'].browse(generated_line_id)
+        self.assertTrue(generated_line.exists())
+        self.assertEqual(generated_line.hora_inicio, 9.0)
+        self.assertEqual(generated_line.hora_fin, 11.0)
+        self.assertEqual(generated_line.trabajo_fijo_linea_id, new_template_line)
+        self.assertTrue(fixed.confirmado)
+        self.assertFalse(fixed.edit_session_pending)
+
     def test_discard_edit_restores_confirmed_template_and_calendar(self):
         fixed = self._create_fixed()
         line = self.env['portalgestor.trabajo_fijo.linea'].create({

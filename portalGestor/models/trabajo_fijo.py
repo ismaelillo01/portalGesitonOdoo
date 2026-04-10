@@ -323,6 +323,10 @@ class TrabajoFijo(models.Model):
 
     def action_open_day_lines(self, date_value):
         self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        if self.confirmado and not self.edit_session_pending:
+            self._set_edit_snapshot()
+
         target_date = fields.Date.to_date(date_value)
         if not target_date:
             raise ValidationError(_("Debes seleccionar un dia del mes."))
@@ -869,6 +873,12 @@ class TrabajoFijo(models.Model):
             for line in existing_generated_lines
             if line.trabajo_fijo_linea_id
         }
+        reusable_generated_by_date = defaultdict(lambda: self.env['portalgestor.asignacion.linea'])
+        for line in existing_generated_lines.sorted(key=lambda item: (item.fecha, item.hora_inicio, item.hora_fin, item.id)):
+            if line.trabajo_fijo_linea_id and line.trabajo_fijo_linea_id.id in desired_line_ids:
+                continue
+            reusable_generated_by_date[line.fecha] |= line
+        consumed_generated_lines = self.env['portalgestor.asignacion.linea']
         assignments_by_date = {}
         if target_dates:
             assignments_by_date = {
@@ -903,7 +913,11 @@ class TrabajoFijo(models.Model):
                 if 'asignacion_mensual_dia_linea_id' in AssignmentLine._fields:
                     vals['asignacion_mensual_dia_linea_id'] = False
                 existing_line = existing_by_template_line.get(line_data['line_id'])
+                if not existing_line and reusable_generated_by_date.get(target_date):
+                    existing_line = reusable_generated_by_date[target_date][:1]
+                    reusable_generated_by_date[target_date] = reusable_generated_by_date[target_date] - existing_line
                 if existing_line:
+                    consumed_generated_lines |= existing_line
                     if (
                         existing_line.asignacion_id != assignment
                         or existing_line.hora_inicio != line_data['hora_inicio']
@@ -933,8 +947,10 @@ class TrabajoFijo(models.Model):
                         portalgestor_skip_fixed_exception=True,
                     ).create(vals)
 
+        consumed_generated_line_ids = set(consumed_generated_lines.ids)
         lines_to_remove = existing_generated_lines.filtered(
-            lambda line: line.trabajo_fijo_linea_id.id not in desired_line_ids
+            lambda line: line.id not in consumed_generated_line_ids
+            and line.trabajo_fijo_linea_id.id not in desired_line_ids
         )
         if lines_to_remove:
             lines_to_remove.with_context(
@@ -959,7 +975,11 @@ class TrabajoFijo(models.Model):
             'edit_snapshot_data': False,
             'gestor_owner_id': self.env.user.id,
         })
-        return True
+        return self._build_feedback_action(
+            _("Trabajo fijo verificado y confirmado."),
+            title=_("Horario actualizado"),
+            reload=True,
+        )
 
     def action_verificar_y_confirmar(self):
         self.ensure_one()
