@@ -8,8 +8,10 @@ import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 const TARGET_MODELS = new Set([
     "portalgestor.asignacion",
     "portalgestor.asignacion.mensual",
+    "portalgestor.trabajo_fijo",
 ]);
 const TARGET_FIXED_MODEL = "portalgestor.asignacion.mensual";
+const TARGET_FIXED_V2_MODEL = "portalgestor.trabajo_fijo";
 
 function isPortalGestorExistingRecord(controller) {
     return Boolean(
@@ -44,7 +46,7 @@ patch(FormController.prototype, {
             await this.model.root.discard();
         }
         await this.orm.call(this.props.resModel, "action_descartar_edicion", [[this.model.root.resId]]);
-        if (this.props.resModel === TARGET_FIXED_MODEL) {
+        if (this.props.resModel === TARGET_FIXED_MODEL || this.props.resModel === TARGET_FIXED_V2_MODEL) {
             await this.orm.call(this.props.resModel, "action_eliminar_borrador_no_verificado", [
                 [this.model.root.resId],
             ]);

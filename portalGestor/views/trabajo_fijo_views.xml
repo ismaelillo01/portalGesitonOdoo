@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_form">
+      <field name="name">portalgestor.trabajo_fijo.form</field>
+      <field name="model">portalgestor.trabajo_fijo</field>
+      <field name="arch" type="xml">
+        <form string="Trabajos Fijos">
+          <header>
+            <button
+              name="action_verificar_y_confirmar"
+              string="Verificar y Confirmar"
+              type="object"
+              class="oe_highlight"
+              invisible="content_locked"
+            />
+            <button
+              name="action_editar"
+              string="Modificar Horario"
+              type="object"
+              invisible="manager_edit_blocked or confirmado == False or edit_session_pending == True"
+            />
+            <button
+              name="action_descartar_edicion"
+              string="Descartar cambios"
+              type="object"
+              class="btn-secondary"
+              invisible="edit_session_pending == False"
+            />
+            <button
+              name="action_eliminar_horario"
+              string="Eliminar Horario"
+              type="object"
+              class="btn-secondary"
+              confirm="Desea eliminar el horario?"
+              invisible="manager_edit_blocked"
+            />
+          </header>
+          <sheet class="o_portalgestor_assignment_sheet">
+            <field name="manager_edit_blocked" invisible="1"/>
+            <field name="content_locked" invisible="1"/>
+            <field name="header_locked" invisible="1"/>
+            <field name="edit_session_pending" invisible="1"/>
+            <field name="edit_snapshot_data" invisible="1"/>
+            <field name="gestor_owner_id" invisible="1"/>
+            <field name="usuario_localidad_id" invisible="1"/>
+            <field name="usuario_zona_trabajo_id" invisible="1"/>
+            <field name="legacy_asignacion_mensual_id" invisible="1"/>
+            <div class="o_portalgestor_assignment_owner_corner" invisible="not gestor_owner_id">
+              <span class="o_portalgestor_assignment_owner_corner_caption">Gestor</span>
+              <field name="gestor_owner_label" readonly="1" nolabel="1" class="o_portalgestor_assignment_owner_corner_value"/>
+            </div>
+            <group>
+              <group>
+                <field
+                  name="usuario_id"
+                  domain="[('baja', '=', False), ('has_ap_service', '=', True)]"
+                  readonly="header_locked"
+                  context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid, 'portalgestor_user_selector': True}"
+                />
+                <field name="month" readonly="header_locked"/>
+                <field name="year" readonly="header_locked"/>
+              </group>
+              <group>
+                <field name="confirmado" readonly="1"/>
+                <field name="template_day_count" readonly="1"/>
+                <field name="template_line_count" readonly="1"/>
+                <field name="total_dias_generados" readonly="1"/>
+                <field name="total_lineas_generadas" readonly="1"/>
+              </group>
+            </group>
+            <notebook>
+              <page string="Resumen mensual">
+                <div class="alert alert-info o_portalgestor_fixed_hint" role="alert">
+                  Haz clic en cualquier dia para abrir sus tramos con la fecha ya preparada.
+                </div>
+                <field name="month_grid_html" widget="html" readonly="1" nolabel="1"/>
+              </page>
+              <page string="Tramos del mes">
+                <div class="o_portalgestor_fixed_tools" invisible="content_locked">
+                  <button
+                    name="action_open_seed_wizard"
+                    string="Sembrar desde un dia"
+                    type="object"
+                    class="btn-secondary"
+                  />
+                  <button
+                    name="action_open_copy_week_wizard"
+                    string="Copiar semana a la siguiente"
+                    type="object"
+                    class="btn-secondary"
+                  />
+                  <span class="o_portalgestor_fixed_tools_hint">
+                    Estos atajos copian tramos ya creados; para anadir rapido, pulsa un dia en el resumen.
+                  </span>
+                </div>
+                <div class="o_portalgestor_fixed_tools o_portalgestor_fixed_tools_readonly" invisible="not content_locked">
+                  <span class="o_portalgestor_fixed_tools_hint">
+                    Pulsa Modificar Horario para cambiar tramos o usar las acciones de copia.
+                  </span>
+                </div>
+                <field
+                  name="line_ids"
+                  readonly="content_locked"
+                  context="{
+                    'default_trabajo_fijo_id': id,
+                    'portalgestor_worker_selector': True,
+                    'portalgestor_usuario_zona': usuario_zona_trabajo_id,
+                    'portalgestor_usuario_localidad': usuario_localidad_id,
+                    'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                    'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                  }"
+                >
+                  <list editable="bottom" create="1" delete="1" default_order="fecha, hora_inicio, hora_fin">
+                    <control>
+                      <create string="Anadir una linea"/>
+                    </control>
+                    <field name="sequence" column_invisible="True"/>
+                    <field name="fecha"/>
+                    <field name="week_number" readonly="1"/>
+                    <field name="weekday_label" readonly="1"/>
+                    <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                    <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                    <field
+                      name="trabajador_id"
+                      options="{'no_create': True}"
+                      context="{
+                        'portalgestor_worker_selector': True,
+                        'portalgestor_usuario_zona': parent.usuario_zona_trabajo_id,
+                        'portalgestor_usuario_localidad': parent.usuario_localidad_id,
+                        'exclude_vacaciones_fecha_inicio': fecha,
+                        'exclude_vacaciones_fecha_fin': fecha,
+                        'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                        'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                      }"
+                      domain="[('baja', '=', False)]"
+                    />
+                  </list>
+                  <form string="Tramo de trabajo fijo">
+                    <group>
+                      <field name="fecha"/>
+                      <field name="week_number" readonly="1"/>
+                      <field name="weekday_label" readonly="1"/>
+                      <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                      <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                      <field
+                        name="trabajador_id"
+                        options="{'no_create': True}"
+                        context="{
+                          'portalgestor_worker_selector': True,
+                          'portalgestor_usuario_zona': parent.usuario_zona_trabajo_id,
+                          'portalgestor_usuario_localidad': parent.usuario_localidad_id,
+                          'exclude_vacaciones_fecha_inicio': fecha,
+                          'exclude_vacaciones_fecha_fin': fecha,
+                          'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                          'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                        }"
+                        domain="[('baja', '=', False)]"
+                      />
+                    </group>
+                  </form>
+                </field>
+              </page>
+              <page string="Asignaciones Generadas">
+                <field name="asignacion_linea_ids" readonly="1">
+                  <list>
+                    <field name="fecha"/>
+                    <field name="hora_inicio" widget="float_time"/>
+                    <field name="hora_fin" widget="float_time"/>
+                    <field name="trabajador_id"/>
+                    <field name="asignacion_id"/>
+                  </list>
+                </field>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_linea_day_list">
+      <field name="name">portalgestor.trabajo_fijo.linea.day.list</field>
+      <field name="model">portalgestor.trabajo_fijo.linea</field>
+      <field name="arch" type="xml">
+        <list string="Tramos del dia" editable="bottom" create="1" delete="1" default_order="hora_inicio, hora_fin">
+          <control>
+            <create string="Anadir tramo"/>
+          </control>
+          <field name="sequence" column_invisible="True"/>
+          <field name="trabajo_fijo_id" column_invisible="True"/>
+          <field name="usuario_zona_trabajo_id" column_invisible="True"/>
+          <field name="usuario_localidad_id" column_invisible="True"/>
+          <field name="fecha" readonly="context.get('portalgestor_force_date')"/>
+          <field name="week_number" readonly="1"/>
+          <field name="weekday_label" readonly="1"/>
+          <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+          <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+          <field
+            name="trabajador_id"
+            options="{'no_create': True}"
+            context="{
+              'portalgestor_worker_selector': True,
+              'portalgestor_usuario_zona': context.get('portalgestor_usuario_zona') or usuario_zona_trabajo_id,
+              'portalgestor_usuario_localidad': context.get('portalgestor_usuario_localidad') or usuario_localidad_id,
+              'exclude_vacaciones_fecha_inicio': fecha,
+              'exclude_vacaciones_fecha_fin': fecha,
+              'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+              'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+            }"
+            domain="[('baja', '=', False)]"
+          />
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_linea_day_form">
+      <field name="name">portalgestor.trabajo_fijo.linea.day.form</field>
+      <field name="model">portalgestor.trabajo_fijo.linea</field>
+      <field name="arch" type="xml">
+        <form string="Tramo del dia">
+          <sheet>
+            <field name="trabajo_fijo_id" invisible="1"/>
+            <field name="usuario_zona_trabajo_id" invisible="1"/>
+            <field name="usuario_localidad_id" invisible="1"/>
+            <group>
+              <field name="fecha" readonly="context.get('portalgestor_force_date')"/>
+              <field name="week_number" readonly="1"/>
+              <field name="weekday_label" readonly="1"/>
+              <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+              <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+              <field
+                name="trabajador_id"
+                options="{'no_create': True}"
+                context="{
+                  'portalgestor_worker_selector': True,
+                  'portalgestor_usuario_zona': context.get('portalgestor_usuario_zona') or usuario_zona_trabajo_id,
+                  'portalgestor_usuario_localidad': context.get('portalgestor_usuario_localidad') or usuario_localidad_id,
+                  'exclude_vacaciones_fecha_inicio': fecha,
+                  'exclude_vacaciones_fecha_fin': fecha,
+                  'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                  'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                }"
+                domain="[('baja', '=', False)]"
+              />
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_list">
+      <field name="name">portalgestor.trabajo_fijo.list</field>
+      <field name="model">portalgestor.trabajo_fijo</field>
+      <field name="arch" type="xml">
+        <list string="Trabajos Fijos">
+          <field name="usuario_id"/>
+          <field name="month"/>
+          <field name="year"/>
+          <field name="template_day_count"/>
+          <field name="template_line_count"/>
+          <field name="total_dias_generados"/>
+          <field name="total_lineas_generadas"/>
+          <field name="confirmado"/>
+          <field name="gestor_owner_id"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_search">
+      <field name="name">portalgestor.trabajo_fijo.search</field>
+      <field name="model">portalgestor.trabajo_fijo</field>
+      <field name="arch" type="xml">
+        <search string="Trabajos Fijos">
+          <field name="usuario_id"/>
+          <field name="month"/>
+          <field name="year"/>
+          <field name="gestor_owner_id"/>
+          <filter string="Confirmados" name="confirmed" domain="[('confirmado', '=', True)]"/>
+          <filter string="Borradores" name="draft" domain="[('confirmado', '=', False)]"/>
+          <group expand="0" string="Agrupar por">
+            <filter string="Usuario" name="group_usuario" context="{'group_by': 'usuario_id'}"/>
+            <filter string="Mes" name="group_month" context="{'group_by': 'month'}"/>
+            <filter string="Ano" name="group_year" context="{'group_by': 'year'}"/>
+            <filter string="Gestor" name="group_owner" context="{'group_by': 'gestor_owner_id'}"/>
+          </group>
+        </search>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_portalgestor_trabajo_fijo">
+      <field name="name">Trabajos Fijos</field>
+      <field name="res_model">portalgestor.trabajo_fijo</field>
+      <field name="view_mode">list,form</field>
+      <field name="search_view_id" ref="portalgestor_trabajo_fijo_search"/>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_seed_wizard_form">
+      <field name="name">portalgestor.trabajo_fijo.seed.wizard.form</field>
+      <field name="model">portalgestor.trabajo_fijo.seed.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Sembrar semana">
+          <sheet>
+            <field name="trabajo_fijo_id" invisible="1"/>
+            <group>
+              <field name="source_date"/>
+            </group>
+            <group string="Dias destino de la misma semana">
+              <field name="monday"/>
+              <field name="tuesday"/>
+              <field name="wednesday"/>
+              <field name="thursday"/>
+              <field name="friday"/>
+              <field name="saturday"/>
+              <field name="sunday"/>
+            </group>
+          </sheet>
+          <footer>
+            <button string="Sembrar" type="object" name="action_apply" class="btn-primary"/>
+            <button string="Cancelar" special="cancel" class="btn-secondary"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_copy_week_wizard_form">
+      <field name="name">portalgestor.trabajo_fijo.copy_week.wizard.form</field>
+      <field name="model">portalgestor.trabajo_fijo.copy_week.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Copiar semana">
+          <sheet>
+            <field name="trabajo_fijo_id" invisible="1"/>
+            <group>
+              <field name="source_week_number"/>
+            </group>
+            <div class="alert alert-info" role="alert">
+              Se copiaran todos los tramos de la semana origen a los mismos dias de la semana siguiente.
+            </div>
+          </sheet>
+          <footer>
+            <button string="Copiar" type="object" name="action_apply" class="btn-primary"/>
+            <button string="Cancelar" special="cancel" class="btn-secondary"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <menuitem
+      name="Trabajos Fijos"
+      id="portalgestor_menu_asignacion_mensual"
+      parent="portalgestor_menu_root"
+      action="action_portalgestor_trabajo_fijo"
+      sequence="20"
+    />
+
+  </data>
+</odoo>

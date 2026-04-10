@@ -74,6 +74,16 @@ class Trabajador(models.Model):
         return self.browse(ordered_records.ids)
 
     @api.model
+    def _get_portalgestor_target_zone_id(self):
+        target_zone = self.env.context.get('portalgestor_usuario_zona')
+        if isinstance(target_zone, (list, tuple)):
+            target_zone = target_zone[0] if target_zone else False
+        try:
+            return int(target_zone) if target_zone else False
+        except (TypeError, ValueError):
+            return False
+
+    @api.model
     def _get_excluded_vacation_worker_ids(self):
         fecha = self.env.context.get('exclude_vacaciones_fecha')
         fecha_inicio = self.env.context.get('exclude_vacaciones_fecha_inicio')
@@ -109,12 +119,19 @@ class Trabajador(models.Model):
     @api.model
     def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
         trabajadores_vacaciones = self._get_excluded_vacation_worker_ids()
+        target_zone_id = self._get_portalgestor_target_zone_id() if self._is_portalgestor_worker_selector_context() else False
         if trabajadores_vacaciones:
             if isinstance(domain, tuple):
                 domain = list(domain)
             elif not isinstance(domain, list):
                 domain = []
             domain = domain + [('id', 'not in', trabajadores_vacaciones)]
+        if target_zone_id:
+            if isinstance(domain, tuple):
+                domain = list(domain)
+            elif not isinstance(domain, list):
+                domain = []
+            domain = domain + [('zona_trabajo_ids', 'in', [target_zone_id])]
 
         return super()._search(domain, offset=offset, limit=limit, order=order, **kwargs)
 

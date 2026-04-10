@@ -6,10 +6,21 @@
       <field name="name">portalgestor.asignacion.mensual.form</field>
       <field name="model">portalgestor.asignacion.mensual</field>
       <field name="arch" type="xml">
-        <form string="Trabajo Fijo">
+        <form string="Trabajos Fijos">
           <header>
-            <button name="action_verificar_y_confirmar" string="Verificar y Confirmar" type="object" class="oe_highlight" invisible="confirmado == True or manager_edit_blocked"/>
-            <button name="action_editar" string="Modificar Horario" type="object" invisible="confirmado == False or manager_edit_blocked"/>
+            <button
+              name="action_verificar_y_confirmar"
+              string="Verificar y Confirmar"
+              type="object"
+              class="oe_highlight"
+              invisible="(schedule_type == 'legacy' and (confirmado == True or manager_edit_blocked)) or (schedule_type == 'monthly_template' and template_content_locked)"
+            />
+            <button
+              name="action_editar"
+              string="Modificar Horario"
+              type="object"
+              invisible="manager_edit_blocked or (schedule_type == 'legacy' and confirmado == False) or (schedule_type == 'monthly_template' and (confirmado == False or edit_session_pending == True))"
+            />
             <button
               name="action_eliminar_horario"
               string="Eliminar Horario"
@@ -20,7 +31,10 @@
             />
           </header>
           <sheet class="o_portalgestor_assignment_sheet">
+            <field name="schedule_type" invisible="1"/>
             <field name="manager_edit_blocked" invisible="1"/>
+            <field name="template_header_locked" invisible="1"/>
+            <field name="template_content_locked" invisible="1"/>
             <field name="edit_session_pending" invisible="1"/>
             <field name="edit_snapshot_data" invisible="1"/>
             <field name="gestor_owner_id" invisible="1"/>
@@ -30,7 +44,12 @@
               <field name="gestor_owner_label" readonly="1" nolabel="1" class="o_portalgestor_assignment_owner_corner_value"/>
             </div>
             <group>
-              <group>
+              <group invisible="schedule_type != 'monthly_template'">
+                <field name="usuario_id" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" readonly="template_header_locked" context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid, 'portalgestor_user_selector': True}"/>
+                <field name="month" readonly="template_header_locked"/>
+                <field name="year" readonly="template_header_locked"/>
+              </group>
+              <group invisible="schedule_type == 'monthly_template'">
                 <field name="usuario_id" domain="[('baja', '=', False), ('has_ap_service', '=', True)]" readonly="confirmado == True or manager_edit_blocked" context="{'portalgestor_show_user_group': True, 'portalgestor_viewer_uid': uid, 'portalgestor_user_selector': True}"/>
                 <field name="fecha_inicio" readonly="confirmado == True or manager_edit_blocked"/>
                 <field name="fecha_fin" readonly="confirmado == True or manager_edit_blocked"/>
@@ -40,9 +59,131 @@
                 <field name="total_dias_generados" readonly="1"/>
                 <field name="total_lineas_generadas" readonly="1"/>
               </group>
+              <group invisible="schedule_type != 'monthly_template'">
+                <field name="template_week_count" readonly="1"/>
+                <field name="template_day_count" readonly="1"/>
+                <field name="template_line_count" readonly="1"/>
+              </group>
             </group>
             <notebook>
-              <page string="Tramos Fijos">
+              <page string="Plantilla Mensual" invisible="schedule_type != 'monthly_template'">
+                <field name="template_week_ids" context="{'default_asignacion_mensual_id': id}">
+                  <list create="0" delete="0">
+                    <field name="asignacion_mensual_id" column_invisible="True"/>
+                    <field name="sequence"/>
+                    <field name="fecha_inicio"/>
+                    <field name="fecha_fin"/>
+                    <field name="name" readonly="1"/>
+                    <button name="action_copy_to_next_week" string="Copiar a la siguiente semana" type="object" class="btn-secondary" invisible="template_locked"/>
+                  </list>
+                  <form string="Semana">
+                    <sheet>
+                      <field name="asignacion_mensual_id" invisible="1"/>
+                      <field name="template_locked" invisible="1"/>
+                      <group>
+                        <field name="name" readonly="1"/>
+                        <button name="action_copy_to_next_week" string="Copiar a la siguiente semana" type="object" class="btn-secondary" invisible="template_locked"/>
+                      </group>
+                      <field name="template_day_ids" create="0" delete="0" context="{'default_asignacion_mensual_id': asignacion_mensual_id, 'default_semana_id': id}">
+                        <list create="0" delete="0" open_form_view="1">
+                          <field name="asignacion_mensual_id" column_invisible="True"/>
+                          <field name="semana_id" column_invisible="True"/>
+                          <field name="fecha" readonly="1"/>
+                          <field name="weekday_label" readonly="1"/>
+                          <field name="selected_for_seed" readonly="template_locked"/>
+                          <field name="line_count" readonly="1"/>
+                          <field name="line_summary" readonly="1"/>
+                        </list>
+                        <form string="Dia">
+                          <sheet class="o_portalgestor_monthly_day_sheet">
+                            <field name="asignacion_mensual_id" invisible="1"/>
+                            <field name="semana_id" invisible="1"/>
+                            <field name="template_locked" invisible="1"/>
+                            <field name="usuario_zona_trabajo_id" invisible="1"/>
+                            <field name="usuario_localidad_id" invisible="1"/>
+                            <group>
+                              <field name="fecha" readonly="1"/>
+                              <field name="weekday_label" readonly="1"/>
+                              <field name="selected_for_seed" readonly="template_locked"/>
+                            </group>
+                            <field
+                              name="template_day_line_ids"
+                              readonly="template_locked"
+                              create="1"
+                              delete="1"
+                              class="o_portalgestor_monthly_day_lines"
+                              context="{
+                                'default_template_day_id': id,
+                                'default_asignacion_mensual_id': asignacion_mensual_id,
+                                'portalgestor_worker_selector': True,
+                                'portalgestor_usuario_zona': usuario_zona_trabajo_id,
+                                'portalgestor_usuario_localidad': usuario_localidad_id,
+                                'exclude_vacaciones_fecha_inicio': fecha,
+                                'exclude_vacaciones_fecha_fin': fecha,
+                                'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                                'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                              }"
+                            >
+                              <list editable="bottom" create="1" delete="1">
+                                <control>
+                                  <create string="Añadir una línea"/>
+                                </control>
+                                <field name="template_day_id" column_invisible="True"/>
+                                <field name="asignacion_mensual_id" column_invisible="True"/>
+                                <field name="fecha" column_invisible="True"/>
+                                <field name="usuario_zona_trabajo_id" column_invisible="True"/>
+                                <field name="usuario_localidad_id" column_invisible="True"/>
+                                <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                                <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                                <field
+                                  name="trabajador_id"
+                                  options="{'no_create': True}"
+                                  context="{
+                                    'portalgestor_worker_selector': True,
+                                    'portalgestor_usuario_zona': parent.usuario_zona_trabajo_id,
+                                    'portalgestor_usuario_localidad': parent.usuario_localidad_id,
+                                    'exclude_vacaciones_fecha_inicio': fecha,
+                                    'exclude_vacaciones_fecha_fin': fecha,
+                                    'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                                    'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                                  }"
+                                  domain="[('baja', '=', False)]"
+                                />
+                              </list>
+                              <form string="Tramo">
+                                <group>
+                                  <field name="template_day_id" invisible="1"/>
+                                  <field name="asignacion_mensual_id" invisible="1"/>
+                                  <field name="fecha" invisible="1"/>
+                                  <field name="usuario_zona_trabajo_id" invisible="1"/>
+                                  <field name="usuario_localidad_id" invisible="1"/>
+                                  <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                                  <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+                                  <field
+                                    name="trabajador_id"
+                                    options="{'no_create': True}"
+                                    context="{
+                                      'portalgestor_worker_selector': True,
+                                      'portalgestor_usuario_zona': parent.usuario_zona_trabajo_id,
+                                      'portalgestor_usuario_localidad': parent.usuario_localidad_id,
+                                      'exclude_vacaciones_fecha_inicio': fecha,
+                                      'exclude_vacaciones_fecha_fin': fecha,
+                                      'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
+                                      'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search'
+                                    }"
+                                    domain="[('baja', '=', False)]"
+                                  />
+                                </group>
+                              </form>
+                            </field>
+                          </sheet>
+                        </form>
+                      </field>
+                    </sheet>
+                  </form>
+                </field>
+              </page>
+              <page string="Tramos Fijos Legacy" invisible="schedule_type != 'legacy'">
                 <field name="linea_fija_ids" readonly="confirmado == True or manager_edit_blocked">
                   <list editable="bottom">
                     <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
@@ -105,10 +246,13 @@
       <field name="arch" type="xml">
         <list string="Trabajos Fijos">
           <field name="usuario_id"/>
-          <field name="fecha_inicio"/>
-          <field name="fecha_fin"/>
+          <field name="template_month_label"/>
+          <field name="year"/>
+          <field name="template_day_count"/>
+          <field name="template_line_count"/>
           <field name="total_dias_generados"/>
           <field name="total_lineas_generadas"/>
+          <field name="confirmado"/>
         </list>
       </field>
     </record>
@@ -117,12 +261,16 @@
       <field name="name">Trabajos Fijos</field>
       <field name="res_model">portalgestor.asignacion.mensual</field>
       <field name="view_mode">list,form</field>
+      <field name="domain">[('schedule_type', '=', 'monthly_template')]</field>
+      <field name="context">{'default_schedule_type': 'monthly_template'}</field>
     </record>
 
     <record model="ir.actions.act_window" id="action_portalgestor_asignacion_mensual_create">
       <field name="name">Trabajos Fijos</field>
       <field name="res_model">portalgestor.asignacion.mensual</field>
       <field name="view_mode">list,form</field>
+      <field name="domain">[('schedule_type', '=', 'monthly_template')]</field>
+      <field name="context">{'default_schedule_type': 'monthly_template'}</field>
     </record>
 
     <menuitem

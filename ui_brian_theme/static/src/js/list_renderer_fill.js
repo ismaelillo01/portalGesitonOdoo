@@ -9,6 +9,9 @@ const MIN_EMPTY_ROWS = 4;
 const FALLBACK_ROW_HEIGHT = 44;
 
 function getUiBrianMinimumEmptyRows(renderer) {
+    if (renderer.isX2Many || renderer.env.inDialog) {
+        return 0;
+    }
     let nbEmptyRow = Math.max(0, MIN_EMPTY_ROWS - renderer.props.list.records.length);
     if (nbEmptyRow > 0 && renderer.displayRowCreates) {
         nbEmptyRow -= 1;

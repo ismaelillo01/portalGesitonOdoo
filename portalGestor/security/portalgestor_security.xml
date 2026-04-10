@@ -46,6 +46,34 @@
             <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
+        <record id="rule_trabajo_fijo_gestor_agusto" model="ir.rule">
+            <field name="name">Trabajos fijos V2 globales para gestores Agusto</field>
+            <field name="model_id" ref="model_portalgestor_trabajo_fijo"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_trabajo_fijo_gestor_intecum" model="ir.rule">
+            <field name="name">Trabajos fijos V2 globales Intecum y Admin</field>
+            <field name="model_id" ref="model_portalgestor_trabajo_fijo"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_trabajo_fijo_linea_gestor_agusto" model="ir.rule">
+            <field name="name">Tramos de trabajos fijos V2 globales para gestores Agusto</field>
+            <field name="model_id" ref="model_portalgestor_trabajo_fijo_linea"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_trabajo_fijo_linea_gestor_intecum" model="ir.rule">
+            <field name="name">Tramos de trabajos fijos V2 globales Intecum y Admin</field>
+            <field name="model_id" ref="model_portalgestor_trabajo_fijo_linea"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
         <!-- Record Rules para Usuarios y Trabajadores -->
         <record id="rule_usuarios_gestor_agusto" model="ir.rule">
             <field name="name">Usuarios globales para gestores Agusto</field>

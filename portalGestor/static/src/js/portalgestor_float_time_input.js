@@ -7,6 +7,7 @@ import { useEffect } from "@odoo/owl";
 const TARGET_MODELS = new Set([
     "portalgestor.asignacion.linea",
     "portalgestor.asignacion.mensual.linea",
+    "portalgestor.asignacion.mensual.dia.linea",
 ]);
 
 function formatPortalGestorTimeInput(rawValue, inputType) {

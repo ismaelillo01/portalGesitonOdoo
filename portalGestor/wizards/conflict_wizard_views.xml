@@ -16,6 +16,7 @@
                         <field name="mensaje" readonly="1" force_save="1"/>
                     </div>
                     <field name="conflict_type" invisible="1"/>
+                    <field name="trabajo_fijo_id" invisible="1"/>
                     <field name="can_override" invisible="1"/>
                     <field name="info_resumen" invisible="1"/>
                     <field name="batch_conflict_line_ids" invisible="1"/>

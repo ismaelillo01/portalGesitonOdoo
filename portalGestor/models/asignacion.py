@@ -370,6 +370,8 @@ class Asignacion(models.Model):
                     'trabajador_id': linea.trabajador_id.id or False,
                     'asignacion_mensual_id': linea.asignacion_mensual_id.id or False,
                     'asignacion_mensual_linea_id': linea.asignacion_mensual_linea_id.id or False,
+                    'trabajo_fijo_id': linea.trabajo_fijo_id.id or False,
+                    'trabajo_fijo_linea_id': linea.trabajo_fijo_linea_id.id or False,
                 }
                 for linea in self.lineas_ids.sorted(key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id))
             ],
@@ -424,6 +426,8 @@ class Asignacion(models.Model):
                     'trabajador_id': line_data.get('trabajador_id') or False,
                     'asignacion_mensual_id': line_data.get('asignacion_mensual_id') or False,
                     'asignacion_mensual_linea_id': line_data.get('asignacion_mensual_linea_id') or False,
+                    'trabajo_fijo_id': line_data.get('trabajo_fijo_id') or False,
+                    'trabajo_fijo_linea_id': line_data.get('trabajo_fijo_linea_id') or False,
                 })
             if line_values:
                 AsignacionLinea.with_context(
@@ -655,7 +659,8 @@ class Asignacion(models.Model):
 
         if lineas_futuras:
             lineas_futuras_fijas = lineas_futuras.filtered('asignacion_mensual_linea_id')
-            lineas_futuras_individuales = lineas_futuras - lineas_futuras_fijas
+            lineas_futuras_fijas_v2 = lineas_futuras.filtered('trabajo_fijo_linea_id')
+            lineas_futuras_individuales = lineas_futuras - lineas_futuras_fijas - lineas_futuras_fijas_v2
             if lineas_futuras_individuales:
                 lineas_futuras_individuales.write({'trabajador_id': False})
             if lineas_futuras_fijas:
@@ -667,6 +672,17 @@ class Asignacion(models.Model):
                     'asignacion_mensual_id': False,
                     'asignacion_mensual_linea_id': False,
                 })
+            if lineas_futuras_fijas_v2:
+                lineas_futuras_fijas_v2.mapped('trabajo_fijo_id').with_context(
+                    portalgestor_skip_trabajo_fijo_edit_check=True,
+                ).write({'confirmado': False})
+                lineas_futuras_fijas_v2.with_context(
+                    portalgestor_skip_fixed_exception=True,
+                ).write({
+                    'trabajador_id': False,
+                    'trabajo_fijo_id': False,
+                    'trabajo_fijo_linea_id': False,
+                })
 
         if lineas_partidas:
             self._mark_fixed_lines_as_manual_exception(lineas_partidas)
@@ -677,6 +693,14 @@ class Asignacion(models.Model):
                     write_vals.update({
                         'asignacion_mensual_id': False,
                         'asignacion_mensual_linea_id': False,
+                    })
+                if linea.trabajo_fijo_linea_id:
+                    linea.trabajo_fijo_id.with_context(
+                        portalgestor_skip_trabajo_fijo_edit_check=True,
+                    ).write({'confirmado': False})
+                    write_vals.update({
+                        'trabajo_fijo_id': False,
+                        'trabajo_fijo_linea_id': False,
                     })
                 linea.with_context(
                     portalgestor_skip_fixed_exception=True,
@@ -710,6 +734,9 @@ class Asignacion(models.Model):
         asignaciones_hoy = asignaciones.filtered(lambda asignacion: asignacion.fecha == fecha_inicio)
         asignaciones_futuras = asignaciones.filtered(lambda asignacion: asignacion.fecha > fecha_inicio)
         if asignaciones_futuras:
+            asignaciones_futuras.mapped('lineas_ids.trabajo_fijo_id').with_context(
+                portalgestor_skip_trabajo_fijo_edit_check=True,
+            ).write({'confirmado': False})
             asignaciones_futuras.with_context(
                 portalgestor_skip_fixed_exception=True,
             ).unlink()
@@ -722,6 +749,9 @@ class Asignacion(models.Model):
             self._mark_fixed_lines_as_manual_exception(lineas_partidas)
             if lineas_futuras:
                 lineas_futuras.filtered('asignacion_mensual_id').mapped('asignacion_mensual_id')._mark_unconfirmed()
+                lineas_futuras.filtered('trabajo_fijo_id').mapped('trabajo_fijo_id').with_context(
+                    portalgestor_skip_trabajo_fijo_edit_check=True,
+                ).write({'confirmado': False})
                 lineas_futuras.with_context(
                     portalgestor_skip_fixed_exception=True,
                 ).unlink()
@@ -731,6 +761,14 @@ class Asignacion(models.Model):
                     write_vals.update({
                         'asignacion_mensual_id': False,
                         'asignacion_mensual_linea_id': False,
+                    })
+                if linea.trabajo_fijo_linea_id:
+                    linea.trabajo_fijo_id.with_context(
+                        portalgestor_skip_trabajo_fijo_edit_check=True,
+                    ).write({'confirmado': False})
+                    write_vals.update({
+                        'trabajo_fijo_id': False,
+                        'trabajo_fijo_linea_id': False,
                     })
                 linea.with_context(
                     portalgestor_skip_fixed_exception=True,

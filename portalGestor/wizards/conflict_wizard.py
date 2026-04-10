@@ -9,6 +9,7 @@ class ConflictWizard(models.TransientModel):
 
     asignacion_id = fields.Many2one('portalgestor.asignacion')
     asignacion_mensual_id = fields.Many2one('portalgestor.asignacion.mensual')
+    trabajo_fijo_id = fields.Many2one('portalgestor.trabajo_fijo')
     conflict_type = fields.Selection([
         ('overlapping', 'Solapamiento de Horas'),
         ('overlapping_batch', 'Solapamiento de Horas en lote'),
@@ -90,6 +91,10 @@ class ConflictWizard(models.TransientModel):
 
     def _resume_verification(self):
         self.ensure_one()
+        if self.trabajo_fijo_id:
+            return self.trabajo_fijo_id.with_context(
+                portalgestor_skip_trabajo_fijo_same_day_warning=True,
+            ).action_verificar_y_confirmar()
         if self.asignacion_mensual_id:
             return self.asignacion_mensual_id.with_context(
                 portalgestor_skip_fixed_sync_before_verify=True,
@@ -114,11 +119,27 @@ class ConflictWizard(models.TransientModel):
             return {'type': 'ir.actions.act_window_close'}
 
         if self.conflict_type == 'info_same_day':
-            self.asignacion_id._apply_confirmation_as_current_manager()
-            if self.asignacion_mensual_id:
-                result = self._resume_verification()
+            if self.trabajo_fijo_id:
+                result = self.trabajo_fijo_id.with_context(
+                    portalgestor_skip_trabajo_fijo_same_day_warning=True,
+                ).action_verificar_y_confirmar()
                 if isinstance(result, dict):
                     return result
+                return {'type': 'ir.actions.act_window_close'}
+            if self.asignacion_mensual_id:
+                monthly_record = self.asignacion_mensual_id
+                if monthly_record.schedule_type == 'monthly_template':
+                    result = monthly_record.with_context(
+                        portalgestor_skip_template_same_day_warning=True,
+                    ).action_verificar_y_confirmar()
+                else:
+                    if self.asignacion_id:
+                        self.asignacion_id._apply_confirmation_as_current_manager()
+                    result = self._resume_verification()
+                if isinstance(result, dict):
+                    return result
+                return {'type': 'ir.actions.act_window_close'}
+            self.asignacion_id._apply_confirmation_as_current_manager()
             return {'type': 'ir.actions.act_window_close'}
 
         return {'type': 'ir.actions.act_window_close'}

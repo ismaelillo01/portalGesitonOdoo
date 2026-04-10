@@ -248,3 +248,29 @@
         position: static;
     }
 }
+
+.o_dialog .o_form_view .o_portalgestor_monthly_day_sheet {
+    max-width: 980px;
+    width: 96vw;
+}
+
+.o_dialog .o_form_view .o_portalgestor_monthly_day_lines {
+    margin-top: 12px;
+}
+
+.o_dialog .o_form_view .o_portalgestor_monthly_day_lines .o_list_renderer .o_list_table {
+    margin-bottom: 0;
+}
+
+.o_dialog .o_form_view .o_portalgestor_monthly_day_lines .o_list_renderer .o_list_table tbody tr.o_field_x2many_list_row_add > td,
+.o_dialog .o_form_view .o_portalgestor_monthly_day_lines .o_list_renderer .o_list_table tbody tr.o_group_field_row_add > td {
+    background: rgba(233, 70, 146, 0.04);
+    border-bottom: 0;
+    min-height: 46px;
+}
+
+.o_dialog .o_form_view .o_portalgestor_monthly_day_lines .o_field_x2many_list_row_add a,
+.o_dialog .o_form_view .o_portalgestor_monthly_day_lines .o_group_field_row_add a {
+    color: #e94692;
+    font-weight: 700;
+}
