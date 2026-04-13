@@ -83,13 +83,13 @@
                     name="action_open_seed_wizard"
                     string="Sembrar desde un dia"
                     type="object"
-                    class="btn-secondary"
+                    class="btn-secondary o_portalgestor_fixed_wizard_button"
                   />
                   <button
                     name="action_open_copy_week_wizard"
-                    string="Copiar semana a la siguiente"
+                    string="Copiar semana"
                     type="object"
-                    class="btn-secondary"
+                    class="btn-secondary o_portalgestor_fixed_wizard_button"
                   />
                   <span class="o_portalgestor_fixed_tools_hint">
                     Estos atajos copian tramos ya creados; para anadir rapido, pulsa un dia en el resumen.
@@ -334,11 +334,12 @@
               <field name="source_week_number"/>
             </group>
             <div class="alert alert-info" role="alert">
-              Se copiaran todos los tramos de la semana origen a los mismos dias de la semana siguiente.
+              Elige si quieres copiar la semana origen solo a la semana siguiente o a todas las semanas restantes del mes.
             </div>
           </sheet>
           <footer>
-            <button string="Copiar" type="object" name="action_apply" class="btn-primary"/>
+            <button string="Copiar a la siguiente" type="object" name="action_apply_next" class="btn-primary"/>
+            <button string="Copiar para todo el mes" type="object" name="action_apply_remaining" class="btn-secondary"/>
             <button string="Cancelar" special="cancel" class="btn-secondary"/>
           </footer>
         </form>

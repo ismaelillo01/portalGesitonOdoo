@@ -528,7 +528,7 @@ class TrabajoFijo(models.Model):
         return {'type': 'ir.actions.act_window_close'}
 
     @staticmethod
-    def _build_feedback_action(message, notif_type='success', title=False, reload=False):
+    def _build_feedback_action(message, notif_type='success', title=False, reload=False, close=False):
         params = {
             'message': message,
             'type': notif_type,
@@ -536,7 +536,9 @@ class TrabajoFijo(models.Model):
         }
         if title:
             params['title'] = title
-        if reload:
+        if close:
+            params['next'] = {'type': 'ir.actions.act_window_close'}
+        elif reload:
             params['next'] = {'type': 'ir.actions.client', 'tag': 'reload'}
         return {
             'type': 'ir.actions.client',
@@ -546,22 +548,28 @@ class TrabajoFijo(models.Model):
 
     def action_open_seed_wizard(self):
         self.ensure_one()
+        view = self.env.ref('portalGestor.portalgestor_trabajo_fijo_seed_wizard_form')
         return {
             'name': 'Sembrar semana',
             'type': 'ir.actions.act_window',
             'res_model': 'portalgestor.trabajo_fijo.seed.wizard',
             'view_mode': 'form',
+            'view_id': view.id,
+            'views': [(view.id, 'form')],
             'target': 'new',
             'context': {'default_trabajo_fijo_id': self.id},
         }
 
     def action_open_copy_week_wizard(self):
         self.ensure_one()
+        view = self.env.ref('portalGestor.portalgestor_trabajo_fijo_copy_week_wizard_form')
         return {
             'name': 'Copiar semana',
             'type': 'ir.actions.act_window',
             'res_model': 'portalgestor.trabajo_fijo.copy_week.wizard',
             'view_mode': 'form',
+            'view_id': view.id,
+            'views': [(view.id, 'form')],
             'target': 'new',
             'context': {'default_trabajo_fijo_id': self.id},
         }
@@ -617,10 +625,10 @@ class TrabajoFijo(models.Model):
                 'lines': copied_lines,
             },
             title=_("Sembrado realizado"),
-            reload=True,
+            close=True,
         )
 
-    def action_copy_week_to_next(self, source_week_number):
+    def _copy_week(self, source_week_number, scope='next'):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
         try:
@@ -638,20 +646,25 @@ class TrabajoFijo(models.Model):
         copied_days = 0
         copied_lines = 0
         skipped_days = 0
+        if scope == 'remaining':
+            week_offsets = range(1, len(weeks) - source_week_number + 1)
+        else:
+            week_offsets = [1]
         for source_date in source_dates:
             source_lines = self.line_ids.filtered(lambda line: line.fecha == source_date)
             if not source_lines:
                 continue
-            target_date = source_date + timedelta(days=7)
-            if target_date.month != int(self.month):
-                skipped_days += 1
-                continue
-            self._replace_date_lines_from_source(source_lines, target_date)
-            copied_days += 1
-            copied_lines += len(source_lines)
+            for week_offset in week_offsets:
+                target_date = source_date + timedelta(days=7 * week_offset)
+                if target_date.month != int(self.month):
+                    skipped_days += 1
+                    continue
+                self._replace_date_lines_from_source(source_lines, target_date)
+                copied_days += 1
+                copied_lines += len(source_lines)
         if not copied_days:
             return self._build_feedback_action(
-                _("La semana seleccionada no tiene tramos copiables a la semana siguiente."),
+                _("La semana seleccionada no tiene tramos copiables para el alcance elegido."),
                 notif_type='warning',
                 title=_("Nada que copiar"),
             )
@@ -661,7 +674,17 @@ class TrabajoFijo(models.Model):
         }
         if skipped_days:
             message += "\n" + _("%(days)s dias no se copiaron porque salen del mes.") % {'days': skipped_days}
-        return self._build_feedback_action(message, title=_("Copia realizada"), reload=True)
+        if scope == 'remaining':
+            title = _("Copia mensual realizada")
+        else:
+            title = _("Copia realizada")
+        return self._build_feedback_action(message, title=title, close=True)
+
+    def action_copy_week_to_next(self, source_week_number):
+        return self._copy_week(source_week_number, scope='next')
+
+    def action_copy_week_to_remaining(self, source_week_number):
+        return self._copy_week(source_week_number, scope='remaining')
 
     def _get_target_specs(self):
         self.ensure_one()
@@ -1357,3 +1380,11 @@ class TrabajoFijoCopyWeekWizard(models.TransientModel):
     def action_apply(self):
         self.ensure_one()
         return self.trabajo_fijo_id.action_copy_week_to_next(self.source_week_number)
+
+    def action_apply_next(self):
+        self.ensure_one()
+        return self.trabajo_fijo_id.action_copy_week_to_next(self.source_week_number)
+
+    def action_apply_remaining(self):
+        self.ensure_one()
+        return self.trabajo_fijo_id.action_copy_week_to_remaining(self.source_week_number)

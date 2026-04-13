@@ -85,7 +85,10 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
             self.worker_a,
         )
 
-        fixed.action_copy_week_to_next(2)
+        action = fixed.action_copy_week_to_next(2)
+        self.assertEqual(action['type'], 'ir.actions.client')
+        self.assertEqual(action['tag'], 'display_notification')
+        self.assertEqual(action['params']['next']['type'], 'ir.actions.act_window_close')
         self.assertEqual(
             fixed.line_ids.filtered(lambda line: line.fecha == fields.Date.to_date('2026-04-13')).trabajador_id,
             self.worker_a,
@@ -94,6 +97,41 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
             fixed.line_ids.filtered(lambda line: line.fecha == fields.Date.to_date('2026-04-17')).trabajador_id,
             self.worker_a,
         )
+
+    def test_copy_week_to_remaining_weeks_uses_same_source_week(self):
+        fixed = self._create_fixed()
+        self.env['portalgestor.trabajo_fijo.linea'].create([
+            {
+                'trabajo_fijo_id': fixed.id,
+                'fecha': fields.Date.to_date('2026-04-06'),
+                'hora_inicio': 8.0,
+                'hora_fin': 10.0,
+                'trabajador_id': self.worker_a.id,
+            },
+            {
+                'trabajo_fijo_id': fixed.id,
+                'fecha': fields.Date.to_date('2026-04-07'),
+                'hora_inicio': 10.0,
+                'hora_fin': 12.0,
+                'trabajador_id': self.worker_b.id,
+            },
+        ])
+
+        action = fixed.action_copy_week_to_remaining(2)
+
+        self.assertEqual(action['type'], 'ir.actions.client')
+        self.assertEqual(action['params']['next']['type'], 'ir.actions.act_window_close')
+        expected_days = {
+            fields.Date.to_date('2026-04-13'): self.worker_a,
+            fields.Date.to_date('2026-04-14'): self.worker_b,
+            fields.Date.to_date('2026-04-20'): self.worker_a,
+            fields.Date.to_date('2026-04-21'): self.worker_b,
+            fields.Date.to_date('2026-04-27'): self.worker_a,
+            fields.Date.to_date('2026-04-28'): self.worker_b,
+        }
+        for date_value, worker in expected_days.items():
+            copied_lines = fixed.line_ids.filtered(lambda line: line.fecha == date_value)
+            self.assertEqual(copied_lines.trabajador_id, worker)
 
     def test_month_summary_links_open_day_lines_with_default_date(self):
         fixed = self._create_fixed()
@@ -110,6 +148,19 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(action['context']['default_fecha'], '2026-04-06')
         self.assertNotIn('list_view_ref', action['context'])
         self.assertNotIn('search_view_ref', action['context'])
+
+    def test_seed_and_copy_wizard_actions_include_form_views(self):
+        fixed = self._create_fixed()
+
+        seed_action = fixed.action_open_seed_wizard()
+        copy_action = fixed.action_open_copy_week_wizard()
+
+        self.assertEqual(seed_action['target'], 'new')
+        self.assertEqual(seed_action['views'][0][1], 'form')
+        self.assertTrue(seed_action['view_id'])
+        self.assertEqual(copy_action['target'], 'new')
+        self.assertEqual(copy_action['views'][0][1], 'form')
+        self.assertTrue(copy_action['view_id'])
 
     def test_open_day_lines_starts_safe_edit_session_for_confirmed_fixed(self):
         fixed = self._create_fixed()

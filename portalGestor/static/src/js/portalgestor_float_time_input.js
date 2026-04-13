@@ -8,6 +8,7 @@ const TARGET_MODELS = new Set([
     "portalgestor.asignacion.linea",
     "portalgestor.asignacion.mensual.linea",
     "portalgestor.asignacion.mensual.dia.linea",
+    "portalgestor.trabajo_fijo.linea",
 ]);
 
 function formatPortalGestorTimeInput(rawValue, inputType) {
