@@ -18,6 +18,7 @@
         'ui_brian_theme',
     ],
     'data': [
+        'views/backend_views.xml',
         'views/templates.xml',
     ],
     'assets': {

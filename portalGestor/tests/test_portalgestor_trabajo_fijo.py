@@ -108,6 +108,8 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertIn(('fecha', '=', '2026-04-06'), action['domain'])
         self.assertEqual(action['context']['default_trabajo_fijo_id'], fixed.id)
         self.assertEqual(action['context']['default_fecha'], '2026-04-06')
+        self.assertNotIn('list_view_ref', action['context'])
+        self.assertNotIn('search_view_ref', action['context'])
 
     def test_open_day_lines_starts_safe_edit_session_for_confirmed_fixed(self):
         fixed = self._create_fixed()

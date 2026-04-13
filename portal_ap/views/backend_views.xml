@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_manager_schedule_app" model="ir.actions.act_url">
+        <field name="name">Consultar horario</field>
+        <field name="url">/consultar-horario</field>
+        <field name="target">self</field>
+    </record>
+
+    <menuitem
+        id="menu_manager_schedule_root"
+        name="Consultar horario"
+        action="action_manager_schedule_app"
+        sequence="35"
+        groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
+    />
+</odoo>

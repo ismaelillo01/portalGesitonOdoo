@@ -96,7 +96,11 @@
       <field name="model">trabajadores.trabajador</field>
       <field name="arch" type="xml">
         <search string="Buscar AP">
-          <field name="nombre_completo"/>
+          <field
+            name="name"
+            string="Nombre o apellido"
+            filter_domain="['|', '|', ('name', 'ilike', self), ('apellido1', 'ilike', self), ('apellido2', 'ilike', self)]"
+          />
           <field name="telefono"/>
           <field name="localidad_id"/>
           <filter name="carnet_conducir" string="Con carnet" domain="[('carnet_conducir', '=', True)]"/>

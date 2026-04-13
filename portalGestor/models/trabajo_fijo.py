@@ -354,8 +354,6 @@ class TrabajoFijo(models.Model):
                 'portalgestor_worker_selector': True,
                 'portalgestor_usuario_zona': self.usuario_zona_trabajo_id.id or False,
                 'portalgestor_usuario_localidad': self.usuario_localidad_id.id or False,
-                'list_view_ref': 'trabajadores.trabajador_portalgestor_selector_list',
-                'search_view_ref': 'trabajadores.trabajador_portalgestor_selector_search',
             },
         }
 

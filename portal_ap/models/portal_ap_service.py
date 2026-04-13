@@ -71,7 +71,7 @@ class PortalAPService(models.AbstractModel):
         return matches, False
 
     @api.model
-    def _get_navigation(self, year, month):
+    def _get_navigation(self, year, month, url_pattern='/ap/horario/{year}/{month}'):
         previous_month = month - 1
         previous_year = year
         if previous_month < 1:
@@ -88,13 +88,65 @@ class PortalAPService(models.AbstractModel):
             'previous': {
                 'year': previous_year,
                 'month': previous_month,
-                'url': f'/ap/horario/{previous_year}/{previous_month}',
+                'url': url_pattern.format(year=previous_year, month=previous_month),
             },
             'next': {
                 'year': next_year,
                 'month': next_month,
-                'url': f'/ap/horario/{next_year}/{next_month}',
+                'url': url_pattern.format(year=next_year, month=next_month),
             },
+        }
+
+    @api.model
+    def _build_month_calendar_payload(
+        self,
+        year,
+        month,
+        work_by_date,
+        vacation_by_date=None,
+        url_pattern='/ap/horario/{year}/{month}',
+    ):
+        year = int(year)
+        month = int(month)
+        month_start, month_end = self._get_month_bounds(year, month)
+        today = fields.Date.context_today(self)
+        weeks = []
+        month_days = []
+
+        for week_dates in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
+            week = []
+            for date_value in week_dates:
+                in_month = date_value.month == month
+                day_work = list(work_by_date.get(date_value, [])) if in_month else []
+                day_vacations = list((vacation_by_date or {}).get(date_value, [])) if in_month else []
+                day_payload = {
+                    'date': date_value,
+                    'date_string': fields.Date.to_string(date_value),
+                    'day': date_value.day,
+                    'weekday_label': WEEKDAY_LABELS[date_value.weekday()],
+                    'in_month': in_month,
+                    'is_today': date_value == today,
+                    'work_items': day_work,
+                    'vacations': day_vacations,
+                    'has_content': bool(day_work or day_vacations),
+                }
+                week.append(day_payload)
+                if in_month:
+                    month_days.append(day_payload)
+            weeks.append(week)
+
+        navigation = self._get_navigation(year, month, url_pattern=url_pattern)
+        return {
+            'year': year,
+            'month': month,
+            'month_label': self._get_month_label(month),
+            'month_start': fields.Date.to_string(month_start),
+            'month_end': fields.Date.to_string(month_end),
+            'weekday_labels': WEEKDAY_LABELS,
+            'weeks': weeks,
+            'month_days': month_days,
+            'previous': navigation['previous'],
+            'next': navigation['next'],
         }
 
     @api.model
@@ -128,7 +180,7 @@ class PortalAPService(models.AbstractModel):
                     self._format_float_hour(line.hora_inicio),
                     self._format_float_hour(line.hora_fin),
                 ),
-                'usuario': user_label,
+                'label': user_label,
             })
 
         vacations = self.env['trabajadores.vacacion'].sudo().search([
@@ -146,37 +198,93 @@ class PortalAPService(models.AbstractModel):
                 })
                 date_cursor += timedelta(days=1)
 
-        today = fields.Date.context_today(self)
-        weeks = []
-        for week_dates in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
-            week = []
-            for date_value in week_dates:
-                in_month = date_value.month == month
-                day_work = work_by_date.get(date_value, []) if in_month else []
-                day_vacations = vacation_by_date.get(date_value, []) if in_month else []
-                week.append({
-                    'date': date_value,
-                    'date_string': fields.Date.to_string(date_value),
-                    'day': date_value.day,
-                    'in_month': in_month,
-                    'is_today': date_value == today,
-                    'work_items': day_work,
-                    'vacations': day_vacations,
-                    'has_content': bool(day_work or day_vacations),
-                })
-            weeks.append(week)
-
-        navigation = self._get_navigation(year, month)
-        return {
+        payload = self._build_month_calendar_payload(
+            year,
+            month,
+            work_by_date,
+            vacation_by_date=vacation_by_date,
+            url_pattern='/ap/horario/{year}/{month}',
+        )
+        payload.update({
             'worker': worker,
             'worker_name': worker.display_name or worker.nombre_completo or worker.name,
-            'year': year,
-            'month': month,
-            'month_label': self._get_month_label(month),
-            'month_start': fields.Date.to_string(month_start),
-            'month_end': fields.Date.to_string(month_end),
-            'weekday_labels': WEEKDAY_LABELS,
-            'weeks': weeks,
-            'previous': navigation['previous'],
-            'next': navigation['next'],
-        }
+        })
+        return payload
+
+    @api.model
+    def _get_user_month_calendar(self, usuario, year, month, viewer=None):
+        viewer = viewer or self.env.user
+        usuario = usuario.exists()
+        year = int(year)
+        month = int(month)
+        month_start, month_end = self._get_month_bounds(year, month)
+
+        lines = self.env['portalgestor.asignacion.linea'].sudo().search([
+            ('asignacion_id.usuario_id', '=', usuario.id),
+            ('fecha', '>=', month_start),
+            ('fecha', '<=', month_end),
+            ('asignacion_id.confirmado', '=', True),
+        ], order='fecha, hora_inicio, hora_fin, id')
+
+        work_by_date = defaultdict(list)
+        for line in lines:
+            worker_label = (
+                line.trabajador_id.display_name
+                or line.trabajador_id.nombre_completo
+                or line.trabajador_id.name
+                or _('Sin AP')
+            )
+            work_by_date[line.fecha].append({
+                'time_range': '%s - %s' % (
+                    self._format_float_hour(line.hora_inicio),
+                    self._format_float_hour(line.hora_fin),
+                ),
+                'label': worker_label,
+            })
+
+        user_view_data = self.env['usuarios.usuario'].sudo().with_context(
+            portalgestor_viewer_uid=viewer.id,
+        ).get_portalgestor_user_view_data([usuario.id])
+
+        payload = self._build_month_calendar_payload(
+            year,
+            month,
+            work_by_date,
+            vacation_by_date={},
+            url_pattern=f'/consultar-horario/usuario/{usuario.id}' + '/{year}/{month}',
+        )
+        payload.update({
+            'usuario': usuario,
+            'user_name': user_view_data.get(usuario.id, {}).get('display_name')
+            or usuario.display_name
+            or usuario.name,
+        })
+        return payload
+
+    @api.model
+    def _get_manager_user_cards(self, viewer=None, search=''):
+        viewer = viewer or self.env.user
+        Usuario = self.env['usuarios.usuario'].sudo().with_context(portalgestor_viewer_uid=viewer.id)
+        records = Usuario.search([('has_ap_service', '=', True)])
+        records = Usuario._sort_for_portalgestor_user_selector(records, viewer=viewer)
+
+        safe_names = records._get_safe_display_name_map(viewer)
+        search_text = (search or '').strip().casefold()
+        if search_text:
+            records = records.filtered(
+                lambda record: search_text in (safe_names.get(record.id, '') or '').casefold()
+            )
+
+        group_types = Usuario.get_portalgestor_user_types(records.ids)
+        return [
+            {
+                'id': record.id,
+                'display_name': safe_names.get(record.id, record.display_name or record.name),
+                'group_badge': group_types.get(record.id, {}).get('badge', ''),
+                'group_label': group_types.get(record.id, {}).get('label', ''),
+                'zona': record.zona_trabajo_id.display_name or record.zona_trabajo_id.name or '',
+                'localidad': record.localidad_id.display_name or record.localidad_id.name or '',
+                'url': f'/consultar-horario/usuario/{record.id}',
+            }
+            for record in records
+        ]

@@ -54,7 +54,7 @@
     <template id="schedule" name="Portal AP Horario">
         <t t-call="web.layout">
             <t t-set="body_classname" t-value="'o_portal_ap_body o_portal_ap_schedule_body'"/>
-            <t t-set="title">Horario AP</t>
+            <t t-set="title">Horario</t>
             <t t-set="head">
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <t t-call-assets="web.assets_frontend" t-js="false"/>
@@ -65,14 +65,20 @@
                     <div class="o_portal_ap_schedule_identity">
                         <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
                         <div>
-                            <span>Horario AP</span>
-                            <strong t-esc="worker_name"/>
+                            <span t-esc="identity_caption or 'Horario'"/>
+                            <strong t-esc="identity_name"/>
                         </div>
                     </div>
-                    <form action="/ap/logout" method="post">
+                    <form t-if="header_action_kind == 'logout'" t-att-action="header_action_url" method="post">
                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                        <button type="submit" class="o_portal_ap_logout_button">Salir</button>
+                        <button type="submit" class="o_portal_ap_logout_button" t-esc="header_action_label or 'Salir'"/>
                     </form>
+                    <a
+                        t-elif="header_action_kind == 'link'"
+                        t-att-href="header_action_url"
+                        class="o_portal_ap_logout_button"
+                        t-esc="header_action_label or 'Volver'"
+                    />
                 </header>
 
                 <section class="o_portal_ap_month_card">
@@ -111,7 +117,7 @@
                                             <t t-foreach="day['work_items']" t-as="item">
                                                 <div class="o_portal_ap_work_item">
                                                     <strong t-esc="item['time_range']"/>
-                                                    <span>---- <t t-esc="item['usuario']"/></span>
+                                                    <span t-esc="item['label']"/>
                                                 </div>
                                             </t>
 
@@ -122,6 +128,86 @@
                             </t>
                         </t>
                     </div>
+
+                    <div class="o_portal_ap_calendar_list">
+                        <t t-foreach="month_days" t-as="day">
+                            <article t-att-class="'o_portal_ap_mobile_day' + ('' if day['has_content'] else ' o_portal_ap_mobile_day--empty') + (' o_portal_ap_mobile_day--today' if day['is_today'] else '')">
+                                <header class="o_portal_ap_mobile_day_header">
+                                    <div>
+                                        <span class="o_portal_ap_mobile_day_number" t-esc="day['day']"/>
+                                        <strong t-esc="day['weekday_label']"/>
+                                    </div>
+                                    <small t-esc="day['date_string']"/>
+                                </header>
+                                <div class="o_portal_ap_mobile_day_content">
+                                    <t t-foreach="day['vacations']" t-as="vacation">
+                                        <div class="o_portal_ap_vacation">
+                                            <t t-esc="vacation['label']"/>
+                                        </div>
+                                    </t>
+
+                                    <t t-foreach="day['work_items']" t-as="item">
+                                        <div class="o_portal_ap_work_item">
+                                            <strong t-esc="item['time_range']"/>
+                                            <span t-esc="item['label']"/>
+                                        </div>
+                                    </t>
+
+                                    <p class="o_portal_ap_empty_day" t-if="not day['has_content']" t-esc="mobile_empty_label or 'Sin servicios'"/>
+                                </div>
+                            </article>
+                        </t>
+                    </div>
+                </section>
+            </main>
+        </t>
+    </template>
+
+    <template id="manager_user_list" name="Consultar Horario Usuarios">
+        <t t-call="web.layout">
+            <t t-set="body_classname" t-value="'o_portal_ap_body o_portal_ap_schedule_body'"/>
+            <t t-set="title">Consultar horario</t>
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend" t-js="false"/>
+            </t>
+
+            <main class="o_portal_ap_schedule_page">
+                <header class="o_portal_ap_schedule_header">
+                    <div class="o_portal_ap_schedule_identity">
+                        <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
+                        <div>
+                            <span>Consultar horario</span>
+                            <strong>Usuarios con servicio AP</strong>
+                        </div>
+                    </div>
+                    <a href="/odoo" class="o_portal_ap_logout_button">Backend</a>
+                </header>
+
+                <section class="o_portal_ap_month_card o_portal_ap_user_list_shell">
+                    <form action="/consultar-horario" method="get" class="o_portal_ap_search_form">
+                        <input type="search" name="search" t-att-value="search" placeholder="Buscar usuario..."/>
+                        <button type="submit" class="o_portal_ap_primary_button o_portal_ap_primary_button--inline">Buscar</button>
+                    </form>
+
+                    <div class="o_portal_ap_user_cards" t-if="user_cards">
+                        <t t-foreach="user_cards" t-as="card">
+                            <a t-att-href="card['url']" class="o_portal_ap_user_card">
+                                <div class="o_portal_ap_user_card_main">
+                                    <div class="o_portal_ap_user_card_title">
+                                        <strong t-esc="card['display_name']"/>
+                                        <span t-if="card['group_badge']" class="o_portal_ap_group_badge" t-esc="card['group_badge']"/>
+                                    </div>
+                                    <p t-if="card['group_label']" t-esc="card['group_label']"/>
+                                    <small t-if="card['zona']">Zona: <t t-esc="card['zona']"/></small>
+                                    <small t-if="card['localidad']">Localidad: <t t-esc="card['localidad']"/></small>
+                                </div>
+                                <span class="o_portal_ap_user_card_cta">Ver horario</span>
+                            </a>
+                        </t>
+                    </div>
+
+                    <p class="o_portal_ap_user_list_empty" t-else="">No hay usuarios que coincidan con la búsqueda.</p>
                 </section>
             </main>
         </t>

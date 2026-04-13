@@ -2,9 +2,9 @@
 import re
 from datetime import timedelta
 
-from odoo import fields
+from odoo import fields, http
 from odoo.tests import tagged
-from odoo.tests.common import HttpCase, TransactionCase
+from odoo.tests.common import HOST, HttpCase, Opener, TransactionCase, get_db_name, new_test_user
 
 
 @tagged('-at_install', 'post_install')
@@ -96,15 +96,29 @@ class TestPortalAPService(TransactionCase):
             day['date_string']: day
             for week in calendar_data['weeks']
             for day in week
+            if day['in_month']
         }
 
         self.assertEqual(calendar_data['month_label'], 'Abril')
         self.assertEqual(len(days_by_date['2026-04-06']['work_items']), 2)
         self.assertEqual(days_by_date['2026-04-06']['work_items'][0]['time_range'], '08:00 - 10:30')
-        self.assertIn('Usuario Portal', days_by_date['2026-04-06']['work_items'][0]['usuario'])
+        self.assertIn('Usuario Portal', days_by_date['2026-04-06']['work_items'][0]['label'])
         self.assertFalse(days_by_date['2026-04-07']['work_items'])
         self.assertTrue(days_by_date['2026-04-08']['vacations'])
         self.assertTrue(days_by_date['2026-04-10']['vacations'])
+
+    def test_user_month_calendar_returns_worker_labels(self):
+        self._create_assignment(self.usuario_a, '2026-04-11', confirmed=True, start=17.5, end=18.5)
+
+        calendar_data = self.service._get_user_month_calendar(self.usuario_a, 2026, 4, viewer=self.env.user)
+        days_by_date = {
+            day['date_string']: day
+            for day in calendar_data['month_days']
+        }
+
+        self.assertEqual(calendar_data['user_name'], self.usuario_a.display_name)
+        self.assertEqual(days_by_date['2026-04-11']['work_items'][0]['time_range'], '17:30 - 18:30')
+        self.assertIn('AP Portal', days_by_date['2026-04-11']['work_items'][0]['label'])
 
 
 @tagged('-at_install', 'post_install')
@@ -140,6 +154,19 @@ class TestPortalAPRoutes(HttpCase):
             'hora_fin': 9.0,
             'trabajador_id': cls.worker.id,
         })
+        cls.manager_user = new_test_user(
+            cls.env,
+            login='manager_schedule_user',
+            password='manager_schedule_user',
+            groups='gestores.group_gestores_agusto',
+        )
+
+    def setUp(self):
+        super().setUp()
+        self.session = http.root.session_store.new()
+        self.session.update(http.get_default_session(), db=get_db_name())
+        self.opener = Opener(self.env.cr)
+        self.opener.cookies.set('session_id', self.session.sid, domain=HOST, path='/')
 
     def _get_login_csrf_token(self):
         response = self.url_open('/ap')
@@ -147,7 +174,18 @@ class TestPortalAPRoutes(HttpCase):
         self.assertTrue(token_match, 'El formulario de login debe incluir csrf_token.')
         return token_match.group(1)
 
+    def _login_internal_manager(self):
+        response = self.url_open('/web/login', data={
+            'login': 'manager_schedule_user',
+            'password': 'manager_schedule_user',
+            'csrf_token': http.Request.csrf_token(self),
+            'redirect': '/odoo',
+        }, allow_redirects=False)
+        self.assertIn(response.status_code, (303, 200))
+        return response
+
     def test_schedule_without_session_redirects_to_login(self):
+        self.opener.cookies.clear()
         response = self.url_open('/ap/horario', allow_redirects=False)
 
         self.assertEqual(response.status_code, 303)
@@ -171,3 +209,16 @@ class TestPortalAPRoutes(HttpCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('No se ha encontrado ningun AP', response.text)
+
+    def test_manager_schedule_pages_render_for_internal_manager(self):
+        self._login_internal_manager()
+
+        index_response = self.url_open('/consultar-horario')
+        self.assertEqual(index_response.status_code, 200)
+        self.assertIn('Usuarios con servicio AP', index_response.text)
+        self.assertIn('Usuario HTTP', index_response.text)
+
+        schedule_response = self.url_open(f'/consultar-horario/usuario/{self.usuario.id}')
+        self.assertEqual(schedule_response.status_code, 200)
+        self.assertIn('Horario usuario', schedule_response.text)
+        self.assertIn('AP Portal HTTP', schedule_response.text)
