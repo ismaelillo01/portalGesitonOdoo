@@ -120,6 +120,14 @@ class TestPortalAPService(TransactionCase):
         self.assertEqual(days_by_date['2026-04-11']['work_items'][0]['time_range'], '17:30 - 18:30')
         self.assertIn('AP Portal', days_by_date['2026-04-11']['work_items'][0]['label'])
 
+    def test_manager_worker_cards_return_workers(self):
+        cards = self.service._get_manager_worker_cards(viewer=self.env.user, search='portal')
+
+        self.assertTrue(cards)
+        self.assertEqual(cards[0]['id'], self.worker.id)
+        self.assertEqual(cards[0]['url'], f'/consultar-horario/ap/{self.worker.id}')
+        self.assertIn('AP Portal', cards[0]['display_name'])
+
 
 @tagged('-at_install', 'post_install')
 class TestPortalAPRoutes(HttpCase):
@@ -153,6 +161,11 @@ class TestPortalAPRoutes(HttpCase):
             'hora_inicio': 8.0,
             'hora_fin': 9.0,
             'trabajador_id': cls.worker.id,
+        })
+        cls.env['trabajadores.vacacion'].create({
+            'trabajador_id': cls.worker.id,
+            'date_start': fields.Date.today() + timedelta(days=2),
+            'date_stop': fields.Date.today() + timedelta(days=2),
         })
         cls.manager_user = new_test_user(
             cls.env,
@@ -215,10 +228,11 @@ class TestPortalAPRoutes(HttpCase):
 
         index_response = self.url_open('/consultar-horario')
         self.assertEqual(index_response.status_code, 200)
-        self.assertIn('Usuarios con servicio AP', index_response.text)
-        self.assertIn('Usuario HTTP', index_response.text)
+        self.assertIn('APs', index_response.text)
+        self.assertIn('AP Portal HTTP', index_response.text)
 
-        schedule_response = self.url_open(f'/consultar-horario/usuario/{self.usuario.id}')
+        schedule_response = self.url_open(f'/consultar-horario/ap/{self.worker.id}')
         self.assertEqual(schedule_response.status_code, 200)
-        self.assertIn('Horario usuario', schedule_response.text)
-        self.assertIn('AP Portal HTTP', schedule_response.text)
+        self.assertIn('Horario AP', schedule_response.text)
+        self.assertIn('Usuario HTTP', schedule_response.text)
+        self.assertIn('Vacaciones', schedule_response.text)

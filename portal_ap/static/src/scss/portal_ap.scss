@@ -255,7 +255,7 @@
 .o_portal_ap_calendar_grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
+    gap: 5px;
 }
 
 .o_portal_ap_weekdays {
@@ -273,11 +273,15 @@
 }
 
 .o_portal_ap_day {
-    min-height: 116px;
-    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 94px;
+    max-height: 154px;
+    padding: 6px;
     border: 1px solid rgba(7, 7, 33, 0.08);
     border-radius: 16px;
     background: #fff;
+    overflow: hidden;
 }
 
 .o_portal_ap_day--out {
@@ -298,7 +302,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     color: #080721;
     font-weight: 900;
 }
@@ -314,15 +318,22 @@
 .o_portal_ap_day_content,
 .o_portal_ap_mobile_day_content {
     display: grid;
-    gap: 6px;
+    gap: 4px;
+}
+
+.o_portal_ap_day_content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .o_portal_ap_work_item,
 .o_portal_ap_vacation {
-    padding: 7px 8px;
-    border-radius: 12px;
-    font-size: 0.76rem;
-    line-height: 1.25;
+    padding: 6px 7px;
+    border-radius: 10px;
+    font-size: 0.71rem;
+    line-height: 1.15;
 }
 
 .o_portal_ap_work_item {
@@ -335,9 +346,16 @@
     display: block;
 }
 
+.o_portal_ap_work_item strong {
+    font-size: 0.76rem;
+    line-height: 1.1;
+}
+
 .o_portal_ap_work_item span {
-    margin-top: 4px;
+    margin-top: 2px;
+    font-size: 0.72rem;
     font-weight: 700;
+    line-height: 1.2;
 }
 
 .o_portal_ap_vacation {
@@ -349,8 +367,17 @@
 .o_portal_ap_empty_day {
     margin: 0;
     color: #a5a0a0;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-style: italic;
+}
+
+.o_portal_ap_day_content::-webkit-scrollbar {
+    width: 5px;
+}
+
+.o_portal_ap_day_content::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(8, 7, 33, 0.16);
 }
 
 .o_portal_ap_calendar_list {

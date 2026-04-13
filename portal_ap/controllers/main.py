@@ -93,51 +93,51 @@ class PortalAPController(http.Controller):
             return request.redirect('/odoo')
 
         search = (search or '').strip()
-        user_cards = self._service(sudo=True)._get_manager_user_cards(
+        worker_cards = self._service(sudo=True)._get_manager_worker_cards(
             viewer=request.env.user,
             search=search,
         )
         return request.render('portal_ap.manager_user_list', {
             'search': search,
-            'user_cards': user_cards,
+            'worker_cards': worker_cards,
         })
 
     @http.route([
-        '/consultar-horario/usuario/<int:user_id>',
-        '/consultar-horario/usuario/<int:user_id>/<int:year>/<int:month>',
+        '/consultar-horario/ap/<int:worker_id>',
+        '/consultar-horario/ap/<int:worker_id>/<int:year>/<int:month>',
     ], type='http', auth='user', methods=['GET'], sitemap=False)
-    def manager_user_schedule(self, user_id, year=None, month=None, **kwargs):
+    def manager_worker_schedule(self, worker_id, year=None, month=None, **kwargs):
         if not self._ensure_manager_access():
             return request.redirect('/odoo')
 
-        Usuario = request.env['usuarios.usuario'].sudo().with_context(
-            portalgestor_viewer_uid=request.env.user.id,
-        )
-        usuario = Usuario.search([
-            ('id', '=', user_id),
-            ('has_ap_service', '=', True),
-        ], limit=1)
-        if not usuario:
+        worker = request.env['trabajadores.trabajador'].sudo().browse(int(worker_id)).exists()
+        if not worker:
             return request.redirect('/consultar-horario')
 
         current_year, current_month = self._get_today_year_month()
         year = year or current_year
         month = month or current_month
         if year < 2000 or year > 2100 or month < 1 or month > 12:
-            return request.redirect(f'/consultar-horario/usuario/{usuario.id}/{current_year}/{current_month}')
+            return request.redirect(f'/consultar-horario/ap/{worker.id}/{current_year}/{current_month}')
 
-        calendar_data = self._service(sudo=True)._get_user_month_calendar(
-            usuario,
+        calendar_data = self._service(sudo=True)._get_worker_month_calendar(
+            worker,
             year,
             month,
-            viewer=request.env.user,
         )
         calendar_data.update({
-            'identity_caption': 'Horario usuario',
-            'identity_name': calendar_data['user_name'],
+            'identity_caption': 'Horario AP',
+            'identity_name': calendar_data['worker_name'],
             'header_action_kind': 'link',
             'header_action_label': 'Volver',
             'header_action_url': '/consultar-horario',
             'mobile_empty_label': 'Sin servicios',
         })
         return request.render('portal_ap.schedule', calendar_data)
+
+    @http.route([
+        '/consultar-horario/usuario/<int:user_id>',
+        '/consultar-horario/usuario/<int:user_id>/<int:year>/<int:month>',
+    ], type='http', auth='user', methods=['GET'], sitemap=False)
+    def manager_user_schedule_legacy(self, user_id, year=None, month=None, **kwargs):
+        return request.redirect('/consultar-horario')

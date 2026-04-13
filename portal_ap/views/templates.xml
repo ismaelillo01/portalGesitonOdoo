@@ -163,7 +163,7 @@
         </t>
     </template>
 
-    <template id="manager_user_list" name="Consultar Horario Usuarios">
+    <template id="manager_user_list" name="Consultar Horario AP">
         <t t-call="web.layout">
             <t t-set="body_classname" t-value="'o_portal_ap_body o_portal_ap_schedule_body'"/>
             <t t-set="title">Consultar horario</t>
@@ -178,7 +178,7 @@
                         <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
                         <div>
                             <span>Consultar horario</span>
-                            <strong>Usuarios con servicio AP</strong>
+                            <strong>APs</strong>
                         </div>
                     </div>
                     <a href="/odoo" class="o_portal_ap_logout_button">Backend</a>
@@ -186,12 +186,12 @@
 
                 <section class="o_portal_ap_month_card o_portal_ap_user_list_shell">
                     <form action="/consultar-horario" method="get" class="o_portal_ap_search_form">
-                        <input type="search" name="search" t-att-value="search" placeholder="Buscar usuario..."/>
+                        <input type="search" name="search" t-att-value="search" placeholder="Buscar AP..."/>
                         <button type="submit" class="o_portal_ap_primary_button o_portal_ap_primary_button--inline">Buscar</button>
                     </form>
 
-                    <div class="o_portal_ap_user_cards" t-if="user_cards">
-                        <t t-foreach="user_cards" t-as="card">
+                    <div class="o_portal_ap_user_cards" t-if="worker_cards">
+                        <t t-foreach="worker_cards" t-as="card">
                             <a t-att-href="card['url']" class="o_portal_ap_user_card">
                                 <div class="o_portal_ap_user_card_main">
                                     <div class="o_portal_ap_user_card_title">
@@ -199,15 +199,17 @@
                                         <span t-if="card['group_badge']" class="o_portal_ap_group_badge" t-esc="card['group_badge']"/>
                                     </div>
                                     <p t-if="card['group_label']" t-esc="card['group_label']"/>
+                                    <small t-if="card['telefono']">Telefono: <t t-esc="card['telefono']"/></small>
                                     <small t-if="card['zona']">Zona: <t t-esc="card['zona']"/></small>
                                     <small t-if="card['localidad']">Localidad: <t t-esc="card['localidad']"/></small>
+                                    <small t-if="card['is_inactive']">AP dado de baja</small>
                                 </div>
                                 <span class="o_portal_ap_user_card_cta">Ver horario</span>
                             </a>
                         </t>
                     </div>
 
-                    <p class="o_portal_ap_user_list_empty" t-else="">No hay usuarios que coincidan con la búsqueda.</p>
+                    <p class="o_portal_ap_user_list_empty" t-else="">No hay APs que coincidan con la busqueda.</p>
                 </section>
             </main>
         </t>

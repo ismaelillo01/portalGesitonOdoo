@@ -262,29 +262,57 @@ class PortalAPService(models.AbstractModel):
         return payload
 
     @api.model
-    def _get_manager_user_cards(self, viewer=None, search=''):
+    def _get_manager_worker_cards(self, viewer=None, search=''):
         viewer = viewer or self.env.user
-        Usuario = self.env['usuarios.usuario'].sudo().with_context(portalgestor_viewer_uid=viewer.id)
-        records = Usuario.search([('has_ap_service', '=', True)])
-        records = Usuario._sort_for_portalgestor_user_selector(records, viewer=viewer)
+        Worker = self.env['trabajadores.trabajador'].sudo()
+        records = Worker.search([])
+        scope = viewer._get_gestor_management_scope()
+        group_labels = dict(Worker._fields['grupo'].selection)
+        group_badges = {
+            'agusto': 'A',
+            'intecum': 'I',
+        }
 
-        safe_names = records._get_safe_display_name_map(viewer)
+        if scope in ('agusto', 'intecum'):
+            records = records.sorted(
+                key=lambda record: (
+                    0 if record.grupo == scope else 1,
+                    bool(record.baja),
+                    (record.nombre_completo or record.display_name or record.name or '').casefold(),
+                    record.id,
+                )
+            )
+        else:
+            records = records.sorted(
+                key=lambda record: (
+                    bool(record.baja),
+                    (record.nombre_completo or record.display_name or record.name or '').casefold(),
+                    record.id,
+                )
+            )
+
         search_text = (search or '').strip().casefold()
         if search_text:
             records = records.filtered(
-                lambda record: search_text in (safe_names.get(record.id, '') or '').casefold()
+                lambda record: search_text in ' '.join([
+                    record.nombre_completo or record.display_name or record.name or '',
+                    record.telefono or '',
+                    record.localidad_id.display_name or record.localidad_id.name or '',
+                    group_labels.get(record.grupo, ''),
+                ]).casefold()
             )
 
-        group_types = Usuario.get_portalgestor_user_types(records.ids)
         return [
             {
                 'id': record.id,
-                'display_name': safe_names.get(record.id, record.display_name or record.name),
-                'group_badge': group_types.get(record.id, {}).get('badge', ''),
-                'group_label': group_types.get(record.id, {}).get('label', ''),
-                'zona': record.zona_trabajo_id.display_name or record.zona_trabajo_id.name or '',
+                'display_name': record.display_name or record.nombre_completo or record.name,
+                'group_badge': group_badges.get(record.grupo, ''),
+                'group_label': group_labels.get(record.grupo, ''),
+                'zona': ', '.join(record.zona_trabajo_ids.mapped('display_name') or record.zona_trabajo_ids.mapped('name')),
                 'localidad': record.localidad_id.display_name or record.localidad_id.name or '',
-                'url': f'/consultar-horario/usuario/{record.id}',
+                'telefono': record.telefono or '',
+                'is_inactive': bool(record.baja),
+                'url': f'/consultar-horario/ap/{record.id}',
             }
             for record in records
         ]
