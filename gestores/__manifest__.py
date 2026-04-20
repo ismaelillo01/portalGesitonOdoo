@@ -19,7 +19,7 @@ Long description of module's purpose
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base'],
+    'depends': ['base', 'web'],
 
     # always loaded
     'data': [
@@ -28,6 +28,12 @@ Long description of module's purpose
         'views/views.xml',
         'views/templates.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'gestores/static/src/js/navbar_app_visibility.js',
+            'gestores/static/src/xml/navbar_app_visibility.xml',
+        ],
+    },
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',

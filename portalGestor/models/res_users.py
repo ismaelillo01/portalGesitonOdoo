@@ -7,7 +7,7 @@ class ResUsers(models.Model):
 
     @api.model
     def _get_portalgestor_home_action(self):
-        return self.env.ref('portalGestor.action_portalgestor_asignacion', raise_if_not_found=False)
+        return self.env.ref('portalGestor.action_portalgestor_portal_home', raise_if_not_found=False)
 
     @api.model_create_multi
     def create(self, vals_list):

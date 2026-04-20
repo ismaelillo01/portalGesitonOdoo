@@ -1,5 +1,10 @@
 <odoo>
     <data noupdate="0">
+        <record id="action_portalgestor_portal_home" model="ir.actions.act_url">
+            <field name="name">Portal interno</field>
+            <field name="url">/portal-inicio</field>
+            <field name="target">self</field>
+        </record>
         <function model="res.users" name="set_portalgestor_home_action_for_internal_users"/>
     </data>
 </odoo>

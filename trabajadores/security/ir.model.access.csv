@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_trabajadores_trabajador,trabajadores.trabajador,model_trabajadores_trabajador,base.group_user,1,1,1,1
 access_trabajadores_vacacion,trabajadores.vacacion,model_trabajadores_vacacion,base.group_user,1,1,1,1
+access_trabajadores_falta_justificada,trabajadores.falta.justificada,model_trabajadores_falta_justificada,base.group_user,1,1,1,1

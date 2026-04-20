@@ -124,6 +124,32 @@ class ReportWizard(models.TransientModel):
             order='fecha asc, hora_inicio asc, hora_fin asc, id asc',
         )
 
+    def _get_report_payload_for_worker(self, trabajador):
+        self.ensure_one()
+        line_payloads = []
+        total_computable_minutes = 0
+        for line in self._get_report_lines_for_worker(trabajador):
+            breakdown = line._get_report_breakdown()
+            total_computable_minutes += breakdown['computable_minutes']
+            line_payloads.append({
+                'fecha_label': line.fecha.strftime('%d/%m/%Y') if line.fecha else '',
+                'usuario_name': line.asignacion_id.usuario_id.display_name or line.asignacion_id.usuario_id.name,
+                'hora_inicio': breakdown['hora_inicio_label'],
+                'hora_fin': breakdown['hora_fin_label'],
+                'horas_tramo_label': breakdown['duration_label'],
+                'incidencia_label': breakdown['incidencia_label'],
+                'motivo': breakdown['motivo'],
+                'horas_no_trabajadas_label': breakdown['justified_label'],
+                'horas_computables_label': breakdown['computable_label'],
+            })
+
+        return {
+            'lines': line_payloads,
+            'total_duration_label': self.env['portalgestor.asignacion.linea']._format_duration_minutes(
+                total_computable_minutes
+            ),
+        }
+
     def _get_selected_workers(self):
         self.ensure_one()
         if self.exportar_todos:

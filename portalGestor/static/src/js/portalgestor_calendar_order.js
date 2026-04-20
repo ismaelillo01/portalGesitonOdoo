@@ -5,9 +5,10 @@ import { CalendarCommonRenderer } from "@web/views/calendar/calendar_common/cale
 
 const PORTALGESTOR_RES_MODEL = "portalgestor.asignacion";
 const COLOR_PRIORITY = {
-    10: 0, // Verde: primero
-    3: 1, // Amarillo: segundo
-    1: 2, // Rojo: ultimo
+    3: 0, // Amarillo: primero
+    10: 1, // Verde: segundo
+    4: 2, // Azul: tercero
+    1: 3, // Rojo: ultimo
 };
 
 function getCalendarPriority(event, records) {

@@ -21,6 +21,12 @@
     color: #92400e;
 }
 
+.o_calendar_widget .o_portalgestor_bucket--justified {
+    background: #dbeafe;
+    border-color: #60a5fa;
+    color: #1d4ed8;
+}
+
 .o_calendar_widget .o_portalgestor_bucket--completed {
     background: #fecaca;
     border-color: #fca5a5;
@@ -60,6 +66,12 @@
     background: #fef3c7;
     border-color: #fcd34d;
     color: #92400e;
+}
+
+.o_portalgestor_bucket_dialog_badge--justified {
+    background: #dbeafe;
+    border-color: #60a5fa;
+    color: #1d4ed8;
 }
 
 .o_portalgestor_bucket_dialog_badge--completed {
@@ -125,6 +137,12 @@
     color: #92400e;
 }
 
+.o_portalgestor_bucket_record--justified {
+    background: #dbeafe;
+    border-color: #60a5fa;
+    color: #1d4ed8;
+}
+
 .o_portalgestor_bucket_record--completed {
     background: #fca5a5;
     border-color: #f87171;
@@ -140,10 +158,17 @@
 
 .o_cw_popover .o_portalgestor_calendar_detail_row {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
     min-width: 0;
     white-space: normal;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_main {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    min-width: 0;
 }
 
 .o_cw_popover .o_portalgestor_calendar_detail_hours {
@@ -159,6 +184,14 @@
 .o_cw_popover .o_portalgestor_calendar_detail_worker {
     min-width: 0;
     overflow-wrap: anywhere;
+}
+
+.o_cw_popover .o_portalgestor_calendar_detail_note {
+    color: #2563eb;
+    font-size: 11px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    padding-left: 2px;
 }
 
 .o_cw_popover .o_portalgestor_calendar_detail_empty {

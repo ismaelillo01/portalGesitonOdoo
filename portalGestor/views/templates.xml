@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_internal_layout" name="Portal Interno Layout">
+        <t t-call="web.layout">
+            <t t-set="title" t-value="page_title or 'Portal interno'"/>
+            <t t-set="body_classname" t-value="'o_portal_internal_body'"/>
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend"/>
+            </t>
+
+            <main class="o_portal_internal_shell">
+                <header class="o_portal_internal_header sticky-top">
+                    <a href="/portal-inicio" class="o_portal_internal_brand">
+                        <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
+                        <span>Portal interno</span>
+                    </a>
+                </header>
+
+                <section class="container o_portal_internal_main">
+                    <t t-out="0"/>
+                </section>
+
+                <footer class="o_portal_internal_footer">
+                    <div class="container">
+                        <div class="row align-items-center g-4">
+                            <div class="col-lg-8">
+                                <div class="o_portal_internal_footer_card">
+                                    <p class="o_portal_internal_footer_kicker">Consejo rapido</p>
+                                    <h2>Si algo se atasca, comentaselo a Piri</h2>
+                                    <p>
+                                        Si no sabes hacer algo o ves un caso raro, comentaselo a Piri.
+                                        Y si te saca del apuro, luego invitalo al cafe.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="o_portal_internal_footer_brand">
+                                    <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            </main>
+        </t>
+    </template>
+
+    <template id="portal_internal_home" name="Portal Interno Home">
+        <t t-call="portalGestor.portal_internal_layout">
+            <section class="o_portal_internal_intro">
+                <p class="o_portal_internal_intro_kicker">Portal interno</p>
+                <h1>Bienvenido, <t t-esc="user_display_name"/>.</h1>
+                <p>
+                    Usa esta portada para entrar rapido a Portal Gestor, APs, Usuarios y al centro
+                    de ayuda sin depender de menus dispersos.
+                </p>
+            </section>
+
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-8">
+                    <div
+                        id="portalInternalCarousel"
+                        class="carousel slide o_portal_internal_panel o_portal_internal_carousel"
+                        data-bs-ride="carousel"
+                        data-bs-interval="9000">
+                        <div class="carousel-indicators">
+                            <t t-foreach="home_slides" t-as="slide">
+                                <button
+                                    type="button"
+                                    data-bs-target="#portalInternalCarousel"
+                                    t-att-data-bs-slide-to="slide['index']"
+                                    t-att-class="'active' if slide['is_active'] else None"
+                                    t-att-aria-current="'true' if slide['is_active'] else None"
+                                    t-att-aria-label="'Slide %s' % (slide['index'] + 1)"/>
+                            </t>
+                        </div>
+
+                        <div class="carousel-inner">
+                            <t t-foreach="home_slides" t-as="slide">
+                                <section
+                                    t-att-class="'carousel-item o_portal_internal_carousel_item ' + slide['class_name'] + (' active' if slide['is_active'] else '')">
+                                    <div class="o_portal_internal_carousel_copy">
+                                        <span class="o_portal_internal_carousel_badge" t-esc="slide['badge']"/>
+                                        <h2 t-esc="slide['title']"/>
+                                        <p t-esc="slide['description']"/>
+                                        <a t-att-href="slide['cta_url']" class="btn o_portal_internal_primary_button">
+                                            <t t-esc="slide['cta_label']"/>
+                                        </a>
+                                    </div>
+                                </section>
+                            </t>
+                        </div>
+
+                        <button
+                            class="carousel-control-prev"
+                            type="button"
+                            data-bs-target="#portalInternalCarousel"
+                            data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"/>
+                            <span class="visually-hidden">Anterior</span>
+                        </button>
+                        <button
+                            class="carousel-control-next"
+                            type="button"
+                            data-bs-target="#portalInternalCarousel"
+                            data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"/>
+                            <span class="visually-hidden">Siguiente</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <aside class="o_portal_internal_panel o_portal_internal_quick_access">
+                        <div class="o_portal_internal_panel_header">
+                            <p class="o_portal_internal_panel_kicker">Atajos</p>
+                            <h2>Accesos rapidos</h2>
+                        </div>
+
+                        <div t-if="quick_access_links" class="o_portal_internal_quick_access_list">
+                            <t t-foreach="quick_access_links" t-as="link">
+                                <a t-att-href="link['url']" class="o_portal_internal_quick_access_link">
+                                    <strong t-esc="link['label']"/>
+                                    <span t-esc="link['description']"/>
+                                </a>
+                            </t>
+                        </div>
+                        <p t-else="" class="o_portal_internal_empty_state">
+                            No hay accesos disponibles para este usuario en este momento.
+                        </p>
+                    </aside>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_internal_help" name="Portal Interno Help">
+        <t t-call="portalGestor.portal_internal_layout">
+            <section class="o_portal_internal_intro o_portal_internal_intro--help">
+                <p class="o_portal_internal_intro_kicker">Centro de ayuda</p>
+                <h1>Preguntas frecuentes por modulo</h1>
+                <p>
+                    Selecciona una categoria para ver respuestas directas a las tareas mas comunes
+                    de horarios, APs y usuarios.
+                </p>
+            </section>
+
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-4">
+                    <section class="o_portal_internal_panel o_portal_internal_help_categories">
+                        <div class="o_portal_internal_panel_header">
+                            <p class="o_portal_internal_panel_kicker">Categorias</p>
+                            <h2>Elige un bloque</h2>
+                        </div>
+                        <div class="o_portal_internal_help_category_list">
+                            <t t-foreach="help_categories" t-as="category">
+                                <a
+                                    t-att-href="category['url']"
+                                    t-att-class="'o_portal_internal_help_category' + (' o_portal_internal_help_category--active' if category['is_active'] else '')">
+                                    <strong t-esc="category['label']"/>
+                                    <span t-esc="category['summary']"/>
+                                    <small>
+                                        <t t-esc="category['item_count']"/> preguntas
+                                    </small>
+                                </a>
+                            </t>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-lg-8">
+                    <section class="o_portal_internal_panel o_portal_internal_help_panel">
+                        <div class="o_portal_internal_panel_header">
+                            <p class="o_portal_internal_panel_kicker">Bloque seleccionado</p>
+                            <h2 t-esc="selected_help['label']"/>
+                            <p class="o_portal_internal_help_summary" t-esc="selected_help['summary']"/>
+                        </div>
+
+                        <div class="o_portal_internal_help_accordion">
+                            <t t-foreach="selected_help['items']" t-as="item">
+                                <details
+                                    class="o_portal_internal_help_item"
+                                    t-att-open="'open' if item['is_open'] else None">
+                                    <summary class="o_portal_internal_help_question">
+                                        <span t-esc="item['question']"/>
+                                    </summary>
+                                    <div class="o_portal_internal_help_answer">
+                                        <p t-esc="item['answer']"/>
+                                    </div>
+                                </details>
+                            </t>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

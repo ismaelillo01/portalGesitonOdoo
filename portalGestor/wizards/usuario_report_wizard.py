@@ -168,14 +168,20 @@ class UsuarioReportWizard(models.TransientModel):
 
         lines = []
         for line in assignment_lines:
-            duration_minutes = int(round((line.hora_fin - line.hora_inicio) * 60))
+            breakdown = line._get_report_breakdown()
             lines.append({
                 'fecha_label': line.fecha.strftime('%d/%m/%Y') if line.fecha else '',
                 'ap_name': line.trabajador_id.display_name or 'Sin AP asignado',
-                'hora_inicio': self._format_hour(line.hora_inicio),
-                'hora_fin': self._format_hour(line.hora_fin),
-                'duration_label': self._format_duration(duration_minutes),
-                'duration_minutes': duration_minutes,
+                'hora_inicio': breakdown['hora_inicio_label'],
+                'hora_fin': breakdown['hora_fin_label'],
+                'duration_label': breakdown['duration_label'],
+                'duration_minutes': breakdown['duration_minutes'],
+                'incidencia_label': breakdown['incidencia_label'],
+                'motivo': breakdown['motivo'],
+                'justified_label': breakdown['justified_label'],
+                'justified_minutes': breakdown['justified_minutes'],
+                'computable_label': breakdown['computable_label'],
+                'computable_minutes': breakdown['computable_minutes'],
             })
         return lines
 
@@ -185,7 +191,7 @@ class UsuarioReportWizard(models.TransientModel):
             raise ValidationError(_("Debes seleccionar un usuario."))
 
         lines = self._get_report_lines_for_user(usuario)
-        total_minutes = sum(line['duration_minutes'] for line in lines)
+        total_minutes = sum(line['computable_minutes'] for line in lines)
         return {
             'usuario_full_name': usuario._get_full_name(),
             'services_label': usuario._get_service_names() or 'Sin servicios',
@@ -217,7 +223,17 @@ class UsuarioReportWizard(models.TransientModel):
             writer.writerow(['Aviso', 'Sin registros en este periodo.'])
 
         writer.writerow([])
-        writer.writerow(['Fecha', 'AP', 'Hora inicio', 'Hora fin', 'Horas totales'])
+        writer.writerow([
+            'Fecha',
+            'AP',
+            'Hora inicio',
+            'Hora fin',
+            'Horas tramo',
+            'Incidencia',
+            'Motivo',
+            'Horas no trabajadas',
+            'Horas computables',
+        ])
         for line in payload['lines']:
             writer.writerow([
                 line['fecha_label'],
@@ -225,9 +241,13 @@ class UsuarioReportWizard(models.TransientModel):
                 line['hora_inicio'],
                 line['hora_fin'],
                 line['duration_label'],
+                line['incidencia_label'],
+                line['motivo'],
+                line['justified_label'],
+                line['computable_label'],
             ])
         writer.writerow([])
-        writer.writerow(['Total periodo', '', '', '', payload['total_duration_label']])
+        writer.writerow(['Total periodo', '', '', '', '', '', '', '', payload['total_duration_label']])
         return ('\ufeff' + output.getvalue()).encode('utf-8')
 
     def _build_download_action(self, filename, file_bytes):

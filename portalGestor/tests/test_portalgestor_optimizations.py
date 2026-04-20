@@ -322,8 +322,8 @@ class TestPortalGestorOptimizations(TransactionCase):
         self.assertEqual(
             [(bucket['bucket_type'], bucket['title']) for bucket in buckets],
             [
-                ('pending', 'Por asignar [1]'),
                 ('missing', 'Faltantes [1]'),
+                ('pending', 'Por asignar [1]'),
                 ('completed', 'Completados [1]'),
             ],
         )

@@ -8,5 +8,6 @@ from . import trabajo_fijo
 from . import baja_sync
 from . import res_users
 from . import usuario
+from . import falta_justificada
 from . import vacacion
 from . import vacacion_calendar_filter

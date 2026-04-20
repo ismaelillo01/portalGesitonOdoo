@@ -49,3 +49,7 @@ class ResUsers(models.Model):
     def _should_mask_intecum_users(self):
         self.ensure_one()
         return self._get_gestor_management_scope() == 'agusto'
+
+    def _should_hide_case_manager_apps_sidebar(self):
+        self.ensure_one()
+        return self._get_gestor_management_scope() in ('agusto', 'intecum')

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Basic Report Action -->
     <record id="action_report_horario_trabajador" model="ir.actions.report">
         <field name="name">Horario de AP</field>
         <field name="model">portalgestor.report.wizard</field>
@@ -12,67 +11,56 @@
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Report Template -->
     <template id="report_horario_trabajador_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <t t-foreach="doc.trabajador_ids" t-as="trabajador">
+                        <t t-set="payload" t-value="doc._get_report_payload_for_worker(trabajador)"/>
                         <div class="page" t-att-style="'page-break-after: always;' if not trabajador_last else ''">
                             <div class="text-center mb-4">
                                 <h2>Horario Mensual</h2>
                                 <h4>AP: <t t-esc="trabajador.name"/></h4>
-                            <p>Período: <span t-esc="doc._get_nombre_mes_anio()"/></p>
+                                <p>Periodo: <span t-esc="doc._get_nombre_mes_anio()"/></p>
                             </div>
 
-                            <!-- Fetch Lines for this worker in this period -->
-                            <t t-set="lineas" t-value="doc._get_report_lines_for_worker(trabajador)"/>
+                            <div class="alert alert-info mt-4" role="alert" t-if="not payload['lines']">
+                                <p class="mb-0">Sin registros en este periodo.</p>
+                            </div>
 
-                            <t t-if="not lineas">
-                                <div class="alert alert-info mt-4" role="alert">
-                                    <p class="mb-0">Sin registros en este período.</p>
-                                </div>
-                            </t>
-
-                            <table class="table table-sm table-bordered mt-4" t-if="lineas">
+                            <table class="table table-sm table-bordered mt-4" t-if="payload['lines']">
                                 <thead>
                                     <tr>
                                         <th>Fecha</th>
                                         <th>Usuario</th>
                                         <th>Hora Inicio</th>
                                         <th>Hora Fin</th>
-                                        <th>Horas Totales</th>
+                                        <th>Horas tramo</th>
+                                        <th>Incidencia</th>
+                                        <th>Motivo</th>
+                                        <th>Horas no trabajadas</th>
+                                        <th>Horas computables</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <t t-set="total_horas_mes" t-value="0.0"/>
-                                    <t t-foreach="lineas" t-as="linea">
-                                        <t t-set="horas_linea" t-value="linea.hora_fin - linea.hora_inicio"/>
-                                        <t t-set="minutos_linea" t-value="int(round(horas_linea * 60))"/>
-                                        <t t-set="total_horas_mes" t-value="total_horas_mes + horas_linea"/>
+                                    <t t-foreach="payload['lines']" t-as="line">
                                         <tr>
-                                            <td><span t-esc="linea.asignacion_id.fecha.strftime('%d/%m/%Y')"/></td>
-                                            <td><span t-field="linea.asignacion_id.usuario_id.display_name"/></td>
-                                            <td>
-                                                <span t-out="'%02d:%02d' % (int(linea.hora_inicio), int((linea.hora_inicio % 1) * 60))"/>
-                                            </td>
-                                            <td>
-                                                <span t-out="'%02d:%02d' % (int(linea.hora_fin), int((linea.hora_fin % 1) * 60))"/>
-                                            </td>
-                                            <td>
-                                                <span t-out="'%d Horas y %02d minutos' % (minutos_linea // 60, minutos_linea % 60)"/>
-                                            </td>
+                                            <td><span t-esc="line['fecha_label']"/></td>
+                                            <td><span t-esc="line['usuario_name']"/></td>
+                                            <td><span t-esc="line['hora_inicio']"/></td>
+                                            <td><span t-esc="line['hora_fin']"/></td>
+                                            <td><span t-esc="line['horas_tramo_label']"/></td>
+                                            <td><span t-esc="line['incidencia_label'] or '-'"/></td>
+                                            <td><span t-esc="line['motivo'] or '-'"/></td>
+                                            <td><span t-esc="line['horas_no_trabajadas_label']"/></td>
+                                            <td><span t-esc="line['horas_computables_label']"/></td>
                                         </tr>
                                     </t>
                                 </tbody>
                             </table>
 
-                            <div class="mt-4 text-end" t-if="lineas">
-                                <t t-set="total_minutos_mes" t-value="int(round(total_horas_mes * 60))"/>
-                                <h4><strong>Total Horas del Periodo: <span t-out="'%d Horas y %02d minutos' % (total_minutos_mes // 60, total_minutos_mes % 60)"/></strong></h4>
-                                <t t-if="0">
-                                <h4><strong>Total Horas del Período: <span t-out="'%.2f' % total_horas_mes"/> h</strong></h4>
-                                </t>
+                            <div class="mt-4 text-end" t-if="payload['lines']">
+                                <h4><strong>Total Horas del Periodo: <span t-esc="payload['total_duration_label']"/></strong></h4>
                             </div>
                         </div>
                     </t>

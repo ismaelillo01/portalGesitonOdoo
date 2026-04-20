@@ -1,0 +1,123 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="trabajadores_falta_justificada_list">
+      <field name="name">trabajadores.falta.justificada.list</field>
+      <field name="model">trabajadores.falta.justificada</field>
+      <field name="arch" type="xml">
+        <list decoration-info="state == 'verified'">
+          <field name="fecha"/>
+          <field name="trabajador_id" domain="[('baja', '=', False)]"/>
+          <field name="hora_inicio" widget="float_time"/>
+          <field name="hora_fin" widget="float_time"/>
+          <field name="state"/>
+          <field name="motivo"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_falta_justificada_search">
+      <field name="name">trabajadores.falta.justificada.search</field>
+      <field name="model">trabajadores.falta.justificada</field>
+      <field name="arch" type="xml">
+        <search string="Buscar faltas justificadas">
+          <field name="trabajador_id" string="AP" domain="[('baja', '=', False)]"/>
+          <field name="fecha"/>
+          <field name="state"/>
+          <filter name="verified" string="Verificadas" domain="[('state', '=', 'verified')]"/>
+          <filter name="draft" string="Borrador" domain="[('state', '=', 'draft')]"/>
+          <searchpanel>
+            <field name="trabajador_id" icon="fa-users" enable_counters="1" select="multi"/>
+            <field name="state" icon="fa-check-square-o"/>
+          </searchpanel>
+        </search>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_falta_justificada_form">
+      <field name="name">trabajadores.falta.justificada.form</field>
+      <field name="model">trabajadores.falta.justificada</field>
+      <field name="arch" type="xml">
+        <form string="Falta justificada">
+          <header>
+            <button
+              name="action_verificar"
+              string="Verificar"
+              type="object"
+              class="oe_highlight"
+              invisible="state == 'verified'"
+            />
+            <button
+              name="action_borrador"
+              string="Volver a borrador"
+              type="object"
+              class="btn-secondary"
+              invisible="state == 'draft'"
+            />
+            <field name="state" widget="statusbar" statusbar_visible="draft,verified"/>
+          </header>
+          <sheet>
+            <group>
+              <group>
+                <field name="trabajador_id" domain="[('baja', '=', False)]" options="{'no_create': True}"/>
+                <field name="fecha"/>
+              </group>
+              <group>
+                <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
+                <field name="hora_fin" widget="float_time" placeholder="23:59"/>
+              </group>
+            </group>
+            <group>
+              <field name="motivo" placeholder="Explica el motivo de la falta justificada..."/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="trabajadores_action_falta_justificada_window">
+      <field name="name">Faltas justificadas AP</field>
+      <field name="res_model">trabajadores.falta.justificada</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_trabajador_form_faltas_justificadas">
+      <field name="name">trabajadores.trabajador.form.faltas.justificadas</field>
+      <field name="model">trabajadores.trabajador</field>
+      <field name="inherit_id" ref="trabajadores.trabajador_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//form/sheet" position="before">
+          <header>
+            <button
+              name="action_open_faltas_justificadas"
+              string="Asignar dias propios"
+              type="object"
+              class="oe_highlight"
+              invisible="baja == True"
+            />
+          </header>
+        </xpath>
+        <xpath expr="//field[@name='vacaciones_ids']/.." position="after">
+          <page string="Faltas justificadas">
+            <field name="faltas_justificadas_ids" readonly="1">
+              <list>
+                <field name="fecha"/>
+                <field name="hora_inicio" widget="float_time"/>
+                <field name="hora_fin" widget="float_time"/>
+                <field name="state"/>
+                <field name="motivo"/>
+              </list>
+            </field>
+          </page>
+        </xpath>
+      </field>
+    </record>
+
+    <menuitem
+      name="Faltas justificadas AP"
+      id="trabajadores_menu_faltas_justificadas"
+      parent="trabajadores.menu_root"
+      action="trabajadores_action_falta_justificada_window"
+      sequence="25"
+    />
+  </data>
+</odoo>

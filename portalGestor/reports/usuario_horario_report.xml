@@ -40,7 +40,11 @@
                                         <th>AP</th>
                                         <th>Hora Inicio</th>
                                         <th>Hora Fin</th>
-                                        <th>Horas Totales</th>
+                                        <th>Horas tramo</th>
+                                        <th>Incidencia</th>
+                                        <th>Motivo</th>
+                                        <th>Horas no trabajadas</th>
+                                        <th>Horas computables</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -51,6 +55,10 @@
                                             <td><span t-esc="line['hora_inicio']"/></td>
                                             <td><span t-esc="line['hora_fin']"/></td>
                                             <td><span t-esc="line['duration_label']"/></td>
+                                            <td><span t-esc="line['incidencia_label'] or '-'"/></td>
+                                            <td><span t-esc="line['motivo'] or '-'"/></td>
+                                            <td><span t-esc="line['justified_label']"/></td>
+                                            <td><span t-esc="line['computable_label']"/></td>
                                         </tr>
                                     </t>
                                 </tbody>

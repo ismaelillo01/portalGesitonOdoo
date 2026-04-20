@@ -29,6 +29,11 @@ class Trabajador(models.Model):
     baja = fields.Boolean(string='Baja', default=False)
     color = fields.Integer(string='Color', default=0)
     vacaciones_ids = fields.One2many('trabajadores.vacacion', 'trabajador_id', string='Vacaciones')
+    faltas_justificadas_ids = fields.One2many(
+        'trabajadores.falta.justificada',
+        'trabajador_id',
+        string='Faltas justificadas',
+    )
 
     grupo = fields.Selection([
         ('intecum', 'Intecum'),
@@ -54,6 +59,21 @@ class Trabajador(models.Model):
     def _compute_display_name(self):
         for record in self:
             record.display_name = record.nombre_completo or ''
+
+    def action_open_faltas_justificadas(self):
+        self.ensure_one()
+        return {
+            'name': 'Faltas justificadas',
+            'type': 'ir.actions.act_window',
+            'res_model': 'trabajadores.falta.justificada',
+            'view_mode': 'list,form',
+            'domain': [('trabajador_id', '=', self.id)],
+            'context': {
+                'default_trabajador_id': self.id,
+                'search_default_trabajador_id': self.id,
+            },
+            'target': 'current',
+        }
 
     def _is_portalgestor_worker_selector_context(self):
         return bool(self.env.context.get('portalgestor_worker_selector'))

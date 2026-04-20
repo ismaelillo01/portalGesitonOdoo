@@ -74,6 +74,10 @@
                       }"
                       domain="[('zona_trabajo_ids', 'in', [usuario_zona_trabajo_id]), ('baja', '=', False)]"
                     />
+                    <field name="incidencia_falta_justificada" readonly="1" optional="show"/>
+                    <field name="horas_no_trabajadas_label" readonly="1" optional="show"/>
+                    <field name="horas_computables_label" readonly="1" optional="show"/>
+                    <field name="motivo_falta_justificada" readonly="1" optional="show"/>
                   </list>
                 </field>
               </page>

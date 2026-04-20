@@ -38,6 +38,7 @@
         'views/usuario_views.xml',
         'views/trabajadores_vacacion_calendar_views.xml',
         'data/res_users_home_action.xml',
+        'views/templates.xml',
         'wizards/conflict_wizard_views.xml',
         'wizards/report_wizard_views.xml',
         'wizards/usuario_report_wizard_views.xml',

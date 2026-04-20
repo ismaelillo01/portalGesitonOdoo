@@ -92,6 +92,7 @@ class Asignacion(models.Model):
         selection=[
             ('pending', 'Por asignar'),
             ('missing', 'Faltantes'),
+            ('justified', 'Falta justificada'),
             ('completed', 'Completados'),
         ],
         string='Tipo de bloque de calendario',
@@ -164,14 +165,16 @@ class Asignacion(models.Model):
             return 'pending'
 
         total_lineas = len(lineas)
-        lineas_asignadas = sum(1 for linea in lineas if linea.trabajador_id)
-        if lineas_asignadas == 0:
+        lineas_asignadas = [linea for linea in lineas if linea.trabajador_id]
+        if not lineas_asignadas:
             return 'pending'
-        if lineas_asignadas == total_lineas:
-            return 'completed'
-        return 'missing'
+        if len(lineas_asignadas) != total_lineas:
+            return 'missing'
+        if any(linea.minutos_falta_justificada > 0 for linea in lineas_asignadas):
+            return 'justified'
+        return 'completed'
 
-    @api.depends('lineas_ids', 'lineas_ids.trabajador_id')
+    @api.depends('lineas_ids', 'lineas_ids.trabajador_id', 'lineas_ids.minutos_falta_justificada')
     def _compute_calendar_bucket_type(self):
         for record in self:
             record.calendar_bucket_type = self._calculate_calendar_bucket_type(record.lineas_ids)
@@ -228,6 +231,9 @@ class Asignacion(models.Model):
         'lineas_ids.trabajador_id',
         'lineas_ids.hora_inicio',
         'lineas_ids.hora_fin',
+        'lineas_ids.minutos_falta_justificada',
+        'lineas_ids.motivo_falta_justificada',
+        'lineas_ids.incidencia_falta_justificada',
     )
     def _compute_calendar_popover_html(self):
         for record in self:
@@ -246,12 +252,28 @@ class Asignacion(models.Model):
             for linea in lineas_ordenadas:
                 rango = f"{self._format_hora(linea.hora_inicio)} - {self._format_hora(linea.hora_fin)}"
                 trabajador = linea.trabajador_id.display_name or 'Sin asignar'
+                note_html = ''
+                if linea.minutos_falta_justificada:
+                    note_bits = [escape(linea.incidencia_falta_justificada or 'Falta justificada')]
+                    if linea.horas_no_trabajadas_label:
+                        note_bits.append(
+                            escape(_('Horas no trabajadas: %s') % linea.horas_no_trabajadas_label)
+                        )
+                    if linea.motivo_falta_justificada:
+                        note_bits.append(escape(linea.motivo_falta_justificada))
+                    note_html = (
+                        '<div class="o_portalgestor_calendar_detail_note">'
+                        + ' | '.join(note_bits)
+                        + '</div>'
+                    )
                 rows.append(
                     '<div class="o_portalgestor_calendar_detail_row">'
+                    '<div class="o_portalgestor_calendar_detail_main">'
                     f'<span class="o_portalgestor_calendar_detail_hours">{escape(rango)}</span>'
                     '<span class="o_portalgestor_calendar_detail_sep">||</span>'
                     f'<span class="o_portalgestor_calendar_detail_worker">{escape(trabajador)}</span>'
                     '</div>'
+                    f'{note_html}</div>'
                 )
             owner_html = ''
             if record.gestor_owner_id:
@@ -323,20 +345,25 @@ class Asignacion(models.Model):
     @api.model
     def _get_calendar_bucket_map(self):
         return {
-            'pending': {
-                'color': 10,
-                'label': 'Por asignar',
-                'priority': 0,
-            },
             'missing': {
                 'color': 3,
                 'label': 'Faltantes',
+                'priority': 0,
+            },
+            'pending': {
+                'color': 10,
+                'label': 'Por asignar',
                 'priority': 1,
+            },
+            'justified': {
+                'color': 4,
+                'label': 'Falta justificada',
+                'priority': 2,
             },
             'completed': {
                 'color': 1,
                 'label': 'Completados',
-                'priority': 2,
+                'priority': 3,
             },
         }
 
@@ -795,9 +822,12 @@ class Asignacion(models.Model):
                 self.env['usuarios.usuario'].browse(usuario_ids).exists()
             )
         if self.env.context.get('portalgestor_skip_calendar_notify'):
-            return super().create(vals_list)
+            records = super().create(vals_list)
+            records.mapped('lineas_ids')._recompute_falta_justificada_metrics()
+            return records
 
         records = super(Asignacion, self.with_context(portalgestor_skip_calendar_notify=True)).create(vals_list)
+        records.mapped('lineas_ids')._recompute_falta_justificada_metrics()
         self._send_calendar_update_notification(
             self._build_calendar_update_payload(
                 after_state=records._get_calendar_realtime_snapshot(),
@@ -814,13 +844,18 @@ class Asignacion(models.Model):
         if vals.get('confirmado') is True:
             vals = dict(vals, edit_session_pending=False, edit_snapshot_data=False)
         if self.env.context.get('portalgestor_skip_calendar_notify'):
-            return super().write(vals)
+            result = super().write(vals)
+            if 'fecha' in vals or 'lineas_ids' in vals:
+                self.mapped('lineas_ids')._recompute_falta_justificada_metrics()
+            return result
 
         before_state = self._get_calendar_realtime_snapshot()
         monthly_ids_by_assignment = {}
         if 'lineas_ids' in vals:
             monthly_ids_by_assignment = self.env['portalgestor.asignacion.linea']._get_assignment_fixed_monthly_ids(self)
         result = super(Asignacion, self.with_context(portalgestor_skip_calendar_notify=True)).write(vals)
+        if 'fecha' in vals or 'lineas_ids' in vals:
+            self.mapped('lineas_ids')._recompute_falta_justificada_metrics()
         if monthly_ids_by_assignment:
             line_model = self.env['portalgestor.asignacion.linea']
             line_model._merge_assignment_fixed_monthly_ids(monthly_ids_by_assignment, self)
@@ -1092,11 +1127,172 @@ class AsignacionLinea(models.Model):
         readonly=True,
         index=True,
     )
+    falta_justificada_id = fields.Many2one(
+        'trabajadores.falta.justificada',
+        string='Falta justificada aplicada',
+        readonly=True,
+        ondelete='set null',
+        index=True,
+    )
+    tiene_falta_justificada = fields.Boolean(
+        string='Con falta justificada',
+        readonly=True,
+        default=False,
+    )
+    minutos_falta_justificada = fields.Integer(
+        string='Minutos no trabajados',
+        readonly=True,
+        default=0,
+    )
+    minutos_computables = fields.Integer(
+        string='Minutos computables',
+        readonly=True,
+        default=0,
+    )
+    motivo_falta_justificada = fields.Text(
+        string='Motivo falta justificada',
+        readonly=True,
+    )
+    incidencia_falta_justificada = fields.Char(
+        string='Incidencia',
+        readonly=True,
+    )
+    horas_no_trabajadas_label = fields.Char(
+        string='Horas no trabajadas',
+        compute='_compute_falta_justificada_labels',
+    )
+    horas_computables_label = fields.Char(
+        string='Horas computables',
+        compute='_compute_falta_justificada_labels',
+    )
 
     def _ensure_current_user_can_manage_parent_assignments(self, assignments):
         self.env['portalgestor.asignacion']._ensure_current_user_can_manage_users(
             assignments.mapped('usuario_id')
         )
+
+    @staticmethod
+    def _float_hours_to_minutes(hours_float):
+        return max(int(round((hours_float or 0.0) * 60)), 0)
+
+    @staticmethod
+    def _format_duration_minutes(total_minutes):
+        return '%d Horas y %02d minutos' % (total_minutes // 60, total_minutes % 60)
+
+    @staticmethod
+    def _format_hour_value(hour_float):
+        total_minutes = int(round((hour_float or 0.0) * 60))
+        return '%02d:%02d' % (total_minutes // 60, total_minutes % 60)
+
+    def _get_total_duration_minutes(self):
+        self.ensure_one()
+        return self._float_hours_to_minutes((self.hora_fin or 0.0) - (self.hora_inicio or 0.0))
+
+    def _get_report_breakdown(self):
+        self.ensure_one()
+        total_minutes = self._get_total_duration_minutes()
+        justified_minutes = self.minutos_falta_justificada if self.tiene_falta_justificada else 0
+        computable_minutes = self.minutos_computables if self.tiene_falta_justificada else total_minutes
+        return {
+            'hora_inicio_label': self._format_hour_value(self.hora_inicio),
+            'hora_fin_label': self._format_hour_value(self.hora_fin),
+            'duration_minutes': total_minutes,
+            'duration_label': self._format_duration_minutes(total_minutes),
+            'justified_minutes': justified_minutes,
+            'justified_label': self._format_duration_minutes(justified_minutes),
+            'computable_minutes': computable_minutes,
+            'computable_label': self._format_duration_minutes(computable_minutes),
+            'incidencia_label': self.incidencia_falta_justificada or '',
+            'motivo': self.motivo_falta_justificada or '',
+        }
+
+    @api.depends('minutos_falta_justificada', 'minutos_computables')
+    def _compute_falta_justificada_labels(self):
+        for record in self:
+            record.horas_no_trabajadas_label = self._format_duration_minutes(record.minutos_falta_justificada or 0)
+            record.horas_computables_label = self._format_duration_minutes(record.minutos_computables or 0)
+
+    def _recompute_falta_justificada_metrics(self):
+        lines = self.exists()
+        if not lines:
+            return lines
+
+        worker_ids = sorted(set(lines.mapped('trabajador_id').ids))
+        dates = sorted({date_value for date_value in lines.mapped('fecha') if date_value})
+        absences_by_key = defaultdict(list)
+        if worker_ids and dates:
+            absences = self.env['trabajadores.falta.justificada'].search(
+                [
+                    ('state', '=', 'verified'),
+                    ('trabajador_id', 'in', worker_ids),
+                    ('fecha', 'in', dates),
+                ],
+                order='hora_inicio asc, id asc',
+            )
+            for absence in absences:
+                absences_by_key[(absence.trabajador_id.id, absence.fecha)].append(absence)
+
+        for line in lines:
+            total_minutes = line._get_total_duration_minutes()
+            values = {
+                'falta_justificada_id': False,
+                'tiene_falta_justificada': False,
+                'minutos_falta_justificada': 0,
+                'minutos_computables': total_minutes,
+                'motivo_falta_justificada': False,
+                'incidencia_falta_justificada': False,
+            }
+            if line.trabajador_id and line.fecha and total_minutes:
+                applied_absence = False
+                justified_minutes = 0
+                motivos = []
+                for absence in absences_by_key.get((line.trabajador_id.id, line.fecha), []):
+                    overlap = min(line.hora_fin, absence.hora_fin) - max(line.hora_inicio, absence.hora_inicio)
+                    if overlap <= 0:
+                        continue
+                    overlap_minutes = self._float_hours_to_minutes(overlap)
+                    if overlap_minutes <= 0:
+                        continue
+                    if not applied_absence:
+                        applied_absence = absence
+                    justified_minutes += overlap_minutes
+                    motivo = (absence.motivo or '').strip()
+                    if motivo and motivo not in motivos:
+                        motivos.append(motivo)
+                if justified_minutes:
+                    justified_minutes = min(justified_minutes, total_minutes)
+                    computable_minutes = max(total_minutes - justified_minutes, 0)
+                    values.update({
+                        'falta_justificada_id': applied_absence.id if applied_absence else False,
+                        'tiene_falta_justificada': True,
+                        'minutos_falta_justificada': justified_minutes,
+                        'minutos_computables': computable_minutes,
+                        'motivo_falta_justificada': ' | '.join(motivos) or False,
+                        'incidencia_falta_justificada': _(
+                            'No trabajado - Falta justificada'
+                        ) if computable_minutes == 0 else _('Falta justificada parcial'),
+                    })
+
+            tracked_fields = (
+                'falta_justificada_id',
+                'tiene_falta_justificada',
+                'minutos_falta_justificada',
+                'minutos_computables',
+                'motivo_falta_justificada',
+                'incidencia_falta_justificada',
+            )
+            has_changes = any(
+                (
+                    line[field_name].id if field_name == 'falta_justificada_id' and line[field_name] else line[field_name]
+                ) != values[field_name]
+                for field_name in tracked_fields
+            )
+            if has_changes:
+                super(
+                    AsignacionLinea,
+                    line.with_context(portalgestor_skip_falta_recompute=True),
+                ).write(values)
+        return lines
 
     def init(self):
         super().init()
@@ -1131,6 +1327,14 @@ class AsignacionLinea(models.Model):
                   FROM portalgestor_asignacion asignacion
                  WHERE asignacion.id = linea.asignacion_id
                    AND linea.gestor_owner_id IS DISTINCT FROM asignacion.gestor_owner_id
+            """
+        )
+        self.env.cr.execute(
+            """
+                UPDATE portalgestor_asignacion_linea
+                   SET minutos_computables = CAST(ROUND((hora_fin - hora_inicio) * 60) AS integer)
+                 WHERE COALESCE(tiene_falta_justificada, FALSE) IS NOT TRUE
+                   AND (minutos_computables IS NULL OR minutos_computables = 0)
             """
         )
 
@@ -1276,12 +1480,15 @@ class AsignacionLinea(models.Model):
                 self.env['portalgestor.asignacion'].browse(assignment_ids).exists()
             )
         if self.env.context.get('portalgestor_skip_calendar_notify'):
-            return super().create(vals_list)
+            records = super().create(vals_list)
+            records._recompute_falta_justificada_metrics()
+            return records
 
         impacted_assignments = self._get_impacted_calendar_assignments(vals_list)
         before_state = impacted_assignments._get_calendar_realtime_snapshot()
         monthly_ids_by_assignment = self._get_assignment_fixed_monthly_ids(impacted_assignments)
         records = super().create(vals_list)
+        records._recompute_falta_justificada_metrics()
         after_assignments = impacted_assignments | records.mapped('asignacion_id')
         self._merge_assignment_fixed_monthly_ids(monthly_ids_by_assignment, after_assignments)
         records._detach_fixed_days_when_worker_changed(after_assignments, monthly_ids_by_assignment)
@@ -1301,7 +1508,9 @@ class AsignacionLinea(models.Model):
             impacted_assignments_for_security |= self.env['portalgestor.asignacion'].browse(vals['asignacion_id']).exists()
         self._ensure_current_user_can_manage_parent_assignments(impacted_assignments_for_security)
         if self.env.context.get('portalgestor_skip_calendar_notify'):
-            return super().write(vals)
+            result = super().write(vals)
+            self._recompute_falta_justificada_metrics()
+            return result
 
         impacted_assignments = self._get_impacted_calendar_assignments([vals])
         before_state = impacted_assignments._get_calendar_realtime_snapshot()
@@ -1310,6 +1519,7 @@ class AsignacionLinea(models.Model):
             AsignacionLinea,
             self.with_context(portalgestor_skip_calendar_notify=True),
         ).write(vals)
+        self._recompute_falta_justificada_metrics()
         after_assignments = impacted_assignments | self.mapped('asignacion_id')
         self._merge_assignment_fixed_monthly_ids(monthly_ids_by_assignment, after_assignments)
         self._detach_fixed_days_when_worker_changed(after_assignments, monthly_ids_by_assignment)
