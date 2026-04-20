@@ -1,0 +1,410 @@
+.o_portal_internal_body {
+    min-height: 100%;
+    background-color: #fff3ee;
+    color: #21253a;
+}
+
+.o_portal_internal_body main,
+.o_portal_internal_body .o_portal_internal_shell {
+    min-height: 100vh;
+}
+
+.o_portal_internal_shell {
+    background-image:
+        url("/ui_brian_theme/static/src/img/carasBlanco.png"),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 243, 238, 0.98));
+    background-position: right bottom, center;
+    background-repeat: no-repeat;
+    background-size: 720px auto, cover;
+}
+
+.o_portal_internal_header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background-image:
+        linear-gradient(125deg, rgba(1, 1, 27, 0.18), rgba(255, 189, 227, 0.26)),
+        url("/ui_brian_theme/static/src/img/caras.png"),
+        linear-gradient(110deg, rgba(1, 1, 27, 1), rgba(18, 20, 44, 0.94));
+    background-size: auto, 420px auto, cover;
+    background-repeat: no-repeat;
+    background-position: center, right center, center;
+    border-bottom: 1px solid rgba(233, 70, 146, 0.25);
+    box-shadow: 0 8px 20px rgba(3, 3, 31, 0.18);
+}
+
+.o_portal_internal_brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.o_portal_internal_brand img {
+    width: 3rem;
+    height: 3rem;
+    object-fit: contain;
+}
+
+.o_portal_internal_panel_kicker,
+.o_portal_internal_intro_kicker,
+.o_portal_internal_footer_kicker {
+    margin-bottom: 0.35rem;
+    color: #e94692;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14rem;
+    text-transform: uppercase;
+}
+
+.o_portal_internal_main {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+.o_portal_internal_intro {
+    max-width: 46rem;
+    margin-bottom: 1.75rem;
+}
+
+.o_portal_internal_intro h1 {
+    margin-bottom: 0.75rem;
+    color: #01011b;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.o_portal_internal_intro p {
+    margin-bottom: 0;
+    color: rgba(33, 37, 58, 0.78);
+    font-size: 1rem;
+}
+
+.o_portal_internal_panel {
+    height: 100%;
+    padding: 1.5rem;
+    border: 1px solid rgba(3, 3, 31, 0.08);
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 38px rgba(3, 3, 31, 0.12);
+}
+
+.o_portal_internal_panel_header h2 {
+    margin-bottom: 0.35rem;
+    color: #01011b;
+    font-size: 1.45rem;
+    font-weight: 700;
+}
+
+.o_portal_internal_panel_header p:last-child {
+    margin-bottom: 0;
+    color: rgba(33, 37, 58, 0.72);
+}
+
+.o_portal_internal_carousel {
+    overflow: hidden;
+    padding: 0;
+    min-height: 28rem;
+    border: 0;
+    background: #01011b;
+}
+
+.o_portal_internal_carousel .carousel-inner {
+    min-height: 28rem;
+}
+
+.o_portal_internal_carousel .carousel-indicators {
+    bottom: 1rem;
+    margin-bottom: 0;
+}
+
+.o_portal_internal_carousel .carousel-indicators [data-bs-target] {
+    background-color: #e94692;
+}
+
+.o_portal_internal_carousel .carousel-control-prev-icon,
+.o_portal_internal_carousel .carousel-control-next-icon {
+    filter: invert(1) grayscale(100) brightness(200);
+}
+
+.o_portal_internal_carousel_item {
+    min-height: 28rem;
+}
+
+.o_portal_internal_carousel_copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 28rem;
+    padding: 2rem 3rem 4rem;
+}
+
+.o_portal_internal_carousel_item h2 {
+    margin-bottom: 0.85rem;
+    font-size: clamp(1.75rem, 3vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1.08;
+}
+
+.o_portal_internal_carousel_item p {
+    max-width: 32rem;
+    margin-bottom: 1.25rem;
+    font-size: 1rem;
+}
+
+.o_portal_internal_carousel_badge {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-bottom: 1rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08rem;
+    text-transform: uppercase;
+}
+
+.o_portal_internal_carousel_item--primary {
+    background: #01011b;
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--primary .o_portal_internal_carousel_badge {
+    background: rgba(233, 70, 146, 0.18);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--accent {
+    background: linear-gradient(135deg, #01011b, #2a081d 55%, #5c2038);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--accent .o_portal_internal_carousel_badge {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--secondary {
+    background: linear-gradient(135deg, #120724, #2e0d43 58%, #3f1457);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--secondary .o_portal_internal_carousel_badge {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--tertiary {
+    background: linear-gradient(135deg, #061431, #0b3152 55%, #14536d);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--tertiary .o_portal_internal_carousel_badge {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--quaternary {
+    background: linear-gradient(135deg, #231117, #4a1728 58%, #742341);
+    color: #fff;
+}
+
+.o_portal_internal_carousel_item--quaternary .o_portal_internal_carousel_badge {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.o_portal_internal_primary_button {
+    align-self: flex-start;
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.8rem;
+    background: #e94692;
+    color: #fff;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03rem;
+}
+
+.o_portal_internal_primary_button:hover,
+.o_portal_internal_primary_button:focus {
+    background: #cc0033;
+    color: #fff;
+}
+
+.o_portal_internal_quick_access_list {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1.25rem;
+}
+
+.o_portal_internal_quick_access_link,
+.o_portal_internal_help_category {
+    display: block;
+    padding: 1rem 1.05rem;
+    border: 1px solid rgba(3, 3, 31, 0.1);
+    border-radius: 1rem;
+    background: #fff;
+    color: #21253a;
+    text-decoration: none;
+    transition: all 0.25s ease;
+}
+
+.o_portal_internal_quick_access_link strong,
+.o_portal_internal_help_category strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #01011b;
+    font-size: 1rem;
+}
+
+.o_portal_internal_quick_access_link span,
+.o_portal_internal_help_category span,
+.o_portal_internal_help_category small,
+.o_portal_internal_empty_state {
+    color: rgba(33, 37, 58, 0.72);
+}
+
+.o_portal_internal_quick_access_link:hover,
+.o_portal_internal_quick_access_link:focus,
+.o_portal_internal_help_category:hover,
+.o_portal_internal_help_category:focus,
+.o_portal_internal_help_category--active {
+    border-color: rgba(233, 70, 146, 0.32);
+    background: rgba(233, 70, 146, 0.06);
+    color: #21253a;
+    transform: translateY(-2px);
+}
+
+.o_portal_internal_help_category_list {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
+}
+
+.o_portal_internal_help_summary {
+    margin-bottom: 1.25rem;
+}
+
+.o_portal_internal_help_accordion {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.o_portal_internal_help_item {
+    margin-bottom: 0.85rem;
+    border: 0;
+    border-left: 5px solid #e94692;
+    border-radius: 0.95rem;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(3, 3, 31, 0.08);
+}
+
+.o_portal_internal_help_item:last-child {
+    margin-bottom: 0;
+}
+
+.o_portal_internal_help_question {
+    position: relative;
+    display: block;
+    padding: 1rem 3.5rem 1rem 1.15rem;
+    background: #fff;
+    color: #01011b;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+
+.o_portal_internal_help_question::-webkit-details-marker {
+    display: none;
+}
+
+.o_portal_internal_help_question::after {
+    content: "+";
+    position: absolute;
+    top: 50%;
+    right: 1.1rem;
+    transform: translateY(-50%);
+    color: #e94692;
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.o_portal_internal_help_item[open] .o_portal_internal_help_question {
+    background: #01011b;
+    color: #fff;
+}
+
+.o_portal_internal_help_item[open] .o_portal_internal_help_question::after {
+    content: "-";
+    color: #fff;
+}
+
+.o_portal_internal_help_answer {
+    padding: 0 1.15rem 1.15rem;
+    background: #fff;
+    color: rgba(33, 37, 58, 0.82);
+}
+
+.o_portal_internal_help_answer p {
+    margin: 0;
+}
+
+.o_portal_internal_footer {
+    padding: 3rem 0;
+    background-image: linear-gradient(150deg, #01011b, #494963, #ececf6);
+}
+
+.o_portal_internal_footer_card {
+    padding: 1.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.2rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.o_portal_internal_footer_card h2 {
+    margin-bottom: 0.65rem;
+    font-size: 1.7rem;
+    font-weight: 700;
+}
+
+.o_portal_internal_footer_brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.o_portal_internal_footer_brand img {
+    width: 100%;
+    max-width: 12rem;
+    object-fit: contain;
+}
+
+@media (max-width: 991.98px) {
+    .o_portal_internal_brand {
+        text-align: center;
+    }
+
+    .o_portal_internal_carousel_copy {
+        padding: 1.75rem 1.5rem 4rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .o_portal_internal_main {
+        padding-top: 1.4rem;
+        padding-bottom: 2rem;
+    }
+
+    .o_portal_internal_panel {
+        padding: 1.1rem;
+    }
+}

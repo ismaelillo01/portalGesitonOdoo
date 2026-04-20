@@ -16,6 +16,7 @@ Non-intrusive visual theme for Odoo 18.
     "assets": {
         "web.assets_frontend": [
             "ui_brian_theme/static/src/scss/login_theme.scss",
+            "ui_brian_theme/static/src/scss/portal_internal.scss",
         ],
         "web.assets_backend": [
             "ui_brian_theme/static/src/js/datetime_picker_tweaks.js",
