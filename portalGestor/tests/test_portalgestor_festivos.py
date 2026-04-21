@@ -116,6 +116,14 @@ class TestPortalGestorFestivos(TransactionCase):
             'state': 'verified',
         })
         assignment.lineas_ids._recompute_falta_justificada_metrics()
+        assignment.lineas_ids.write({
+            'festivo_oficial_id': False,
+            'festivo_local_id': False,
+            'tiene_festivo': False,
+            'minutos_festivos': 0,
+            'etiqueta_festivo': False,
+            'nombres_festivo': False,
+        })
 
         worker_wizard = self.env['portalgestor.report.wizard'].create({
             'trabajador_ids': [(6, 0, [worker.id])],

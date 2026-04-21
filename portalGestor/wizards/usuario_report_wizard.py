@@ -165,6 +165,7 @@ class UsuarioReportWizard(models.TransientModel):
             ],
             order='fecha asc, hora_inicio asc, hora_fin asc, id asc',
         )
+        assignment_lines._recompute_festive_metrics()
 
         lines = []
         for line in assignment_lines:
