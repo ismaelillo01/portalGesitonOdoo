@@ -27,3 +27,58 @@
     background: #d97706;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker {
+    position: relative;
+    margin: 2px;
+    border-radius: 10px;
+    opacity: 1;
+    pointer-events: none;
+}
+
+.o_calendar_widget .fc-daygrid-day-bg .fc-bg-event.o_portalgestor_holiday_marker {
+    position: absolute;
+    inset: 2px;
+    margin: 0;
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 5px;
+    height: 4px;
+    border-radius: 999px;
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker--official {
+    border: 1px solid rgba(29, 78, 216, 0.24);
+    background: linear-gradient(180deg, rgba(191, 219, 254, 0.34), rgba(147, 197, 253, 0.2));
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker--official::after {
+    background: #1d4ed8;
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker--local {
+    border: 1px solid rgba(14, 116, 144, 0.26);
+    background: linear-gradient(180deg, rgba(165, 243, 252, 0.38), rgba(103, 232, 249, 0.18));
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker--local::after {
+    background: #0e7490;
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker--combined {
+    border: 1px solid rgba(30, 64, 175, 0.28);
+    background: linear-gradient(
+        135deg,
+        rgba(191, 219, 254, 0.34) 0 45%,
+        rgba(165, 243, 252, 0.4) 45% 100%
+    );
+}
+
+.o_calendar_widget .fc-bg-event.o_portalgestor_holiday_marker--combined::after {
+    background: linear-gradient(90deg, #1d4ed8 0 50%, #0e7490 50% 100%);
+}

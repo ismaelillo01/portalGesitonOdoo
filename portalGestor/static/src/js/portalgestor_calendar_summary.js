@@ -217,10 +217,16 @@ function doesPortalGestorPayloadIntersectRange(payload, range) {
     );
 }
 
+function getPortalGestorHolidayWorkerId(filterSections) {
+    const activeFilter = getSingleActivePortalGestorFilter(filterSections, FILTER_FIELDS);
+    return activeFilter?.fieldName === WORKER_FILTER_FIELD ? activeFilter.value : false;
+}
+
 patch(CalendarModel.prototype, {
     setup() {
         super.setup(...arguments);
         this.data.portalGestorBucketEvents = [];
+        this.data.portalGestorHolidayMarkers = [];
         this.portalGestorBucketCache = new Map();
         this.portalGestorBucketPendingRequests = new Map();
         this.portalGestorBucketCacheVersion = 0;
@@ -231,6 +237,10 @@ patch(CalendarModel.prototype, {
 
     get portalGestorBucketEvents() {
         return this.data.portalGestorBucketEvents || [];
+    },
+
+    get portalGestorHolidayMarkers() {
+        return this.data.portalGestorHolidayMarkers || [];
     },
 
     isPortalGestorOnlyMineEnabled() {
@@ -352,6 +362,18 @@ patch(CalendarModel.prototype, {
         void Promise.allSettled(promises);
     },
 
+    async loadPortalGestorHolidayMarkers(startISO, endISO, workerId = false) {
+        if (this.resModel !== TARGET_RES_MODEL) {
+            return [];
+        }
+        return this.orm.call(
+            this.resModel,
+            "get_calendar_holiday_markers",
+            [startISO, endISO, workerId || false],
+            { context: this.getPortalGestorOrmContext() }
+        );
+    },
+
     computeDomain(data) {
         const domain = super.computeDomain(...arguments);
         if (this.resModel !== TARGET_RES_MODEL || !this.isPortalGestorOnlyMineEnabled()) {
@@ -410,6 +432,7 @@ patch(CalendarModel.prototype, {
         const endISO = this.data.range.end.toISODate();
         const requestId = ++this.portalGestorSummaryRequestId;
         const buckets = await this.loadPortalGestorBucketSummary(startISO, endISO, { force: true });
+        const holidayMarkers = await this.loadPortalGestorHolidayMarkers(startISO, endISO);
         if (requestId !== this.portalGestorSummaryRequestId) {
             return;
         }
@@ -422,6 +445,7 @@ patch(CalendarModel.prototype, {
             return;
         }
         this.data.portalGestorBucketEvents = buckets;
+        this.data.portalGestorHolidayMarkers = holidayMarkers;
         this.notify();
         this.prefetchPortalGestorAdjacentRanges();
     },
@@ -445,11 +469,21 @@ patch(CalendarModel.prototype, {
                 data.range.start.toISODate(),
                 data.range.end.toISODate()
             );
+            data.portalGestorHolidayMarkers = await this.loadPortalGestorHolidayMarkers(
+                data.range.start.toISODate(),
+                data.range.end.toISODate(),
+                false
+            );
             this.prefetchPortalGestorAdjacentRanges();
             return;
         }
 
         data.portalGestorBucketEvents = [];
+        data.portalGestorHolidayMarkers = await this.loadPortalGestorHolidayMarkers(
+            data.range.start.toISODate(),
+            data.range.end.toISODate(),
+            getPortalGestorHolidayWorkerId(data.filterSections)
+        );
         data.records = await this.loadRecords(data);
         const dynamicSections = await this.loadDynamicFilters(data, dynamicFiltersInfo);
         Object.assign(data.filterSections, dynamicSections);
@@ -591,20 +625,34 @@ patch(CalendarCommonRenderer.prototype, {
             ...options,
             events: (fetchInfo, successCb, failureCb) => {
                 if (this.props.model.isPortalGestorSummaryMode()) {
-                    successCb(this.mapPortalGestorBucketsToEvents());
+                    successCb([
+                        ...this.mapPortalGestorHolidayMarkersToEvents(),
+                        ...this.mapPortalGestorBucketsToEvents(),
+                    ]);
                     return;
                 }
 
                 if (!originalEvents) {
-                    successCb(this.mapRecordsToEvents());
+                    successCb([
+                        ...this.mapRecordsToEvents(),
+                        ...this.mapPortalGestorHolidayMarkersToEvents(),
+                    ]);
                     return;
                 }
-                return originalEvents(fetchInfo, successCb, failureCb);
+                return originalEvents(
+                    fetchInfo,
+                    (events) => successCb([...events, ...this.mapPortalGestorHolidayMarkersToEvents()]),
+                    failureCb
+                );
             },
             eventClick: (info) => {
                 if (info.event.extendedProps?.isPortalGestorBucket) {
                     info.jsEvent?.preventDefault();
                     this.openPortalGestorBucket(info.event.extendedProps);
+                    return;
+                }
+                if (info.event.extendedProps?.isPortalGestorHolidayMarker) {
+                    info.jsEvent?.preventDefault();
                     return;
                 }
                 return originalEventClick?.(info);
@@ -627,6 +675,30 @@ patch(CalendarCommonRenderer.prototype, {
                 );
             },
         };
+    },
+
+    mapPortalGestorHolidayMarkersToEvents() {
+        return this.props.model.portalGestorHolidayMarkers.map((marker) => {
+            const start = DateTime.fromISO(marker.date);
+            return {
+                id: marker.id,
+                title: marker.label,
+                start: start.toISODate(),
+                end: start.plus({ days: 1 }).toISODate(),
+                allDay: true,
+                display: "background",
+                editable: false,
+                startEditable: false,
+                durationEditable: false,
+                overlap: true,
+                classNames: ["o_portalgestor_holiday_marker", `o_portalgestor_holiday_marker--${marker.marker_type}`],
+                extendedProps: {
+                    isPortalGestorHolidayMarker: true,
+                    portalGestorHolidayNames: marker.names || "",
+                    portalGestorHolidayType: marker.marker_type,
+                },
+            };
+        });
     },
 
     mapPortalGestorBucketsToEvents() {
@@ -678,6 +750,10 @@ patch(CalendarCommonRenderer.prototype, {
         if (arg.event.extendedProps?.isPortalGestorBucket) {
             classes.push("o_portalgestor_bucket");
             classes.push(`o_portalgestor_bucket--${arg.event.extendedProps.portalGestorBucketType}`);
+        }
+        if (arg.event.extendedProps?.isPortalGestorHolidayMarker) {
+            classes.push("o_portalgestor_holiday_marker");
+            classes.push(`o_portalgestor_holiday_marker--${arg.event.extendedProps.portalGestorHolidayType}`);
         }
         return classes;
     },

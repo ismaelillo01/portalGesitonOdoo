@@ -182,6 +182,10 @@ class UsuarioReportWizard(models.TransientModel):
                 'justified_minutes': breakdown['justified_minutes'],
                 'computable_label': breakdown['computable_label'],
                 'computable_minutes': breakdown['computable_minutes'],
+                'festive_label': breakdown['festive_label'],
+                'festive_names': breakdown['festive_names'],
+                'festive_minutes': breakdown['festive_minutes'],
+                'festive_hours_label': breakdown['festive_hours_label'],
             })
         return lines
 
@@ -192,6 +196,7 @@ class UsuarioReportWizard(models.TransientModel):
 
         lines = self._get_report_lines_for_user(usuario)
         total_minutes = sum(line['computable_minutes'] for line in lines)
+        total_festive_minutes = sum(line['festive_minutes'] for line in lines)
         return {
             'usuario_full_name': usuario._get_full_name(),
             'services_label': usuario._get_service_names() or 'Sin servicios',
@@ -199,6 +204,7 @@ class UsuarioReportWizard(models.TransientModel):
             'has_ap_service': usuario.has_ap_service,
             'lines': lines,
             'total_duration_label': self._format_duration(total_minutes),
+            'total_festive_label': self._format_duration(total_festive_minutes),
         }
 
     def _get_single_report_filename(self):
@@ -229,6 +235,9 @@ class UsuarioReportWizard(models.TransientModel):
             'Hora inicio',
             'Hora fin',
             'Horas tramo',
+            'Festivo',
+            'Detalle festivo',
+            'Horas festivas',
             'Incidencia',
             'Motivo',
             'Horas no trabajadas',
@@ -241,13 +250,17 @@ class UsuarioReportWizard(models.TransientModel):
                 line['hora_inicio'],
                 line['hora_fin'],
                 line['duration_label'],
+                line['festive_label'],
+                line['festive_names'],
+                line['festive_hours_label'],
                 line['incidencia_label'],
                 line['motivo'],
                 line['justified_label'],
                 line['computable_label'],
             ])
         writer.writerow([])
-        writer.writerow(['Total periodo', '', '', '', '', '', '', '', payload['total_duration_label']])
+        writer.writerow(['Total periodo', '', '', '', '', '', '', '', '', '', '', payload['total_duration_label']])
+        writer.writerow(['Total horas festivas', '', '', '', '', '', '', payload['total_festive_label'], '', '', '', ''])
         return ('\ufeff' + output.getvalue()).encode('utf-8')
 
     def _build_download_action(self, filename, file_bytes):

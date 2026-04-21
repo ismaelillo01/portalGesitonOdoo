@@ -26,6 +26,8 @@ Long description of module's purpose
         'security/ir.model.access.csv',
         'views/views.xml',
         'views/falta_justificada_views.xml',
+        'views/festivo_views.xml',
+        'data/festivo_oficial_sync.xml',
         'views/templates.xml',
     ],
     # only loaded in demonstration mode

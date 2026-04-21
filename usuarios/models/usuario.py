@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UsuarioServicio(models.Model):
@@ -21,6 +21,23 @@ class Usuario(models.Model):
     _name = 'usuarios.usuario'
     _description = 'Usuario'
     _order = 'name, apellido1, apellido2, id'
+
+    _HOGAR_RIESGO_AGUSTO_SELECTION = [
+        ('hr1', 'HR1'),
+        ('hr2', 'HR2'),
+        ('hr3', 'HR3'),
+        ('hr4', 'HR4'),
+    ]
+    _HOGAR_RIESGO_INTECUM_SELECTION = [
+        ('hs', 'HS'),
+        ('hrb', 'HRB'),
+        ('hri', 'HRI'),
+    ]
+    _HOGAR_RIESGO_GROUP_MAP = {
+        'agusto': {value for value, _label in _HOGAR_RIESGO_AGUSTO_SELECTION},
+        'intecum': {value for value, _label in _HOGAR_RIESGO_INTECUM_SELECTION},
+    }
+    _HOGAR_RIESGO_SELECTION = _HOGAR_RIESGO_AGUSTO_SELECTION + _HOGAR_RIESGO_INTECUM_SELECTION
 
     _GROUP_UI_DATA = {
         'agusto': {'badge': 'A', 'label': 'Agusto'},
@@ -58,6 +75,23 @@ class Usuario(models.Model):
         ('intecum', 'Intecum'),
         ('agusto', 'Agusto')
     ], string='Grupo', required=True, index=True, default='agusto')
+    hogar_riesgo = fields.Selection(
+        _HOGAR_RIESGO_SELECTION,
+        string='Hogar de Riesgo',
+        index=True,
+    )
+    hogar_riesgo_agusto = fields.Selection(
+        _HOGAR_RIESGO_AGUSTO_SELECTION,
+        string='Hogar de Riesgo Agusto',
+        compute='_compute_hogar_riesgo_variants',
+        inverse='_inverse_hogar_riesgo_agusto',
+    )
+    hogar_riesgo_intecum = fields.Selection(
+        _HOGAR_RIESGO_INTECUM_SELECTION,
+        string='Hogar de Riesgo Intecum',
+        compute='_compute_hogar_riesgo_variants',
+        inverse='_inverse_hogar_riesgo_intecum',
+    )
 
     zona_trabajo_id = fields.Many2one(
         'zonastrabajo.zona',
@@ -207,6 +241,16 @@ class Usuario(models.Model):
         for record in self:
             record.group_selection_locked = is_agusto_manager
 
+    @api.depends('hogar_riesgo')
+    def _compute_hogar_riesgo_variants(self):
+        for record in self:
+            record.hogar_riesgo_agusto = (
+                record.hogar_riesgo if record.hogar_riesgo in record._HOGAR_RIESGO_GROUP_MAP['agusto'] else False
+            )
+            record.hogar_riesgo_intecum = (
+                record.hogar_riesgo if record.hogar_riesgo in record._HOGAR_RIESGO_GROUP_MAP['intecum'] else False
+            )
+
     @api.depends('name', 'apellido1', 'apellido2', 'grupo')
     def _compute_display_name(self):
         safe_names = self._get_safe_display_name_map()
@@ -229,6 +273,20 @@ class Usuario(models.Model):
             self.servicio_ids.sorted(key=lambda service: (service.sequence, service.name)).mapped('name')
         )
 
+    def _inverse_hogar_riesgo_agusto(self):
+        for record in self:
+            record.hogar_riesgo = record.hogar_riesgo_agusto or False
+
+    def _inverse_hogar_riesgo_intecum(self):
+        for record in self:
+            record.hogar_riesgo = record.hogar_riesgo_intecum or False
+
+    @api.onchange('grupo')
+    def _onchange_grupo_hogar_riesgo(self):
+        for record in self:
+            if record.hogar_riesgo and not record._is_valid_hogar_riesgo_for_group(record.grupo, record.hogar_riesgo):
+                record.hogar_riesgo = False
+
     def name_get(self):
         safe_names = self._get_safe_display_name_map()
         return [(record.id, safe_names.get(record.id, record._get_full_name())) for record in self]
@@ -238,6 +296,16 @@ class Usuario(models.Model):
         for record in self:
             if record.gestor_id and record.gestor_id.grupo == 'administrador':
                 raise AccessError(_("No se puede relacionar un usuario con un gestor administrador."))
+
+    @api.constrains('grupo', 'hogar_riesgo')
+    def _check_hogar_riesgo_matches_group(self):
+        for record in self:
+            if record.hogar_riesgo and not record._is_valid_hogar_riesgo_for_group(record.grupo, record.hogar_riesgo):
+                raise ValidationError(
+                    _(
+                        "El Hogar de Riesgo seleccionado no es valido para el grupo %(group)s."
+                    ) % {'group': record._get_group_ui_data(record.grupo).get('label', record.grupo)}
+                )
 
     def read(self, fields=None, load='_classic_read'):
         values_list = super().read(fields=fields, load=load)
@@ -301,6 +369,12 @@ class Usuario(models.Model):
     @api.model
     def _get_group_ui_data(self, grupo):
         return dict(self._GROUP_UI_DATA.get(grupo, {'badge': '', 'label': ''}))
+
+    @api.model
+    def _is_valid_hogar_riesgo_for_group(self, grupo, hogar_riesgo):
+        if not hogar_riesgo:
+            return True
+        return hogar_riesgo in self._HOGAR_RIESGO_GROUP_MAP.get(grupo, set())
 
     @api.model
     def get_portalgestor_user_view_data(self, user_ids):

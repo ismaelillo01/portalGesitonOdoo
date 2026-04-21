@@ -36,6 +36,9 @@
                                         <th>Hora Inicio</th>
                                         <th>Hora Fin</th>
                                         <th>Horas tramo</th>
+                                        <th>Festivo</th>
+                                        <th>Detalle festivo</th>
+                                        <th>Horas festivas</th>
                                         <th>Incidencia</th>
                                         <th>Motivo</th>
                                         <th>Horas no trabajadas</th>
@@ -50,6 +53,9 @@
                                             <td><span t-esc="line['hora_inicio']"/></td>
                                             <td><span t-esc="line['hora_fin']"/></td>
                                             <td><span t-esc="line['horas_tramo_label']"/></td>
+                                            <td><span t-esc="line['festive_label'] or '-'"/></td>
+                                            <td><span t-esc="line['festive_names'] or '-'"/></td>
+                                            <td><span t-esc="line['horas_festivas_label']"/></td>
                                             <td><span t-esc="line['incidencia_label'] or '-'"/></td>
                                             <td><span t-esc="line['motivo'] or '-'"/></td>
                                             <td><span t-esc="line['horas_no_trabajadas_label']"/></td>
@@ -61,6 +67,7 @@
 
                             <div class="mt-4 text-end" t-if="payload['lines']">
                                 <h4><strong>Total Horas del Periodo: <span t-esc="payload['total_duration_label']"/></strong></h4>
+                                <h5><strong>Total Horas Festivas: <span t-esc="payload['total_festive_label']"/></strong></h5>
                             </div>
                         </div>
                     </t>

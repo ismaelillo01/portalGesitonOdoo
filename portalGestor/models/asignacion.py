@@ -611,6 +611,64 @@ class Asignacion(models.Model):
         ]
 
     @api.model
+    def get_calendar_holiday_markers(self, date_start, date_end, worker_id=False):
+        start_date = fields.Date.to_date(date_start)
+        end_date = fields.Date.to_date(date_end)
+        if not start_date or not end_date:
+            return []
+
+        marker_map = {}
+        official_holidays = self.env['trabajadores.festivo.oficial'].search([
+            ('active', '=', True),
+            ('fecha', '>=', start_date),
+            ('fecha', '<=', end_date),
+        ])
+        for holiday in official_holidays:
+            marker_map[holiday.fecha] = {
+                'date': fields.Date.to_string(holiday.fecha),
+                'marker_type': 'official',
+                'names': [holiday.name],
+            }
+
+        try:
+            worker_id = int(worker_id) if worker_id else False
+        except (TypeError, ValueError):
+            worker_id = False
+
+        if worker_id:
+            local_holidays = self.env['trabajadores.festivo.local'].search([
+                ('active', '=', True),
+                ('trabajador_id', '=', worker_id),
+                ('fecha', '>=', start_date),
+                ('fecha', '<=', end_date),
+            ])
+            for holiday in local_holidays:
+                entry = marker_map.setdefault(holiday.fecha, {
+                    'date': fields.Date.to_string(holiday.fecha),
+                    'marker_type': 'local',
+                    'names': [],
+                })
+                entry['names'].append(holiday._get_local_holiday_label())
+                entry['marker_type'] = 'combined' if entry['marker_type'] == 'official' else 'local'
+
+        markers = []
+        for marker_date, marker in sorted(marker_map.items(), key=lambda item: item[0]):
+            marker_type = marker['marker_type']
+            label = {
+                'official': _('Festivo oficial'),
+                'local': _('Festivo local AP'),
+                'combined': _('Festivo oficial + local AP'),
+            }[marker_type]
+            markers.append({
+                'id': f"portalgestor_holiday_{marker_type}_{fields.Date.to_string(marker_date)}",
+                'date': marker['date'],
+                'label': label,
+                'marker_type': marker_type,
+                'names': ' | '.join(dict.fromkeys([name for name in marker['names'] if name])),
+            })
+        return markers
+
+    @api.model
     def _get_future_calendar_start_date(self, start_date=None):
         return fields.Date.to_date(start_date) or fields.Date.to_date(fields.Date.context_today(self))
 
@@ -1134,8 +1192,27 @@ class AsignacionLinea(models.Model):
         ondelete='set null',
         index=True,
     )
+    festivo_oficial_id = fields.Many2one(
+        'trabajadores.festivo.oficial',
+        string='Festivo oficial',
+        readonly=True,
+        ondelete='set null',
+        index=True,
+    )
+    festivo_local_id = fields.Many2one(
+        'trabajadores.festivo.local',
+        string='Festivo local AP',
+        readonly=True,
+        ondelete='set null',
+        index=True,
+    )
     tiene_falta_justificada = fields.Boolean(
         string='Con falta justificada',
+        readonly=True,
+        default=False,
+    )
+    tiene_festivo = fields.Boolean(
+        string='Con festivo',
         readonly=True,
         default=False,
     )
@@ -1149,6 +1226,11 @@ class AsignacionLinea(models.Model):
         readonly=True,
         default=0,
     )
+    minutos_festivos = fields.Integer(
+        string='Minutos festivos',
+        readonly=True,
+        default=0,
+    )
     motivo_falta_justificada = fields.Text(
         string='Motivo falta justificada',
         readonly=True,
@@ -1157,12 +1239,24 @@ class AsignacionLinea(models.Model):
         string='Incidencia',
         readonly=True,
     )
+    etiqueta_festivo = fields.Char(
+        string='Etiqueta festiva',
+        readonly=True,
+    )
+    nombres_festivo = fields.Text(
+        string='Detalle festivo',
+        readonly=True,
+    )
     horas_no_trabajadas_label = fields.Char(
         string='Horas no trabajadas',
         compute='_compute_falta_justificada_labels',
     )
     horas_computables_label = fields.Char(
         string='Horas computables',
+        compute='_compute_falta_justificada_labels',
+    )
+    horas_festivas_label = fields.Char(
+        string='Horas festivas',
         compute='_compute_falta_justificada_labels',
     )
 
@@ -1204,13 +1298,18 @@ class AsignacionLinea(models.Model):
             'computable_label': self._format_duration_minutes(computable_minutes),
             'incidencia_label': self.incidencia_falta_justificada or '',
             'motivo': self.motivo_falta_justificada or '',
+            'festive_minutes': self.minutos_festivos if self.tiene_festivo else 0,
+            'festive_label': self.etiqueta_festivo or '',
+            'festive_names': self.nombres_festivo or '',
+            'festive_hours_label': self._format_duration_minutes(self.minutos_festivos or 0),
         }
 
-    @api.depends('minutos_falta_justificada', 'minutos_computables')
+    @api.depends('minutos_falta_justificada', 'minutos_computables', 'minutos_festivos')
     def _compute_falta_justificada_labels(self):
         for record in self:
             record.horas_no_trabajadas_label = self._format_duration_minutes(record.minutos_falta_justificada or 0)
             record.horas_computables_label = self._format_duration_minutes(record.minutos_computables or 0)
+            record.horas_festivas_label = self._format_duration_minutes(record.minutos_festivos or 0)
 
     def _recompute_falta_justificada_metrics(self):
         lines = self.exists()
@@ -1273,20 +1372,93 @@ class AsignacionLinea(models.Model):
                         ) if computable_minutes == 0 else _('Falta justificada parcial'),
                     })
 
-            tracked_fields = (
-                'falta_justificada_id',
-                'tiene_falta_justificada',
-                'minutos_falta_justificada',
-                'minutos_computables',
-                'motivo_falta_justificada',
-                'incidencia_falta_justificada',
+            has_changes = any([
+                (line.falta_justificada_id.id or False) != values['falta_justificada_id'],
+                line.tiene_falta_justificada != values['tiene_falta_justificada'],
+                line.minutos_falta_justificada != values['minutos_falta_justificada'],
+                line.minutos_computables != values['minutos_computables'],
+                line.motivo_falta_justificada != values['motivo_falta_justificada'],
+                line.incidencia_falta_justificada != values['incidencia_falta_justificada'],
+            ])
+            if has_changes:
+                super(
+                    AsignacionLinea,
+                    line.with_context(portalgestor_skip_falta_recompute=True),
+                ).write(values)
+        lines._recompute_festive_metrics()
+        return lines
+
+    def _recompute_festive_metrics(self):
+        lines = self.exists()
+        if not lines:
+            return lines
+
+        dates = sorted({date_value for date_value in lines.mapped('fecha') if date_value})
+        worker_ids = sorted(set(lines.mapped('trabajador_id').ids))
+        official_by_date = {
+            record.fecha: record
+            for record in self.env['trabajadores.festivo.oficial'].search([
+                ('active', '=', True),
+                ('fecha', 'in', dates),
+            ])
+        } if dates else {}
+        local_holidays = self.env['trabajadores.festivo.local'].search([
+            ('active', '=', True),
+            ('trabajador_id', 'in', worker_ids),
+            ('fecha', 'in', dates),
+        ]) if dates and worker_ids else self.env['trabajadores.festivo.local']
+        local_by_key = {
+            (record.trabajador_id.id, record.fecha, record.localidad_id.id): record
+            for record in local_holidays
+            if record.localidad_id
+        }
+        generic_local_by_key = {
+            (record.trabajador_id.id, record.fecha): record
+            for record in local_holidays
+            if not record.localidad_id
+        }
+
+        for line in lines:
+            official_holiday = official_by_date.get(line.fecha) if line.fecha else False
+            user_localidad_id = line.asignacion_id.usuario_localidad_id.id if line.asignacion_id.usuario_localidad_id else False
+            local_holiday = (
+                local_by_key.get((line.trabajador_id.id, line.fecha, user_localidad_id))
+                or generic_local_by_key.get((line.trabajador_id.id, line.fecha))
+                if line.trabajador_id and line.fecha
+                else False
             )
-            has_changes = any(
-                (
-                    line[field_name].id if field_name == 'falta_justificada_id' and line[field_name] else line[field_name]
-                ) != values[field_name]
-                for field_name in tracked_fields
-            )
+            festive_minutes = line.minutos_computables if (official_holiday or local_holiday) else 0
+            festive_label = False
+            festive_names = False
+            if official_holiday and local_holiday:
+                festive_label = _('Festivo oficial + local AP')
+                festive_names = ' | '.join(dict.fromkeys([
+                    official_holiday.name,
+                    local_holiday._get_local_holiday_label(),
+                ]))
+            elif official_holiday:
+                festive_label = _('Festivo oficial')
+                festive_names = official_holiday.name
+            elif local_holiday:
+                festive_label = _('Festivo local AP')
+                festive_names = local_holiday._get_local_holiday_label()
+
+            values = {
+                'festivo_oficial_id': official_holiday.id if official_holiday else False,
+                'festivo_local_id': local_holiday.id if local_holiday else False,
+                'tiene_festivo': bool(official_holiday or local_holiday),
+                'minutos_festivos': festive_minutes,
+                'etiqueta_festivo': festive_label,
+                'nombres_festivo': festive_names,
+            }
+            has_changes = any([
+                (line.festivo_oficial_id.id or False) != values['festivo_oficial_id'],
+                (line.festivo_local_id.id or False) != values['festivo_local_id'],
+                line.tiene_festivo != values['tiene_festivo'],
+                line.minutos_festivos != values['minutos_festivos'],
+                line.etiqueta_festivo != values['etiqueta_festivo'],
+                line.nombres_festivo != values['nombres_festivo'],
+            ])
             if has_changes:
                 super(
                     AsignacionLinea,

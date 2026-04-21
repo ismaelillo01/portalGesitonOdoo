@@ -23,6 +23,7 @@
           <field name="gestor_id" optional="show" options="{'no_open': True}"/>
           <field name="servicio_ids" widget="many2many_tags"/>
           <field name="grupo"/>
+          <field name="hogar_riesgo" optional="show"/>
           <field name="zona_trabajo_id"/>
           <field name="baja"/>
         </list>
@@ -54,6 +55,8 @@
             <group string="Datos Asignacion">
               <group>
                 <field name="grupo" readonly="manager_edit_blocked or group_selection_locked"/>
+                <field name="hogar_riesgo_agusto" string="Hogar de Riesgo" readonly="manager_edit_blocked" invisible="grupo != 'agusto'"/>
+                <field name="hogar_riesgo_intecum" string="Hogar de Riesgo" readonly="manager_edit_blocked" invisible="grupo != 'intecum'"/>
                 <field name="zona_trabajo_id" readonly="manager_edit_blocked" options="{'no_create': True, 'no_open': True}"/>
                 <field name="gestor_id" readonly="manager_edit_blocked" domain="[('grupo', '!=', 'administrador')]" options="{'no_create': True, 'no_open': True}"/>
                 <field name="servicio_ids" readonly="manager_edit_blocked" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>

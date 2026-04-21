@@ -128,15 +128,20 @@ class ReportWizard(models.TransientModel):
         self.ensure_one()
         line_payloads = []
         total_computable_minutes = 0
+        total_festive_minutes = 0
         for line in self._get_report_lines_for_worker(trabajador):
             breakdown = line._get_report_breakdown()
             total_computable_minutes += breakdown['computable_minutes']
+            total_festive_minutes += breakdown['festive_minutes']
             line_payloads.append({
                 'fecha_label': line.fecha.strftime('%d/%m/%Y') if line.fecha else '',
                 'usuario_name': line.asignacion_id.usuario_id.display_name or line.asignacion_id.usuario_id.name,
                 'hora_inicio': breakdown['hora_inicio_label'],
                 'hora_fin': breakdown['hora_fin_label'],
                 'horas_tramo_label': breakdown['duration_label'],
+                'festive_label': breakdown['festive_label'],
+                'festive_names': breakdown['festive_names'],
+                'horas_festivas_label': breakdown['festive_hours_label'],
                 'incidencia_label': breakdown['incidencia_label'],
                 'motivo': breakdown['motivo'],
                 'horas_no_trabajadas_label': breakdown['justified_label'],
@@ -147,6 +152,9 @@ class ReportWizard(models.TransientModel):
             'lines': line_payloads,
             'total_duration_label': self.env['portalgestor.asignacion.linea']._format_duration_minutes(
                 total_computable_minutes
+            ),
+            'total_festive_label': self.env['portalgestor.asignacion.linea']._format_duration_minutes(
+                total_festive_minutes
             ),
         }
 

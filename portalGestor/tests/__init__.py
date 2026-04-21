@@ -2,6 +2,7 @@
 
 from . import test_portalgestor_portal_home
 from . import test_portalgestor_falta_justificada
+from . import test_portalgestor_festivos
 from . import test_portalgestor_optimizations
 from . import test_portalgestor_manager_sovereignty
 from . import test_portalgestor_monthly_template

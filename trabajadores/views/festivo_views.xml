@@ -1,0 +1,213 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="trabajadores_festivo_oficial_list">
+      <field name="name">trabajadores.festivo.oficial.list</field>
+      <field name="model">trabajadores.festivo.oficial</field>
+      <field name="arch" type="xml">
+        <list decoration-info="manual_override == True">
+          <field name="fecha"/>
+          <field name="name"/>
+          <field name="source_scope"/>
+          <field name="trasladado"/>
+          <field name="fecha_original" optional="show"/>
+          <field name="source_kind" optional="show"/>
+          <field name="manual_override" optional="show"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_festivo_oficial_search">
+      <field name="name">trabajadores.festivo.oficial.search</field>
+      <field name="model">trabajadores.festivo.oficial</field>
+      <field name="arch" type="xml">
+        <search string="Buscar festivos oficiales">
+          <field name="name"/>
+          <field name="fecha"/>
+          <field name="source_scope"/>
+          <filter name="manual_override" string="Corregidos manualmente" domain="[('manual_override', '=', True)]"/>
+          <searchpanel>
+            <field name="source_scope" icon="fa-flag"/>
+          </searchpanel>
+        </search>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_festivo_oficial_form">
+      <field name="name">trabajadores.festivo.oficial.form</field>
+      <field name="model">trabajadores.festivo.oficial</field>
+      <field name="arch" type="xml">
+        <form string="Festivo oficial">
+          <sheet>
+            <group>
+              <group>
+                <field name="name"/>
+                <field name="fecha"/>
+                <field name="fecha_original"/>
+                <field name="trasladado"/>
+              </group>
+              <group>
+                <field name="source_scope"/>
+                <field name="source_kind"/>
+                <field name="source_reference" readonly="1"/>
+                <field name="source_url" widget="url" readonly="1"/>
+                <field name="manual_override"/>
+                <field name="active"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="trabajadores_action_festivo_oficial_window">
+      <field name="name">Festivos oficiales</field>
+      <field name="res_model">trabajadores.festivo.oficial</field>
+      <field name="view_mode">list,form</field>
+      <field name="search_view_id" ref="trabajadores_festivo_oficial_search"/>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_festivo_local_list">
+      <field name="name">trabajadores.festivo.local.list</field>
+      <field name="model">trabajadores.festivo.local</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="fecha"/>
+          <field name="trabajador_id" domain="[('baja', '=', False)]"/>
+          <field name="localidad_id"/>
+          <field name="name"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_festivo_local_search">
+      <field name="name">trabajadores.festivo.local.search</field>
+      <field name="model">trabajadores.festivo.local</field>
+      <field name="arch" type="xml">
+        <search string="Buscar festivos AP">
+          <field name="trabajador_id" string="AP" domain="[('baja', '=', False)]"/>
+          <field name="localidad_id"/>
+          <field name="fecha"/>
+          <field name="name"/>
+          <searchpanel>
+            <field name="trabajador_id" icon="fa-users" enable_counters="1" select="multi"/>
+            <field name="localidad_id" icon="fa-map-marker" enable_counters="1" select="multi"/>
+          </searchpanel>
+        </search>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_festivo_local_form">
+      <field name="name">trabajadores.festivo.local.form</field>
+      <field name="model">trabajadores.festivo.local</field>
+      <field name="arch" type="xml">
+        <form string="Festivo AP">
+          <sheet>
+            <group>
+              <group>
+                <field name="trabajador_id" domain="[('baja', '=', False)]" options="{'no_create': True}"/>
+                <field name="fecha"/>
+              </group>
+              <group>
+                <field name="localidad_id" required="1" options="{'no_create': True}"/>
+                <field name="name" placeholder="Describe el festivo del AP..."/>
+                <field name="active"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="trabajadores_action_festivo_local_window">
+      <field name="name">Festivos AP</field>
+      <field name="res_model">trabajadores.festivo.local</field>
+      <field name="view_mode">list,form</field>
+      <field name="search_view_id" ref="trabajadores_festivo_local_search"/>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_festivo_sync_wizard_form">
+      <field name="name">trabajadores.festivo.oficial.sync.wizard.form</field>
+      <field name="model">trabajadores.festivo.oficial.sync.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Sincronizar festivos oficiales">
+          <group>
+            <field name="anio"/>
+          </group>
+          <footer>
+            <button name="action_sync" string="Sincronizar" type="object" class="oe_highlight"/>
+            <button string="Cancelar" special="cancel" class="btn-secondary"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="trabajadores_action_festivo_oficial_sync_wizard">
+      <field name="name">Sincronizar festivos oficiales</field>
+      <field name="res_model">trabajadores.festivo.oficial.sync.wizard</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_trabajador_form_festivos_locales">
+      <field name="name">trabajadores.trabajador.form.festivos.locales</field>
+      <field name="model">trabajadores.trabajador</field>
+      <field name="inherit_id" ref="trabajadores.trabajadores_trabajador_form_faltas_justificadas"/>
+      <field name="arch" type="xml">
+        <xpath expr="//header" position="inside">
+          <button
+            name="action_open_festivos_locales"
+            string="Asignar festivos AP"
+            type="object"
+            class="btn-secondary"
+            invisible="baja == True"
+            groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
+          />
+        </xpath>
+        <xpath expr="//field[@name='faltas_justificadas_ids']/.." position="after">
+          <page
+            string="Festivos AP"
+            groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
+          >
+            <field name="festivos_locales_ids" readonly="1">
+              <list>
+                <field name="fecha"/>
+                <field name="localidad_id"/>
+                <field name="name"/>
+                <field name="active"/>
+              </list>
+            </field>
+          </page>
+        </xpath>
+      </field>
+    </record>
+
+    <menuitem
+      name="Festivos oficiales"
+      id="trabajadores_menu_festivos_oficiales"
+      parent="trabajadores.menu_root"
+      action="trabajadores_action_festivo_oficial_window"
+      sequence="22"
+      groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
+    />
+
+    <menuitem
+      name="Festivos AP"
+      id="trabajadores_menu_festivos_locales"
+      parent="trabajadores.menu_root"
+      action="trabajadores_action_festivo_local_window"
+      sequence="23"
+      groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
+    />
+
+    <menuitem
+      name="Sincronizar festivos oficiales"
+      id="trabajadores_menu_festivos_sync"
+      parent="trabajadores.menu_root"
+      action="trabajadores_action_festivo_oficial_sync_wizard"
+      sequence="24"
+      groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
+    />
+  </data>
+</odoo>

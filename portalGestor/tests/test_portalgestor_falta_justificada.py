@@ -241,10 +241,12 @@ class TestPortalGestorFaltaJustificada(TransactionCase):
         payload = wizard._get_report_payload_for_worker(trabajador)
 
         self.assertEqual(payload['total_duration_label'], '2 Horas y 00 minutos')
+        self.assertEqual(payload['total_festive_label'], '0 Horas y 00 minutos')
         self.assertEqual(payload['lines'][0]['incidencia_label'], 'Falta justificada parcial')
         self.assertEqual(payload['lines'][0]['motivo'], 'Analitica')
         self.assertEqual(payload['lines'][0]['horas_no_trabajadas_label'], '1 Horas y 00 minutos')
         self.assertEqual(payload['lines'][0]['horas_computables_label'], '2 Horas y 00 minutos')
+        self.assertFalse(payload['lines'][0]['festive_label'])
 
     def test_usuario_report_payload_and_csv_include_justified_hours(self):
         usuario = self._create_user('User Report')
@@ -263,9 +265,10 @@ class TestPortalGestorFaltaJustificada(TransactionCase):
         csv_text = wizard._build_csv_bytes_for_user(usuario).decode('utf-8')
 
         self.assertEqual(payload['total_duration_label'], '0 Horas y 00 minutos')
+        self.assertEqual(payload['total_festive_label'], '0 Horas y 00 minutos')
         self.assertEqual(payload['lines'][0]['incidencia_label'], 'No trabajado - Falta justificada')
         self.assertEqual(payload['lines'][0]['motivo'], 'Operacion familiar')
         self.assertEqual(payload['lines'][0]['justified_label'], '2 Horas y 00 minutos')
         self.assertEqual(payload['lines'][0]['computable_label'], '0 Horas y 00 minutos')
-        self.assertIn('Incidencia;Motivo;Horas no trabajadas;Horas computables', csv_text)
+        self.assertIn('Festivo;Detalle festivo;Horas festivas;Incidencia;Motivo;Horas no trabajadas;Horas computables', csv_text)
         self.assertIn('Operacion familiar', csv_text)

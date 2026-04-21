@@ -34,6 +34,11 @@ class Trabajador(models.Model):
         'trabajador_id',
         string='Faltas justificadas',
     )
+    festivos_locales_ids = fields.One2many(
+        'trabajadores.festivo.local',
+        'trabajador_id',
+        string='Festivos AP',
+    )
 
     grupo = fields.Selection([
         ('intecum', 'Intecum'),
@@ -66,6 +71,22 @@ class Trabajador(models.Model):
             'name': 'Faltas justificadas',
             'type': 'ir.actions.act_window',
             'res_model': 'trabajadores.falta.justificada',
+            'view_mode': 'list,form',
+            'domain': [('trabajador_id', '=', self.id)],
+            'context': {
+                'default_trabajador_id': self.id,
+                'default_localidad_id': self.localidad_id.id or False,
+                'search_default_trabajador_id': self.id,
+            },
+            'target': 'current',
+        }
+
+    def action_open_festivos_locales(self):
+        self.ensure_one()
+        return {
+            'name': 'Festivos AP',
+            'type': 'ir.actions.act_window',
+            'res_model': 'trabajadores.festivo.local',
             'view_mode': 'list,form',
             'domain': [('trabajador_id', '=', self.id)],
             'context': {
