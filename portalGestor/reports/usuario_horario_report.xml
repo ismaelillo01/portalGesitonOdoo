@@ -45,7 +45,6 @@
                                         <th>Detalle festivo</th>
                                         <th>Horas festivas</th>
                                         <th>Incidencia</th>
-                                        <th>Motivo</th>
                                         <th>Horas no trabajadas</th>
                                         <th>Horas computables</th>
                                     </tr>
@@ -62,7 +61,6 @@
                                             <td><span t-esc="line['festive_names'] or '-'"/></td>
                                             <td><span t-esc="line['festive_hours_label']"/></td>
                                             <td><span t-esc="line['incidencia_label'] or '-'"/></td>
-                                            <td><span t-esc="line['motivo'] or '-'"/></td>
                                             <td><span t-esc="line['justified_label']"/></td>
                                             <td><span t-esc="line['computable_label']"/></td>
                                         </tr>
