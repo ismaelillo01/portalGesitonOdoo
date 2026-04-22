@@ -93,6 +93,8 @@ class TestPortalGestorPortalRoutes(HttpCase):
         self.assertIn('APs', home_response.text)
         self.assertIn('Usuarios', home_response.text)
         self.assertIn('Ayuda', home_response.text)
+        self.assertIn('carousel-indicators', home_response.text)
+        self.assertNotIn('data-bs-ride="carousel"', home_response.text)
 
         help_response = self.url_open('/portal-ayuda?category=usuarios')
         self.assertEqual(help_response.status_code, 200)
@@ -117,3 +119,15 @@ class TestPortalGestorPortalRoutes(HttpCase):
         self.assertIn('browser.location.href = "/portal-inicio";', js_source)
         self.assertIn('o_ui_brian_home_systray', xml_source)
         self.assertIn('goToPortalHome', xml_source)
+
+    def test_portal_home_uses_safe_carousel_bootstrap(self):
+        carousel_js_path = Path(get_module_resource(
+            'ui_brian_theme', 'static', 'src', 'js', 'portal_internal_carousel.js'
+        ))
+
+        self.assertTrue(carousel_js_path.is_file())
+
+        carousel_js_source = carousel_js_path.read_text(encoding='utf-8')
+        self.assertIn('.o_portal_internal_carousel', carousel_js_source)
+        self.assertIn('window.bootstrap', carousel_js_source)
+        self.assertIn('replaceChildren', carousel_js_source)

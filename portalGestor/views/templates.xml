@@ -61,9 +61,7 @@
                 <div class="col-lg-8">
                     <div
                         id="portalInternalCarousel"
-                        class="carousel slide o_portal_internal_panel o_portal_internal_carousel"
-                        data-bs-ride="carousel"
-                        data-bs-interval="9000">
+                        class="carousel slide o_portal_internal_panel o_portal_internal_carousel">
                         <div class="carousel-indicators">
                             <t t-foreach="home_slides" t-as="slide">
                                 <button
@@ -72,7 +70,7 @@
                                     t-att-data-bs-slide-to="slide['index']"
                                     t-att-class="'active' if slide['is_active'] else None"
                                     t-att-aria-current="'true' if slide['is_active'] else None"
-                                    t-att-aria-label="'Slide %s' % (slide['index'] + 1)"/>
+                                    t-att-aria-label="'Slide %s' % (slide['index'] + 1)"></button>
                             </t>
                         </div>
 
@@ -97,7 +95,7 @@
                             type="button"
                             data-bs-target="#portalInternalCarousel"
                             data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon" aria-hidden="true"/>
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Anterior</span>
                         </button>
                         <button
@@ -105,7 +103,7 @@
                             type="button"
                             data-bs-target="#portalInternalCarousel"
                             data-bs-slide="next">
-                            <span class="carousel-control-next-icon" aria-hidden="true"/>
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Siguiente</span>
                         </button>
                     </div>

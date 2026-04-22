@@ -15,6 +15,7 @@ Non-intrusive visual theme for Odoo 18.
     "depends": ["web"],
     "assets": {
         "web.assets_frontend": [
+            "ui_brian_theme/static/src/js/portal_internal_carousel.js",
             "ui_brian_theme/static/src/scss/login_theme.scss",
             "ui_brian_theme/static/src/scss/portal_internal.scss",
         ],
