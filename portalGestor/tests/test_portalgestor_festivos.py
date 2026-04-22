@@ -32,11 +32,12 @@ class TestPortalGestorFestivos(TransactionCase):
         })
 
     @classmethod
-    def _create_worker(cls, suffix):
+    def _create_worker(cls, suffix, festivo_localidad=None):
         return cls.env['trabajadores.trabajador'].create({
             'name': f'AP {suffix}',
             'grupo': 'agusto',
             'zona_trabajo_ids': [(6, 0, [cls.zone.id])],
+            'festivo_localidad_id': festivo_localidad.id if festivo_localidad else False,
         })
 
     @classmethod
@@ -62,7 +63,7 @@ class TestPortalGestorFestivos(TransactionCase):
         return assignment
 
     def test_calendar_holiday_markers_show_local_only_with_worker_filter(self):
-        worker = self._create_worker('Markers')
+        worker = self._create_worker('Markers', festivo_localidad=self.localidad_a)
         holiday_date = fields.Date.to_date('2026-04-19')
         self.env['trabajadores.festivo.oficial'].create({
             'name': 'Fiesta de Castilla y Leon',
@@ -70,7 +71,6 @@ class TestPortalGestorFestivos(TransactionCase):
             'source_scope': 'autonomic',
         })
         self.env['trabajadores.festivo.local'].create({
-            'trabajador_id': worker.id,
             'fecha': holiday_date,
             'localidad_id': self.localidad_a.id,
             'name': 'Fiesta propia AP',
@@ -93,7 +93,7 @@ class TestPortalGestorFestivos(TransactionCase):
 
     def test_portalgestor_reports_include_festive_hours(self):
         usuario = self._create_user('Festivo', localidad=self.localidad_a)
-        worker = self._create_worker('Festivo')
+        worker = self._create_worker('Festivo', festivo_localidad=self.localidad_a)
         holiday_date = fields.Date.to_date('2026-04-20')
         self.env['trabajadores.festivo.oficial'].create({
             'name': 'Fiesta de Castilla y Leon',
@@ -101,7 +101,6 @@ class TestPortalGestorFestivos(TransactionCase):
             'source_scope': 'autonomic',
         })
         self.env['trabajadores.festivo.local'].create({
-            'trabajador_id': worker.id,
             'fecha': holiday_date,
             'localidad_id': self.localidad_a.id,
             'name': 'Festivo AP',
@@ -153,10 +152,9 @@ class TestPortalGestorFestivos(TransactionCase):
     def test_local_holiday_only_applies_when_user_locality_matches(self):
         usuario_festivo = self._create_user('Palencia', localidad=self.localidad_a)
         usuario_normal = self._create_user('Villamuriel', localidad=self.localidad_b)
-        worker = self._create_worker('Localidad')
+        worker = self._create_worker('Localidad', festivo_localidad=self.localidad_a)
         holiday_date = fields.Date.to_date('2026-04-24')
         self.env['trabajadores.festivo.local'].create({
-            'trabajador_id': worker.id,
             'fecha': holiday_date,
             'localidad_id': self.localidad_a.id,
             'name': 'Fiesta local AP',

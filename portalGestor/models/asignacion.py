@@ -636,20 +636,22 @@ class Asignacion(models.Model):
             worker_id = False
 
         if worker_id:
-            local_holidays = self.env['trabajadores.festivo.local'].search([
-                ('active', '=', True),
-                ('trabajador_id', '=', worker_id),
-                ('fecha', '>=', start_date),
-                ('fecha', '<=', end_date),
-            ])
-            for holiday in local_holidays:
-                entry = marker_map.setdefault(holiday.fecha, {
-                    'date': fields.Date.to_string(holiday.fecha),
-                    'marker_type': 'local',
-                    'names': [],
-                })
-                entry['names'].append(holiday._get_local_holiday_label())
-                entry['marker_type'] = 'combined' if entry['marker_type'] == 'official' else 'local'
+            worker = self.env['trabajadores.trabajador'].browse(worker_id).exists()
+            if worker and worker.festivo_localidad_id:
+                local_holidays = self.env['trabajadores.festivo.local'].search([
+                    ('active', '=', True),
+                    ('localidad_id', '=', worker.festivo_localidad_id.id),
+                    ('fecha', '>=', start_date),
+                    ('fecha', '<=', end_date),
+                ])
+                for holiday in local_holidays:
+                    entry = marker_map.setdefault(holiday.fecha, {
+                        'date': fields.Date.to_string(holiday.fecha),
+                        'marker_type': 'local',
+                        'names': [],
+                    })
+                    entry['names'].append(holiday._get_local_holiday_label())
+                    entry['marker_type'] = 'combined' if entry['marker_type'] == 'official' else 'local'
 
         markers = []
         for marker_date, marker in sorted(marker_map.items(), key=lambda item: item[0]):
@@ -1394,7 +1396,7 @@ class AsignacionLinea(models.Model):
             return lines
 
         dates = sorted({date_value for date_value in lines.mapped('fecha') if date_value})
-        worker_ids = sorted(set(lines.mapped('trabajador_id').ids))
+        holiday_locality_ids = sorted(set(lines.mapped('trabajador_id.festivo_localidad_id').ids))
         official_by_date = {
             record.fecha: record
             for record in self.env['trabajadores.festivo.oficial'].search([
@@ -1404,29 +1406,22 @@ class AsignacionLinea(models.Model):
         } if dates else {}
         local_holidays = self.env['trabajadores.festivo.local'].search([
             ('active', '=', True),
-            ('trabajador_id', 'in', worker_ids),
+            ('localidad_id', 'in', holiday_locality_ids),
             ('fecha', 'in', dates),
-        ]) if dates and worker_ids else self.env['trabajadores.festivo.local']
+        ]) if dates and holiday_locality_ids else self.env['trabajadores.festivo.local']
         local_by_key = {
-            (record.trabajador_id.id, record.fecha, record.localidad_id.id): record
+            (record.localidad_id.id, record.fecha): record
             for record in local_holidays
             if record.localidad_id
-        }
-        generic_local_by_key = {
-            (record.trabajador_id.id, record.fecha): record
-            for record in local_holidays
-            if not record.localidad_id
         }
 
         for line in lines:
             official_holiday = official_by_date.get(line.fecha) if line.fecha else False
             user_localidad_id = line.asignacion_id.usuario_localidad_id.id if line.asignacion_id.usuario_localidad_id else False
-            local_holiday = (
-                local_by_key.get((line.trabajador_id.id, line.fecha, user_localidad_id))
-                or generic_local_by_key.get((line.trabajador_id.id, line.fecha))
-                if line.trabajador_id and line.fecha
-                else False
-            )
+            festive_locality_id = line.trabajador_id.festivo_localidad_id.id if line.trabajador_id.festivo_localidad_id else False
+            local_holiday = False
+            if line.trabajador_id and line.fecha and festive_locality_id and festive_locality_id == user_localidad_id:
+                local_holiday = local_by_key.get((festive_locality_id, line.fecha))
             festive_minutes = line.minutos_computables if (official_holiday or local_holiday) else 0
             festive_label = False
             festive_names = False

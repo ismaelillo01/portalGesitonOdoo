@@ -102,34 +102,28 @@ class TestTrabajadoresFestivos(TransactionCase):
         self.assertEqual(holiday.name, 'Festivo manual')
         self.assertTrue(holiday.manual_override)
 
-    def test_local_holiday_rejects_duplicate_worker_date(self):
-        worker = self._create_worker('Local')
+    def test_local_holiday_rejects_duplicate_locality_date(self):
         date_value = fields.Date.to_date('2026-04-24')
         self.env['trabajadores.festivo.local'].create({
-            'trabajador_id': worker.id,
             'fecha': date_value,
             'localidad_id': self.localidad_a.id,
             'name': 'Sanidad local',
         })
         with self.assertRaises(ValidationError):
             self.env['trabajadores.festivo.local'].create({
-                'trabajador_id': worker.id,
                 'fecha': date_value,
                 'localidad_id': self.localidad_a.id,
                 'name': 'Duplicado',
             })
 
-    def test_local_holiday_allows_same_worker_date_with_different_locality(self):
-        worker = self._create_worker('Localidad')
+    def test_local_holiday_allows_same_date_with_different_locality(self):
         date_value = fields.Date.to_date('2026-04-25')
         self.env['trabajadores.festivo.local'].create({
-            'trabajador_id': worker.id,
             'fecha': date_value,
             'localidad_id': self.localidad_a.id,
             'name': 'Fiesta A',
         })
         second_holiday = self.env['trabajadores.festivo.local'].create({
-            'trabajador_id': worker.id,
             'fecha': date_value,
             'localidad_id': self.localidad_b.id,
             'name': 'Fiesta B',

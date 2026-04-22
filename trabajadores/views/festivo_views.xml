@@ -72,9 +72,8 @@
       <field name="model">trabajadores.festivo.local</field>
       <field name="arch" type="xml">
         <list>
-          <field name="fecha"/>
-          <field name="trabajador_id" domain="[('baja', '=', False)]"/>
           <field name="localidad_id"/>
+          <field name="fecha"/>
           <field name="name"/>
           <field name="active"/>
         </list>
@@ -85,13 +84,11 @@
       <field name="name">trabajadores.festivo.local.search</field>
       <field name="model">trabajadores.festivo.local</field>
       <field name="arch" type="xml">
-        <search string="Buscar festivos AP">
-          <field name="trabajador_id" string="AP" domain="[('baja', '=', False)]"/>
+        <search string="Buscar festivos locales">
           <field name="localidad_id"/>
           <field name="fecha"/>
           <field name="name"/>
           <searchpanel>
-            <field name="trabajador_id" icon="fa-users" enable_counters="1" select="multi"/>
             <field name="localidad_id" icon="fa-map-marker" enable_counters="1" select="multi"/>
           </searchpanel>
         </search>
@@ -102,16 +99,15 @@
       <field name="name">trabajadores.festivo.local.form</field>
       <field name="model">trabajadores.festivo.local</field>
       <field name="arch" type="xml">
-        <form string="Festivo AP">
+        <form string="Festivo local">
           <sheet>
             <group>
               <group>
-                <field name="trabajador_id" domain="[('baja', '=', False)]" options="{'no_create': True}"/>
+                <field name="localidad_id" options="{'no_create': True}"/>
                 <field name="fecha"/>
               </group>
               <group>
-                <field name="localidad_id" required="1" options="{'no_create': True}"/>
-                <field name="name" placeholder="Describe el festivo del AP..."/>
+                <field name="name" placeholder="Describe el festivo local..."/>
                 <field name="active"/>
               </group>
             </group>
@@ -121,10 +117,116 @@
     </record>
 
     <record model="ir.actions.act_window" id="trabajadores_action_festivo_local_window">
-      <field name="name">Festivos AP</field>
+      <field name="name">Festivos locales</field>
       <field name="res_model">trabajadores.festivo.local</field>
       <field name="view_mode">list,form</field>
       <field name="search_view_id" ref="trabajadores_festivo_local_search"/>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_localidad_festivos_list">
+      <field name="name">zonastrabajo.localidad.festivos.list</field>
+      <field name="model">zonastrabajo.localidad</field>
+      <field name="arch" type="xml">
+        <list string="Festivos locales por localidad">
+          <field name="name"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_localidad_festivos_form">
+      <field name="name">zonastrabajo.localidad.festivos.form</field>
+      <field name="model">zonastrabajo.localidad</field>
+      <field name="arch" type="xml">
+        <form string="Festivos locales por localidad">
+          <sheet>
+            <group>
+              <field name="name" readonly="1"/>
+              <field name="active" readonly="1"/>
+            </group>
+            <group string="Festivos locales">
+              <field name="festivo_local_ids" context="{'default_localidad_id': id}">
+                <list editable="bottom">
+                  <field name="fecha"/>
+                  <field name="name"/>
+                  <field name="active"/>
+                </list>
+              </field>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="trabajadores_action_localidad_festivos_window">
+      <field name="name">Festivos locales</field>
+      <field name="res_model">zonastrabajo.localidad</field>
+      <field name="view_mode">list,form</field>
+      <field name="search_view_id" ref="zonasTrabajo.localidad_search"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="trabajadores_action_localidad_festivos_window_list">
+      <field name="sequence" eval="1"/>
+      <field name="view_mode">list</field>
+      <field name="view_id" ref="trabajadores_localidad_festivos_list"/>
+      <field name="act_window_id" ref="trabajadores_action_localidad_festivos_window"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="trabajadores_action_localidad_festivos_window_form">
+      <field name="sequence" eval="2"/>
+      <field name="view_mode">form</field>
+      <field name="view_id" ref="trabajadores_localidad_festivos_form"/>
+      <field name="act_window_id" ref="trabajadores_action_localidad_festivos_window"/>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_trabajador_festivo_localidad_list">
+      <field name="name">trabajadores.trabajador.festivo.localidad.list</field>
+      <field name="model">trabajadores.trabajador</field>
+      <field name="arch" type="xml">
+        <list string="Asignar fiestas AP">
+          <field name="nombre_completo"/>
+          <field name="grupo"/>
+          <field name="localidad_id" optional="show"/>
+          <field name="festivo_localidad_id"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="trabajadores_trabajador_festivo_localidad_form">
+      <field name="name">trabajadores.trabajador.festivo.localidad.form</field>
+      <field name="model">trabajadores.trabajador</field>
+      <field name="arch" type="xml">
+        <form string="Asignar fiestas AP">
+          <sheet>
+            <group>
+              <field name="nombre_completo" readonly="1"/>
+              <field name="grupo" readonly="1"/>
+              <field name="festivo_localidad_id" options="{'no_create': True, 'no_open': True}"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="trabajadores_action_festivo_localidad_assignment_window">
+      <field name="name">Asignar fiestas AP</field>
+      <field name="res_model">trabajadores.trabajador</field>
+      <field name="view_mode">list,form</field>
+      <field name="domain">[('baja', '=', False)]</field>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="trabajadores_action_festivo_localidad_assignment_window_list">
+      <field name="sequence" eval="1"/>
+      <field name="view_mode">list</field>
+      <field name="view_id" ref="trabajadores_trabajador_festivo_localidad_list"/>
+      <field name="act_window_id" ref="trabajadores_action_festivo_localidad_assignment_window"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="trabajadores_action_festivo_localidad_assignment_window_form">
+      <field name="sequence" eval="2"/>
+      <field name="view_mode">form</field>
+      <field name="view_id" ref="trabajadores_trabajador_festivo_localidad_form"/>
+      <field name="act_window_id" ref="trabajadores_action_festivo_localidad_assignment_window"/>
     </record>
 
     <record model="ir.ui.view" id="trabajadores_festivo_sync_wizard_form">
@@ -150,6 +252,25 @@
       <field name="target">new</field>
     </record>
 
+    <record model="ir.ui.view" id="trabajadores_zonastrabajo_localidad_form_festivos">
+      <field name="name">zonastrabajo.localidad.form.festivos</field>
+      <field name="model">zonastrabajo.localidad</field>
+      <field name="inherit_id" ref="zonasTrabajo.localidad_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//sheet/group" position="after">
+          <group string="Festivos locales">
+            <field name="festivo_local_ids" context="{'default_localidad_id': id}">
+              <list editable="bottom">
+                <field name="fecha"/>
+                <field name="name"/>
+                <field name="active"/>
+              </list>
+            </field>
+          </group>
+        </xpath>
+      </field>
+    </record>
+
     <record model="ir.ui.view" id="trabajadores_trabajador_form_festivos_locales">
       <field name="name">trabajadores.trabajador.form.festivos.locales</field>
       <field name="model">trabajadores.trabajador</field>
@@ -157,8 +278,8 @@
       <field name="arch" type="xml">
         <xpath expr="//header" position="inside">
           <button
-            name="action_open_festivos_locales"
-            string="Asignar festivos AP"
+            name="action_open_festivo_localidad_assignment"
+            string="Asignar fiestas AP"
             type="object"
             class="btn-secondary"
             invisible="baja == True"
@@ -167,17 +288,18 @@
         </xpath>
         <xpath expr="//field[@name='faltas_justificadas_ids']/.." position="after">
           <page
-            string="Festivos AP"
+            string="Fiestas AP"
             groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
           >
-            <field name="festivos_locales_ids" readonly="1">
-              <list>
-                <field name="fecha"/>
-                <field name="localidad_id"/>
-                <field name="name"/>
-                <field name="active"/>
-              </list>
-            </field>
+            <group>
+              <field name="festivo_localidad_id" options="{'no_create': True, 'no_open': True}"/>
+              <button
+                name="action_open_festivos_locales"
+                string="Ver festivos locales"
+                type="object"
+                class="btn-secondary"
+              />
+            </group>
           </page>
         </xpath>
       </field>
@@ -193,11 +315,20 @@
     />
 
     <menuitem
-      name="Festivos AP"
+      name="Festivos locales"
       id="trabajadores_menu_festivos_locales"
       parent="trabajadores.menu_root"
-      action="trabajadores_action_festivo_local_window"
+      action="trabajadores_action_localidad_festivos_window"
       sequence="23"
+      groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
+    />
+
+    <menuitem
+      name="Asignar fiestas AP"
+      id="trabajadores_menu_festivo_localidad_assignment"
+      parent="trabajadores.menu_root"
+      action="trabajadores_action_festivo_localidad_assignment_window"
+      sequence="24"
       groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
     />
 
@@ -206,7 +337,7 @@
       id="trabajadores_menu_festivos_sync"
       parent="trabajadores.menu_root"
       action="trabajadores_action_festivo_oficial_sync_wizard"
-      sequence="24"
+      sequence="25"
       groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
     />
   </data>

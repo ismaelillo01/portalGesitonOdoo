@@ -24,6 +24,17 @@ class Trabajador(models.Model):
         ondelete='restrict',
         index=True,
     )
+    festivo_localidad_id = fields.Many2one(
+        'zonastrabajo.localidad',
+        string='Localidad festiva',
+        ondelete='restrict',
+        index=True,
+    )
+    festivos_locales_ids = fields.One2many(
+        related='festivo_localidad_id.festivo_local_ids',
+        string='Festivos locales',
+        readonly=True,
+    )
     carnet_conducir = fields.Boolean(string='Carnet de conducir')
     observaciones = fields.Text(string='Observaciones')
     baja = fields.Boolean(string='Baja', default=False)
@@ -34,12 +45,6 @@ class Trabajador(models.Model):
         'trabajador_id',
         string='Faltas justificadas',
     )
-    festivos_locales_ids = fields.One2many(
-        'trabajadores.festivo.local',
-        'trabajador_id',
-        string='Festivos AP',
-    )
-
     grupo = fields.Selection([
         ('intecum', 'Intecum'),
         ('agusto', 'Agusto')
@@ -84,16 +89,27 @@ class Trabajador(models.Model):
     def action_open_festivos_locales(self):
         self.ensure_one()
         return {
-            'name': 'Festivos AP',
+            'name': 'Festivos locales',
             'type': 'ir.actions.act_window',
             'res_model': 'trabajadores.festivo.local',
             'view_mode': 'list,form',
-            'domain': [('trabajador_id', '=', self.id)],
+            'domain': [('localidad_id', '=', self.festivo_localidad_id.id)] if self.festivo_localidad_id else [('id', '=', 0)],
             'context': {
-                'default_trabajador_id': self.id,
-                'search_default_trabajador_id': self.id,
+                'default_localidad_id': self.festivo_localidad_id.id or False,
             },
             'target': 'current',
+        }
+
+    def action_open_festivo_localidad_assignment(self):
+        self.ensure_one()
+        return {
+            'name': 'Asignar fiestas AP',
+            'type': 'ir.actions.act_window',
+            'res_model': 'trabajadores.trabajador',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref('trabajadores.trabajadores_trabajador_festivo_localidad_form').id,
+            'target': 'new',
         }
 
     def _is_portalgestor_worker_selector_context(self):

@@ -5,32 +5,18 @@ from odoo.exceptions import ValidationError
 
 class FestivoLocal(models.Model):
     _name = 'trabajadores.festivo.local'
-    _description = 'Festivo local AP'
+    _description = 'Festivo local'
     _order = 'fecha desc, id desc'
 
-    _sql_constraints = [
-        (
-            'trabajadores_festivo_local_unique_worker_date_localidad',
-            'unique(trabajador_id, fecha, localidad_id)',
-            'Ya existe un festivo local para este AP en esa fecha y localidad.',
-        ),
-    ]
-
     name = fields.Char(
-        string='Descripción',
+        string='Descripcion',
         required=True,
-    )
-    trabajador_id = fields.Many2one(
-        'trabajadores.trabajador',
-        string='AP',
-        required=True,
-        ondelete='cascade',
-        index=True,
     )
     fecha = fields.Date(string='Fecha', required=True, index=True)
     localidad_id = fields.Many2one(
         'zonastrabajo.localidad',
         string='Localidad',
+        required=True,
         ondelete='restrict',
         index=True,
     )
@@ -45,81 +31,150 @@ class FestivoLocal(models.Model):
         return description or localidad
 
     @api.model
-    def _ensure_worker_date_is_available(self, trabajador_id, fecha, localidad_id, exclude_ids=None):
-        if not trabajador_id or not fecha or not localidad_id:
+    def _ensure_locality_date_is_available(self, fecha, localidad_id, exclude_ids=None):
+        if not fecha or not localidad_id:
             return
         duplicate_domain = [
-            ('trabajador_id', '=', trabajador_id),
             ('fecha', '=', fecha),
+            ('localidad_id', '=', localidad_id),
         ]
         if exclude_ids:
             duplicate_domain.append(('id', 'not in', exclude_ids))
-        duplicate_records = self.search(duplicate_domain)
-        if duplicate_records.filtered(lambda record: not record.localidad_id or record.localidad_id.id == localidad_id):
-            raise ValidationError(_("Ya existe un festivo local para este AP en esa fecha y localidad."))
+        if self.search_count(duplicate_domain):
+            raise ValidationError(_("Ya existe un festivo local para esta localidad en esa fecha."))
 
     @api.model_create_multi
     def create(self, vals_list):
         seen_keys = set()
         for vals in vals_list:
-            trabajador_id = vals.get('trabajador_id')
             fecha = vals.get('fecha')
             localidad_id = vals.get('localidad_id')
-            if not trabajador_id or not fecha or not localidad_id:
-                raise ValidationError(_("Debes seleccionar una localidad para el festivo del AP."))
+            if not fecha or not localidad_id:
+                raise ValidationError(_("Debes seleccionar una localidad para el festivo local."))
             if isinstance(localidad_id, tuple):
                 localidad_id = localidad_id[0]
             if isinstance(localidad_id, list):
                 localidad_id = localidad_id[0] if localidad_id else False
             if not localidad_id:
                 continue
-            worker_id = trabajador_id[0] if isinstance(trabajador_id, tuple) else trabajador_id
-            key = (worker_id, fields.Date.to_date(fecha), localidad_id)
+            key = (fields.Date.to_date(fecha), localidad_id)
             if key in seen_keys:
-                raise ValidationError(_("Ya existe un festivo local para este AP en esa fecha y localidad."))
+                raise ValidationError(_("Ya existe un festivo local para esta localidad en esa fecha."))
             seen_keys.add(key)
-            self._ensure_worker_date_is_available(worker_id, key[1], localidad_id)
+            self._ensure_locality_date_is_available(key[0], localidad_id)
         return super().create(vals_list)
 
     def write(self, vals):
         for record in self:
-            trabajador_id = vals.get('trabajador_id', record.trabajador_id.id)
             fecha = vals.get('fecha', record.fecha)
             localidad_id = vals.get('localidad_id', record.localidad_id.id)
-            if isinstance(trabajador_id, tuple):
-                trabajador_id = trabajador_id[0]
             if isinstance(localidad_id, tuple):
                 localidad_id = localidad_id[0]
             fecha = fields.Date.to_date(fecha) if fecha else False
             if not localidad_id:
-                raise ValidationError(_("Debes seleccionar una localidad para el festivo del AP."))
-            self._ensure_worker_date_is_available(trabajador_id, fecha, localidad_id, exclude_ids=record.ids)
+                raise ValidationError(_("Debes seleccionar una localidad para el festivo local."))
+            self._ensure_locality_date_is_available(fecha, localidad_id, exclude_ids=record.ids)
         return super().write(vals)
 
-    @api.constrains('trabajador_id')
-    def _check_worker_is_active(self):
+    @api.constrains('fecha', 'localidad_id')
+    def _check_duplicate_locality_date(self):
         for record in self:
-            if record.trabajador_id and record.trabajador_id.baja:
-                raise ValidationError(_("No puedes registrar un festivo local para un AP dado de baja."))
-
-    @api.constrains('trabajador_id', 'fecha', 'localidad_id')
-    def _check_duplicate_worker_date(self):
-        for record in self:
-            if not record.trabajador_id or not record.fecha or not record.localidad_id:
+            if not record.fecha or not record.localidad_id:
                 continue
-            duplicate_domain = [
+            if self.search_count([
                 ('id', '!=', record.id),
-                ('trabajador_id', '=', record.trabajador_id.id),
                 ('fecha', '=', record.fecha),
-            ]
-            duplicate_records = self.search(duplicate_domain)
-            if duplicate_records.filtered(
-                lambda duplicate: not duplicate.localidad_id or duplicate.localidad_id.id == record.localidad_id.id
-            ):
-                raise ValidationError(_("Ya existe un festivo local para este AP en esa fecha y localidad."))
+                ('localidad_id', '=', record.localidad_id.id),
+            ]):
+                raise ValidationError(_("Ya existe un festivo local para esta localidad en esa fecha."))
 
     @api.constrains('localidad_id')
     def _check_localidad_required(self):
         for record in self:
             if not record.localidad_id:
-                raise ValidationError(_("Debes seleccionar una localidad para el festivo del AP."))
+                raise ValidationError(_("Debes seleccionar una localidad para el festivo local."))
+
+    def init(self):
+        super().init()
+        self.env.cr.execute(
+            """
+                SELECT 1
+                  FROM information_schema.columns
+                 WHERE table_name = %s
+                   AND column_name = 'trabajador_id'
+            """,
+            [self._table],
+        )
+        if self.env.cr.fetchone():
+            self.env.cr.execute(
+                """
+                    WITH ranked_localities AS (
+                        SELECT trabajador_id,
+                               localidad_id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY trabajador_id
+                                   ORDER BY fecha DESC, id DESC
+                               ) AS rn
+                          FROM trabajadores_festivo_local
+                         WHERE trabajador_id IS NOT NULL
+                           AND localidad_id IS NOT NULL
+                    )
+                    UPDATE trabajadores_trabajador trabajador
+                       SET festivo_localidad_id = ranked_localities.localidad_id
+                      FROM ranked_localities
+                     WHERE ranked_localities.rn = 1
+                       AND trabajador.id = ranked_localities.trabajador_id
+                       AND (
+                           trabajador.festivo_localidad_id IS NULL
+                           OR trabajador.festivo_localidad_id <> ranked_localities.localidad_id
+                       )
+                """
+            )
+
+        self.env.cr.execute(
+            """
+                WITH grouped AS (
+                    SELECT localidad_id,
+                           fecha,
+                           MIN(id) AS keep_id,
+                           BOOL_OR(active) AS keep_active
+                      FROM trabajadores_festivo_local
+                     WHERE localidad_id IS NOT NULL
+                       AND fecha IS NOT NULL
+                     GROUP BY localidad_id, fecha
+                    HAVING COUNT(*) > 1
+                )
+                UPDATE trabajadores_festivo_local festivo
+                   SET active = grouped.keep_active
+                  FROM grouped
+                 WHERE festivo.id = grouped.keep_id
+            """
+        )
+        self.env.cr.execute(
+            """
+                DELETE FROM trabajadores_festivo_local festivo
+                 USING (
+                    SELECT localidad_id,
+                           fecha,
+                           MIN(id) AS keep_id
+                      FROM trabajadores_festivo_local
+                     WHERE localidad_id IS NOT NULL
+                       AND fecha IS NOT NULL
+                     GROUP BY localidad_id, fecha
+                    HAVING COUNT(*) > 1
+                 ) grouped
+                 WHERE festivo.localidad_id = grouped.localidad_id
+                   AND festivo.fecha = grouped.fecha
+                   AND festivo.id <> grouped.keep_id
+            """
+        )
+
+
+class ZonaTrabajoLocalidad(models.Model):
+    _inherit = 'zonastrabajo.localidad'
+
+    festivo_local_ids = fields.One2many(
+        'trabajadores.festivo.local',
+        'localidad_id',
+        string='Festivos locales',
+    )

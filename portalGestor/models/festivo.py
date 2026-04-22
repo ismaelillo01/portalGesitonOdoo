@@ -63,20 +63,25 @@ class FestivoLocal(models.Model):
 
     def _get_portalgestor_impacted_lines(self):
         keys = {
-            (record.trabajador_id.id, record.fecha)
+            (record.localidad_id.id, record.fecha)
             for record in self
-            if record.trabajador_id and record.fecha
+            if record.localidad_id and record.fecha
         }
         if not keys:
             return self.env['portalgestor.asignacion.linea']
 
-        worker_ids = sorted({worker_id for worker_id, __fecha in keys})
+        festive_locality_ids = sorted({locality_id for locality_id, __fecha in keys})
         dates = sorted({fecha for __worker_id, fecha in keys})
         lines = self.env['portalgestor.asignacion.linea'].search([
-            ('trabajador_id', 'in', worker_ids),
+            ('trabajador_id.festivo_localidad_id', 'in', festive_locality_ids),
             ('fecha', 'in', dates),
         ])
-        return lines.filtered(lambda line: (line.trabajador_id.id, line.fecha) in keys)
+        return lines.filtered(
+            lambda line: (
+                line.trabajador_id.festivo_localidad_id.id,
+                line.fecha,
+            ) in keys
+        )
 
     def _sync_portalgestor_holidays(self, before_lines=None, action_kind='write'):
         line_model = self.env['portalgestor.asignacion.linea']
@@ -122,4 +127,46 @@ class FestivoLocal(models.Model):
             'bucket_types': [],
             'changed_dates': [str(value) for value in sorted(set(before_lines.mapped('fecha')))],
         })
+        return result
+
+
+class Trabajador(models.Model):
+    _inherit = 'trabajadores.trabajador'
+
+    def _get_portalgestor_festive_locality_lines(self):
+        workers = self.exists()
+        if not workers:
+            return self.env['portalgestor.asignacion.linea']
+        return self.env['portalgestor.asignacion.linea'].search([
+            ('trabajador_id', 'in', workers.ids),
+            ('fecha', '!=', False),
+        ])
+
+    def _sync_portalgestor_festive_locality(self, before_lines=None, action_kind='write'):
+        line_model = self.env['portalgestor.asignacion.linea']
+        before_lines = (before_lines or line_model).exists()
+        after_lines = self._get_portalgestor_festive_locality_lines()
+        impacted_lines = (before_lines | after_lines).exists()
+        if impacted_lines:
+            impacted_lines._recompute_festive_metrics()
+
+        changed_dates = sorted({
+            value
+            for value in (before_lines.mapped('fecha') + after_lines.mapped('fecha'))
+            if value
+        })
+        self.env['portalgestor.asignacion']._send_calendar_update_notification({
+            'action_kind': action_kind,
+            'assignment_ids': sorted(set(impacted_lines.mapped('asignacion_id').ids)),
+            'bucket_types': [],
+            'changed_dates': [str(value) for value in changed_dates],
+        })
+
+    def write(self, vals):
+        if 'festivo_localidad_id' not in vals:
+            return super().write(vals)
+
+        before_lines = self._get_portalgestor_festive_locality_lines()
+        result = super().write(vals)
+        self._sync_portalgestor_festive_locality(before_lines=before_lines, action_kind='write')
         return result
