@@ -130,3 +130,26 @@ class TestTrabajadoresFestivos(TransactionCase):
         })
 
         self.assertTrue(second_holiday)
+
+    def test_worker_primary_festive_locality_is_migrated_to_multiple_localities(self):
+        worker = self.env['trabajadores.trabajador'].create({
+            'name': 'AP Localidad Unica',
+            'grupo': 'agusto',
+            'zona_trabajo_ids': [(6, 0, [self.zone.id])],
+            'festivo_localidad_id': self.localidad_a.id,
+        })
+
+        self.assertIn(self.localidad_a, worker.festivo_localidad_ids)
+
+    def test_worker_action_open_festivos_locales_uses_all_selected_localities(self):
+        worker = self.env['trabajadores.trabajador'].create({
+            'name': 'AP Multi Localidad',
+            'grupo': 'agusto',
+            'zona_trabajo_ids': [(6, 0, [self.zone.id])],
+            'festivo_localidad_ids': [(6, 0, [self.localidad_a.id, self.localidad_b.id])],
+        })
+
+        action = worker.action_open_festivos_locales()
+        self.assertEqual(action['domain'][0][0], 'localidad_id')
+        self.assertEqual(action['domain'][0][1], 'in')
+        self.assertEqual(set(action['domain'][0][2]), {self.localidad_a.id, self.localidad_b.id})

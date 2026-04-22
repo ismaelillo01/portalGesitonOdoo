@@ -32,6 +32,7 @@
         'data/trabajo_fijo_migration.xml',
         'reports/horario_report.xml',
         'reports/usuario_horario_report.xml',
+        'reports/hogar_riesgo_report.xml',
         'views/asignacion_views.xml',
         'views/asignacion_mensual_views.xml',
         'views/trabajo_fijo_views.xml',
@@ -42,6 +43,7 @@
         'wizards/conflict_wizard_views.xml',
         'wizards/report_wizard_views.xml',
         'wizards/usuario_report_wizard_views.xml',
+        'wizards/hogar_riesgo_report_wizard_views.xml',
     ],
     'demo': [
         'demo/portalgestor_demo.xml',

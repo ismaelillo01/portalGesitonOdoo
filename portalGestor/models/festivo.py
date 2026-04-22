@@ -73,14 +73,15 @@ class FestivoLocal(models.Model):
         festive_locality_ids = sorted({locality_id for locality_id, __fecha in keys})
         dates = sorted({fecha for __worker_id, fecha in keys})
         lines = self.env['portalgestor.asignacion.linea'].search([
-            ('trabajador_id.festivo_localidad_id', 'in', festive_locality_ids),
+            ('trabajador_id.festivo_localidad_ids', 'in', festive_locality_ids),
             ('fecha', 'in', dates),
         ])
         return lines.filtered(
             lambda line: (
-                line.trabajador_id.festivo_localidad_id.id,
-                line.fecha,
-            ) in keys
+                bool(line.asignacion_id.usuario_localidad_id)
+                and line.asignacion_id.usuario_localidad_id.id in line.trabajador_id.festivo_localidad_ids.ids
+                and (line.asignacion_id.usuario_localidad_id.id, line.fecha) in keys
+            )
         )
 
     def _sync_portalgestor_holidays(self, before_lines=None, action_kind='write'):
@@ -163,7 +164,7 @@ class Trabajador(models.Model):
         })
 
     def write(self, vals):
-        if 'festivo_localidad_id' not in vals:
+        if 'festivo_localidad_id' not in vals and 'festivo_localidad_ids' not in vals:
             return super().write(vals)
 
         before_lines = self._get_portalgestor_festive_locality_lines()

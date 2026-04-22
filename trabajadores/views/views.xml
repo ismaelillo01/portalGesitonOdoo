@@ -10,7 +10,7 @@
           <field name="dni_nie"/>
           <field name="telefono"/>
           <field name="localidad_id" optional="show"/>
-          <field name="festivo_localidad_id" optional="show"/>
+          <field name="festivo_localidad_ids" widget="many2many_tags" optional="show"/>
           <field name="carnet_conducir" optional="show"/>
           <field name="observaciones" optional="hide"/>
           <field name="color" widget="color_picker" optional="hide"/>
@@ -47,8 +47,8 @@
                 <field name="grupo"/>
                 <field name="carnet_conducir"/>
                 <field name="color" widget="color_picker"/>
-                <field name="festivo_localidad_id" groups="base.group_system"/>
-                <field name="festivo_localidad_id" options="{'no_create': True, 'no_open': True}" groups="base.group_user,!base.group_system"/>
+                <field name="festivo_localidad_ids" widget="many2many_tags" groups="base.group_system"/>
+                <field name="festivo_localidad_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}" groups="base.group_user,!base.group_system"/>
                 <field name="zona_trabajo_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               </group>
               <group>

@@ -371,6 +371,21 @@ class Usuario(models.Model):
         return dict(self._GROUP_UI_DATA.get(grupo, {'badge': '', 'label': ''}))
 
     @api.model
+    def _get_hogar_riesgo_options(self):
+        return list(self._HOGAR_RIESGO_SELECTION)
+
+    @api.model
+    def _get_hogar_riesgo_label(self, hogar_riesgo):
+        return dict(self._HOGAR_RIESGO_SELECTION).get(hogar_riesgo, '')
+
+    @api.model
+    def _get_hogar_riesgo_group(self, hogar_riesgo):
+        for grupo, values in self._HOGAR_RIESGO_GROUP_MAP.items():
+            if hogar_riesgo in values:
+                return grupo
+        return False
+
+    @api.model
     def _is_valid_hogar_riesgo_for_group(self, grupo, hogar_riesgo):
         if not hogar_riesgo:
             return True

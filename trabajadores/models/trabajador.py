@@ -30,8 +30,16 @@ class Trabajador(models.Model):
         ondelete='restrict',
         index=True,
     )
-    festivos_locales_ids = fields.One2many(
-        related='festivo_localidad_id.festivo_local_ids',
+    festivo_localidad_ids = fields.Many2many(
+        'zonastrabajo.localidad',
+        'trabajadores_trabajador_festivo_localidad_rel',
+        'trabajador_id',
+        'localidad_id',
+        string='Localidades festivas',
+    )
+    festivos_locales_ids = fields.Many2many(
+        'trabajadores.festivo.local',
+        compute='_compute_festivos_locales_ids',
         string='Festivos locales',
         readonly=True,
     )
@@ -65,6 +73,11 @@ class Trabajador(models.Model):
             parts = [part for part in [record.name, record.apellido1, record.apellido2] if part]
             record.nombre_completo = " ".join(parts) if parts else ''
 
+    @api.depends('festivo_localidad_ids', 'festivo_localidad_ids.festivo_local_ids')
+    def _compute_festivos_locales_ids(self):
+        for record in self:
+            record.festivos_locales_ids = record.festivo_localidad_ids.mapped('festivo_local_ids')
+
     @api.depends('nombre_completo')
     def _compute_display_name(self):
         for record in self:
@@ -93,9 +106,9 @@ class Trabajador(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'trabajadores.festivo.local',
             'view_mode': 'list,form',
-            'domain': [('localidad_id', '=', self.festivo_localidad_id.id)] if self.festivo_localidad_id else [('id', '=', 0)],
+            'domain': [('localidad_id', 'in', self.festivo_localidad_ids.ids)] if self.festivo_localidad_ids else [('id', '=', 0)],
             'context': {
-                'default_localidad_id': self.festivo_localidad_id.id or False,
+                'search_default_localidad_id': self.festivo_localidad_ids[:1].id or False,
             },
             'target': 'current',
         }
@@ -111,6 +124,78 @@ class Trabajador(models.Model):
             'view_id': self.env.ref('trabajadores.trabajadores_trabajador_festivo_localidad_form').id,
             'target': 'new',
         }
+
+    def _ensure_legacy_festive_locality_link(self):
+        if self.env.context.get('trabajadores_skip_legacy_festive_locality_sync'):
+            return
+        for record in self.filtered('festivo_localidad_id'):
+            if record.festivo_localidad_id not in record.festivo_localidad_ids:
+                record.with_context(trabajadores_skip_legacy_festive_locality_sync=True).write({
+                    'festivo_localidad_ids': [(4, record.festivo_localidad_id.id)],
+                })
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._ensure_legacy_festive_locality_link()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if 'festivo_localidad_id' in vals:
+            self._ensure_legacy_festive_locality_link()
+        return result
+
+    def init(self):
+        super().init()
+        self.env.cr.execute(
+            """
+                SELECT 1
+                  FROM information_schema.tables
+                 WHERE table_name = 'trabajadores_trabajador_festivo_localidad_rel'
+            """
+        )
+        if not self.env.cr.fetchone():
+            return
+
+        self.env.cr.execute(
+            """
+                INSERT INTO trabajadores_trabajador_festivo_localidad_rel (trabajador_id, localidad_id)
+                SELECT trabajador.id, trabajador.festivo_localidad_id
+                  FROM trabajadores_trabajador trabajador
+                 WHERE trabajador.festivo_localidad_id IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                          FROM trabajadores_trabajador_festivo_localidad_rel rel
+                         WHERE rel.trabajador_id = trabajador.id
+                           AND rel.localidad_id = trabajador.festivo_localidad_id
+                   )
+            """
+        )
+        self.env.cr.execute(
+            """
+                SELECT 1
+                  FROM information_schema.columns
+                 WHERE table_name = 'trabajadores_festivo_local'
+                   AND column_name = 'trabajador_id'
+            """
+        )
+        if self.env.cr.fetchone():
+            self.env.cr.execute(
+                """
+                    INSERT INTO trabajadores_trabajador_festivo_localidad_rel (trabajador_id, localidad_id)
+                    SELECT DISTINCT festivo.trabajador_id, festivo.localidad_id
+                      FROM trabajadores_festivo_local festivo
+                     WHERE festivo.trabajador_id IS NOT NULL
+                       AND festivo.localidad_id IS NOT NULL
+                       AND NOT EXISTS (
+                            SELECT 1
+                              FROM trabajadores_trabajador_festivo_localidad_rel rel
+                             WHERE rel.trabajador_id = festivo.trabajador_id
+                               AND rel.localidad_id = festivo.localidad_id
+                       )
+                """
+            )
 
     def _is_portalgestor_worker_selector_context(self):
         return bool(self.env.context.get('portalgestor_worker_selector'))

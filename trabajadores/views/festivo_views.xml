@@ -187,7 +187,7 @@
           <field name="nombre_completo"/>
           <field name="grupo"/>
           <field name="localidad_id" optional="show"/>
-          <field name="festivo_localidad_id"/>
+          <field name="festivo_localidad_ids" widget="many2many_tags"/>
         </list>
       </field>
     </record>
@@ -201,7 +201,7 @@
             <group>
               <field name="nombre_completo" readonly="1"/>
               <field name="grupo" readonly="1"/>
-              <field name="festivo_localidad_id" options="{'no_create': True, 'no_open': True}"/>
+              <field name="festivo_localidad_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
             </group>
           </sheet>
         </form>
@@ -292,7 +292,7 @@
             groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador,base.group_system"
           >
             <group>
-              <field name="festivo_localidad_id" options="{'no_create': True, 'no_open': True}"/>
+              <field name="festivo_localidad_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
               <button
                 name="action_open_festivos_locales"
                 string="Ver festivos locales"

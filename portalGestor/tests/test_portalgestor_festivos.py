@@ -32,12 +32,13 @@ class TestPortalGestorFestivos(TransactionCase):
         })
 
     @classmethod
-    def _create_worker(cls, suffix, festivo_localidad=None):
+    def _create_worker(cls, suffix, festivo_localidad=None, festivo_localidades=None):
+        festive_locality_ids = festivo_localidades or ([festivo_localidad] if festivo_localidad else [])
         return cls.env['trabajadores.trabajador'].create({
             'name': f'AP {suffix}',
             'grupo': 'agusto',
             'zona_trabajo_ids': [(6, 0, [cls.zone.id])],
-            'festivo_localidad_id': festivo_localidad.id if festivo_localidad else False,
+            'festivo_localidad_ids': [(6, 0, [localidad.id for localidad in festive_locality_ids])],
         })
 
     @classmethod
@@ -179,3 +180,39 @@ class TestPortalGestorFestivos(TransactionCase):
         self.assertEqual(worker_payload['lines'][1]['festive_label'], '')
         self.assertEqual(worker_payload['lines'][1]['horas_festivas_label'], '0 Horas y 00 minutos')
         self.assertEqual(worker_payload['total_festive_label'], '1 Horas y 00 minutos')
+
+    def test_local_holiday_applies_for_any_selected_worker_locality(self):
+        usuario_localidad_a = self._create_user('Localidad A', localidad=self.localidad_a)
+        usuario_localidad_b = self._create_user('Localidad B', localidad=self.localidad_b)
+        worker = self._create_worker(
+            'Multi Localidad',
+            festivo_localidades=[self.localidad_a, self.localidad_b],
+        )
+        holiday_date = fields.Date.to_date('2026-04-26')
+        self.env['trabajadores.festivo.local'].create({
+            'fecha': holiday_date,
+            'localidad_id': self.localidad_a.id,
+            'name': 'Fiesta local A',
+        })
+        self.env['trabajadores.festivo.local'].create({
+            'fecha': holiday_date,
+            'localidad_id': self.localidad_b.id,
+            'name': 'Fiesta local B',
+        })
+
+        self._create_assignment(usuario_localidad_a, holiday_date, [(9.0, 10.0, worker)], confirmed=True)
+        self._create_assignment(usuario_localidad_b, holiday_date, [(10.0, 12.0, worker)], confirmed=True)
+
+        worker_wizard = self.env['portalgestor.report.wizard'].create({
+            'trabajador_ids': [(6, 0, [worker.id])],
+            'mes': '4',
+            'anio': '2026',
+        })
+        worker_payload = worker_wizard._get_report_payload_for_worker(worker)
+
+        self.assertEqual(len(worker_payload['lines']), 2)
+        self.assertEqual(worker_payload['lines'][0]['festive_label'], 'Festivo local AP')
+        self.assertEqual(worker_payload['lines'][0]['horas_festivas_label'], '1 Horas y 00 minutos')
+        self.assertEqual(worker_payload['lines'][1]['festive_label'], 'Festivo local AP')
+        self.assertEqual(worker_payload['lines'][1]['horas_festivas_label'], '2 Horas y 00 minutos')
+        self.assertEqual(worker_payload['total_festive_label'], '3 Horas y 00 minutos')
