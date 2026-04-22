@@ -95,6 +95,8 @@ class TestPortalGestorPortalRoutes(HttpCase):
         self.assertIn('Ayuda', home_response.text)
         self.assertIn('carousel-indicators', home_response.text)
         self.assertNotIn('data-bs-ride="carousel"', home_response.text)
+        self.assertNotIn('data-bs-target="#portalInternalCarousel"', home_response.text)
+        self.assertIn('data-portal-direction="next"', home_response.text)
 
         help_response = self.url_open('/portal-ayuda?category=usuarios')
         self.assertEqual(help_response.status_code, 200)
@@ -129,5 +131,6 @@ class TestPortalGestorPortalRoutes(HttpCase):
 
         carousel_js_source = carousel_js_path.read_text(encoding='utf-8')
         self.assertIn('.o_portal_internal_carousel', carousel_js_source)
-        self.assertIn('window.bootstrap', carousel_js_source)
-        self.assertIn('replaceChildren', carousel_js_source)
+        self.assertIn('class PortalInternalCarousel', carousel_js_source)
+        self.assertIn('event.preventDefault()', carousel_js_source)
+        self.assertNotIn('window.bootstrap', carousel_js_source)
