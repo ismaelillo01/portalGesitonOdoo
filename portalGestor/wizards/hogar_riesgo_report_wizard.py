@@ -124,6 +124,7 @@ class HogarRiesgoReportWizard(models.TransientModel):
         lines = self.env['portalgestor.asignacion.linea'].search(
             [
                 ('asignacion_id.usuario_id', 'in', usuarios.ids),
+                ('asignacion_id.confirmado', '=', True),
                 ('fecha', '>=', self.fecha_inicio),
                 ('fecha', '<=', self.fecha_fin),
             ],

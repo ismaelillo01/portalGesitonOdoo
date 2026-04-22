@@ -80,6 +80,20 @@
       <field name="view_mode">list,form</field>
     </record>
 
+    <record model="ir.actions.act_window.view" id="trabajadores.action_window_list_view">
+      <field name="sequence" eval="1"/>
+      <field name="view_mode">list</field>
+      <field name="view_id" ref="trabajadores.trabajador_list"/>
+      <field name="act_window_id" ref="trabajadores.action_window"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="trabajadores.action_window_form_view">
+      <field name="sequence" eval="2"/>
+      <field name="view_mode">form</field>
+      <field name="view_id" ref="trabajadores.trabajador_form"/>
+      <field name="act_window_id" ref="trabajadores.action_window"/>
+    </record>
+
     <record model="ir.ui.view" id="trabajadores.trabajador_portalgestor_selector_list">
       <field name="name">trabajador.portalgestor.selector.list</field>
       <field name="model">trabajadores.trabajador</field>

@@ -160,6 +160,7 @@ class UsuarioReportWizard(models.TransientModel):
         assignment_lines = self.env['portalgestor.asignacion.linea'].search(
             [
                 ('asignacion_id.usuario_id', '=', usuario.id),
+                ('asignacion_id.confirmado', '=', True),
                 ('fecha', '>=', self.fecha_inicio),
                 ('fecha', '<=', self.fecha_fin),
             ],
