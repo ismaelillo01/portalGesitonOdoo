@@ -198,6 +198,7 @@ class UsuarioReportWizard(models.TransientModel):
         lines = self._get_report_lines_for_user(usuario)
         total_minutes = sum(line['computable_minutes'] for line in lines)
         total_festive_minutes = sum(line['festive_minutes'] for line in lines)
+        catering_data = usuario._get_catering_report_data(self.fecha_inicio, self.fecha_fin)
         return {
             'usuario_full_name': usuario._get_full_name(),
             'services_label': usuario._get_service_names() or 'Sin servicios',
@@ -206,6 +207,8 @@ class UsuarioReportWizard(models.TransientModel):
             'lines': lines,
             'total_duration_label': self._format_duration(total_minutes),
             'total_festive_label': self._format_duration(total_festive_minutes),
+            'catering_lines': catering_data['lines'],
+            'catering_summary_lines': catering_data['summary_lines'],
         }
 
     def _get_single_report_filename(self):

@@ -10,3 +10,4 @@ from . import test_portalgestor_monthly_template
 from . import test_portalgestor_trabajo_fijo
 from . import test_portalgestor_schedule_ownership
 from . import test_portalgestor_user_manager_priority
+from . import test_portalgestor_usuario_catering_report

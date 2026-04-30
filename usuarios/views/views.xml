@@ -38,6 +38,8 @@
           <sheet>
             <field name="manager_edit_blocked" invisible="1"/>
             <field name="group_selection_locked" invisible="1"/>
+            <field name="has_catering_comida_service" invisible="1"/>
+            <field name="has_catering_cena_service" invisible="1"/>
             <group>
               <group string="Datos Personales">
                 <field name="name" readonly="manager_edit_blocked"/>

@@ -1,0 +1,51 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="usuarios_catering_config_form">
+      <field name="name">usuarios.catering.config.form</field>
+      <field name="model">usuarios.catering.config</field>
+      <field name="arch" type="xml">
+        <form string="Configurar catering">
+          <sheet>
+            <group>
+              <group string="Servicio">
+                <field name="usuario_id" readonly="1" options="{'no_open': True}"/>
+                <field name="service_code" readonly="1"/>
+              </group>
+              <group string="Vigencia">
+                <field name="date_start"/>
+                <field name="date_stop"/>
+              </group>
+            </group>
+
+            <group string="Dias de la semana" col="7">
+              <field name="lunes"/>
+              <field name="martes"/>
+              <field name="miercoles"/>
+              <field name="jueves"/>
+              <field name="viernes"/>
+              <field name="sabado"/>
+              <field name="domingo"/>
+            </group>
+
+            <group string="Dias suspendidos">
+              <field name="suspension_ids" nolabel="1" context="{'default_config_id': id}">
+                <list editable="bottom">
+                  <field name="date_start"/>
+                  <field name="date_stop"/>
+                  <field name="name"/>
+                </list>
+                <form string="Suspension de catering">
+                  <group>
+                    <field name="date_start"/>
+                    <field name="date_stop"/>
+                    <field name="name"/>
+                  </group>
+                </form>
+              </field>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+  </data>
+</odoo>

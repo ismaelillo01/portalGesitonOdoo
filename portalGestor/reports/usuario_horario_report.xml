@@ -72,6 +72,43 @@
                                 <h4><strong>Total Horas del Periodo: <span t-esc="payload['total_duration_label']"/></strong></h4>
                                 <h5><strong>Total Horas Festivas: <span t-esc="payload['total_festive_label']"/></strong></h5>
                             </div>
+
+                            <div class="mt-5" t-if="payload['catering_lines']">
+                                <h4>Servicios de catering del periodo</h4>
+                                <table class="table table-sm table-bordered mt-3">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Servicio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="payload['catering_lines']" t-as="catering_line">
+                                            <tr>
+                                                <td><span t-esc="catering_line['fecha_label']"/></td>
+                                                <td><span t-esc="catering_line['services_label']"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+
+                                <table class="table table-sm table-bordered mt-3" t-if="payload['catering_summary_lines']">
+                                    <thead>
+                                        <tr>
+                                            <th>Servicio</th>
+                                            <th>Total dias</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="payload['catering_summary_lines']" t-as="summary_line">
+                                            <tr>
+                                                <td><span t-esc="summary_line['service_label']"/></td>
+                                                <td><span t-esc="summary_line['count']"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </t>
                 </t>

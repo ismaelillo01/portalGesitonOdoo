@@ -15,6 +15,20 @@
                         invisible="manager_edit_blocked"
                         groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
                     />
+                    <button
+                        name="action_open_catering_comida_config"
+                        string="Configurar catering comida"
+                        type="object"
+                        invisible="manager_edit_blocked or not has_catering_comida_service"
+                        groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
+                    />
+                    <button
+                        name="action_open_catering_cena_config"
+                        string="Configurar catering cena"
+                        type="object"
+                        invisible="manager_edit_blocked or not has_catering_cena_service"
+                        groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
+                    />
                 </header>
             </xpath>
         </field>
