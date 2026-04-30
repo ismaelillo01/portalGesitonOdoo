@@ -10,6 +10,7 @@
               <group string="Servicio">
                 <field name="usuario_id" readonly="1" options="{'no_open': True}"/>
                 <field name="service_code" readonly="1"/>
+                <field name="proovedor"/>
               </group>
               <group string="Vigencia">
                 <field name="date_start"/>
@@ -17,14 +18,18 @@
               </group>
             </group>
 
-            <group string="Dias de la semana" col="7">
-              <field name="lunes"/>
-              <field name="martes"/>
-              <field name="miercoles"/>
-              <field name="jueves"/>
-              <field name="viernes"/>
-              <field name="sabado"/>
-              <field name="domingo"/>
+            <group string="Dias de la semana" col="2">
+              <group>
+                <field name="lunes"/>
+                <field name="martes"/>
+                <field name="miercoles"/>
+                <field name="jueves"/>
+              </group>
+              <group>
+                <field name="viernes"/>
+                <field name="sabado"/>
+                <field name="domingo"/>
+              </group>
             </group>
 
             <group string="Dias suspendidos">

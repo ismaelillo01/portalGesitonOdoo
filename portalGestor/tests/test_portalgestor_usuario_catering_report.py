@@ -36,6 +36,7 @@ class TestPortalGestorUsuarioCateringReport(TransactionCase):
         config = self.env['usuarios.catering.config'].create({
             'usuario_id': usuario.id,
             'service_code': 'catering_comida',
+            'proovedor': 'Catering Central',
             'date_start': date(2026, 5, 1),
             'date_stop': date(2026, 5, 31),
             'lunes': True,
@@ -68,10 +69,22 @@ class TestPortalGestorUsuarioCateringReport(TransactionCase):
 
         self.assertEqual(payload['total_duration_label'], '2 Horas y 00 minutos')
         self.assertEqual(payload['catering_summary_lines'], [
-            {'service_label': 'Catering comida', 'count': 3},
+            {'service_label': 'Catering comida', 'provider_label': 'Catering Central', 'count': 3},
         ])
         self.assertEqual(payload['catering_lines'], [
-            {'fecha_label': '04/05/2026', 'services_label': 'Catering comida'},
-            {'fecha_label': '18/05/2026', 'services_label': 'Catering comida'},
-            {'fecha_label': '25/05/2026', 'services_label': 'Catering comida'},
+            {
+                'fecha_label': '04/05/2026',
+                'services_label': 'Catering comida',
+                'providers_label': 'Catering Central',
+            },
+            {
+                'fecha_label': '18/05/2026',
+                'services_label': 'Catering comida',
+                'providers_label': 'Catering Central',
+            },
+            {
+                'fecha_label': '25/05/2026',
+                'services_label': 'Catering comida',
+                'providers_label': 'Catering Central',
+            },
         ])

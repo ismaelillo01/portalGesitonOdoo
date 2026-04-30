@@ -42,6 +42,7 @@ class UsuarioCateringConfig(models.Model):
         string='Configuracion',
         compute='_compute_display_name',
     )
+    proovedor = fields.Char(string='Proovedor')
     date_start = fields.Date(string='Inicio alta', required=True)
     date_stop = fields.Date(string='Inicio baja')
     lunes = fields.Boolean(string='Lunes')

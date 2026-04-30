@@ -38,10 +38,12 @@ class TestUsuarioCateringConfig(TransactionCase):
         config = self.env['usuarios.catering.config'].create({
             'usuario_id': usuario.id,
             'service_code': 'catering_comida',
+            'proovedor': 'Proveedor de prueba',
             'date_start': date(2026, 5, 1),
             'date_stop': date(2026, 5, 31),
             'lunes': True,
         })
+        self.assertEqual(config.proovedor, 'Proveedor de prueba')
         self.env['usuarios.catering.suspension'].create({
             'config_id': config.id,
             'date_start': date(2026, 5, 11),

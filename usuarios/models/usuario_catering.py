@@ -77,28 +77,41 @@ class UsuarioCatering(models.Model):
     def _get_catering_report_data(self, date_start, date_stop):
         self.ensure_one()
         grouped_occurrences = defaultdict(list)
-        service_counts = defaultdict(int)
+        service_summary = {}
 
         for config in self._get_active_catering_configs():
             service_label = config._get_service_label()
+            provider_label = (config.proovedor or '').strip()
+            service_summary[service_label] = {
+                'service_label': service_label,
+                'provider_label': provider_label or '-',
+                'count': 0,
+            }
             for occurrence_date in config._get_occurrence_dates(date_start, date_stop):
-                grouped_occurrences[occurrence_date].append(service_label)
-                service_counts[service_label] += 1
+                grouped_occurrences[occurrence_date].append({
+                    'service_label': service_label,
+                    'provider_label': provider_label or '-',
+                })
+                service_summary[service_label]['count'] += 1
 
         lines = []
         for occurrence_date in sorted(grouped_occurrences):
-            labels = sorted(set(grouped_occurrences[occurrence_date]))
+            line_entries = grouped_occurrences[occurrence_date]
+            labels = sorted({entry['service_label'] for entry in line_entries})
+            providers = sorted({
+                entry['provider_label']
+                for entry in line_entries
+                if entry['provider_label']
+            })
             lines.append({
                 'fecha_label': occurrence_date.strftime('%d/%m/%Y'),
                 'services_label': ', '.join(labels),
+                'providers_label': ', '.join(providers) or '-',
             })
 
         summary_lines = [
-            {
-                'service_label': service_label,
-                'count': service_counts[service_label],
-            }
-            for service_label in sorted(service_counts)
+            service_summary[service_label]
+            for service_label in sorted(service_summary)
         ]
         return {
             'lines': lines,

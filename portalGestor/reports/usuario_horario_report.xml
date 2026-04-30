@@ -80,6 +80,7 @@
                                         <tr>
                                             <th>Fecha</th>
                                             <th>Servicio</th>
+                                            <th>Proovedor</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -87,6 +88,7 @@
                                             <tr>
                                                 <td><span t-esc="catering_line['fecha_label']"/></td>
                                                 <td><span t-esc="catering_line['services_label']"/></td>
+                                                <td><span t-esc="catering_line['providers_label']"/></td>
                                             </tr>
                                         </t>
                                     </tbody>
@@ -96,6 +98,7 @@
                                     <thead>
                                         <tr>
                                             <th>Servicio</th>
+                                            <th>Proovedor</th>
                                             <th>Total dias</th>
                                         </tr>
                                     </thead>
@@ -103,6 +106,7 @@
                                         <t t-foreach="payload['catering_summary_lines']" t-as="summary_line">
                                             <tr>
                                                 <td><span t-esc="summary_line['service_label']"/></td>
+                                                <td><span t-esc="summary_line['provider_label']"/></td>
                                                 <td><span t-esc="summary_line['count']"/></td>
                                             </tr>
                                         </t>
