@@ -79,5 +79,19 @@
       <field name="search_view_id" ref="localidad_search"/>
       <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
     </record>
+
+    <record model="ir.actions.act_window.view" id="action_localidad_window_list">
+      <field name="sequence" eval="1"/>
+      <field name="view_mode">list</field>
+      <field name="view_id" ref="localidad_list"/>
+      <field name="act_window_id" ref="action_localidad_window"/>
+    </record>
+
+    <record model="ir.actions.act_window.view" id="action_localidad_window_form">
+      <field name="sequence" eval="2"/>
+      <field name="view_mode">form</field>
+      <field name="view_id" ref="localidad_form"/>
+      <field name="act_window_id" ref="action_localidad_window"/>
+    </record>
   </data>
 </odoo>
