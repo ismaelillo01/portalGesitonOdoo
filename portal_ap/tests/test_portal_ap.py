@@ -107,6 +107,23 @@ class TestPortalAPService(TransactionCase):
         self.assertTrue(days_by_date['2026-04-08']['vacations'])
         self.assertTrue(days_by_date['2026-04-10']['vacations'])
 
+    def test_manager_worker_calendar_uses_manager_navigation_urls(self):
+        calendar_data = self.service._get_worker_month_calendar(
+            self.worker,
+            2026,
+            4,
+            url_pattern=f'/consultar-horario/ap/{self.worker.id}' + '/{year}/{month}',
+        )
+
+        self.assertEqual(
+            calendar_data['previous']['url'],
+            f'/consultar-horario/ap/{self.worker.id}/2026/3',
+        )
+        self.assertEqual(
+            calendar_data['next']['url'],
+            f'/consultar-horario/ap/{self.worker.id}/2026/5',
+        )
+
     def test_user_month_calendar_returns_worker_labels(self):
         self._create_assignment(self.usuario_a, '2026-04-11', confirmed=True, start=17.5, end=18.5)
 
@@ -236,3 +253,12 @@ class TestPortalAPRoutes(HttpCase):
         self.assertIn('Horario AP', schedule_response.text)
         self.assertIn('Usuario HTTP', schedule_response.text)
         self.assertIn('Vacaciones', schedule_response.text)
+
+    def test_manager_schedule_month_navigation_stays_in_manager_route(self):
+        self._login_internal_manager()
+
+        schedule_response = self.url_open(f'/consultar-horario/ap/{self.worker.id}')
+
+        self.assertEqual(schedule_response.status_code, 200)
+        self.assertIn(f'/consultar-horario/ap/{self.worker.id}/', schedule_response.text)
+        self.assertNotIn('href="/ap/horario/', schedule_response.text)

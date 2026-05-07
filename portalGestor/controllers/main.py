@@ -215,13 +215,13 @@ class PortalGestorInternalController(http.Controller):
             'aps': self._build_menu_link(
                 'aps',
                 'APs',
-                'trabajadores.menu_1_list',
+                'trabajadores.menu_root',
                 'Catalogo de APs y mantenimiento de sus fichas.',
             ),
             'usuarios': self._build_menu_link(
                 'usuarios',
                 'Usuarios',
-                'usuarios.menu_1_list',
+                'usuarios.menu_root',
                 'Altas, edicion y servicios de usuarios.',
             ),
             'consultar_horario': self._build_menu_link(

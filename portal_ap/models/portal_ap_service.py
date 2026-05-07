@@ -150,7 +150,13 @@ class PortalAPService(models.AbstractModel):
         }
 
     @api.model
-    def _get_worker_month_calendar(self, worker, year, month):
+    def _get_worker_month_calendar(
+        self,
+        worker,
+        year,
+        month,
+        url_pattern='/ap/horario/{year}/{month}',
+    ):
         worker = worker.sudo().exists()
         year = int(year)
         month = int(month)
@@ -203,7 +209,7 @@ class PortalAPService(models.AbstractModel):
             month,
             work_by_date,
             vacation_by_date=vacation_by_date,
-            url_pattern='/ap/horario/{year}/{month}',
+            url_pattern=url_pattern,
         )
         payload.update({
             'worker': worker,

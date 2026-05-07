@@ -124,6 +124,7 @@ class PortalAPController(http.Controller):
             worker,
             year,
             month,
+            url_pattern=f'/consultar-horario/ap/{worker.id}' + '/{year}/{month}',
         )
         calendar_data.update({
             'identity_caption': 'Horario AP',
