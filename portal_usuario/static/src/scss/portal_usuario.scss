@@ -1,0 +1,486 @@
+.o_portal_usuario_body {
+    min-height: 100vh;
+    margin: 0;
+    color: #f7f7ff;
+    background: #01011b;
+    font-family: "Montserrat", "Segoe UI", sans-serif;
+    overflow-x: hidden;
+}
+
+.o_portal_usuario_login_body {
+    background:
+        url("/ui_brian_theme/static/src/img/caras.png") right bottom / 760px auto no-repeat,
+        radial-gradient(circle at top left, rgba(56, 132, 244, 0.2), transparent 34rem),
+        linear-gradient(135deg, rgba(1, 1, 27, 0.95), rgba(10, 8, 40, 0.96)),
+        #01011b;
+}
+
+.o_portal_usuario_schedule_body {
+    background:
+        url("/ui_brian_theme/static/src/img/caras.png") right bottom / 760px auto no-repeat,
+        radial-gradient(circle at top left, rgba(56, 132, 244, 0.2), transparent 34rem),
+        linear-gradient(135deg, rgba(1, 1, 27, 0.95), rgba(10, 8, 40, 0.96)),
+        #01011b;
+}
+
+.o_portal_usuario_login_page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.o_portal_usuario_login_shell {
+    width: 100%;
+    max-width: 480px;
+}
+
+.o_portal_usuario_login_brand {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.o_portal_usuario_login_logo {
+    width: 68vw;
+    max-width: 220px;
+    height: auto;
+    filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.35));
+}
+
+.o_portal_usuario_login_form {
+    padding: 30px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(6px);
+}
+
+.o_portal_usuario_login_intro {
+    margin-bottom: 26px;
+    text-align: center;
+}
+
+.o_portal_usuario_login_intro h1 {
+    margin: 0 0 10px;
+    color: #fff;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.o_portal_usuario_login_intro p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.o_portal_usuario_login_kicker {
+    margin-bottom: 8px !important;
+    color: rgb(56, 132, 244) !important;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.o_portal_usuario_field {
+    display: grid;
+    gap: 8px;
+}
+
+.o_portal_usuario_field label {
+    color: #fff;
+    font-weight: 700;
+}
+
+.o_portal_usuario_field input {
+    width: 100%;
+    min-height: 54px;
+    padding: 0 16px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    outline: none;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.o_portal_usuario_field input:focus {
+    border-color: rgb(56, 132, 244);
+    box-shadow: 0 0 0 4px rgba(56, 132, 244, 0.18);
+}
+
+.o_portal_usuario_field span {
+    color: rgba(255, 255, 255, 0.56);
+    font-size: 0.86rem;
+}
+
+.o_portal_usuario_error {
+    margin: 18px 0 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 126, 157, 0.45);
+    border-radius: 14px;
+    color: #fff;
+    background: rgba(180, 25, 70, 0.24);
+    font-weight: 700;
+}
+
+.o_portal_usuario_primary_button {
+    width: 100%;
+    min-height: 54px;
+    margin-top: 24px;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(135deg, rgb(56, 132, 244), rgb(34, 100, 210));
+    box-shadow: 0 16px 28px rgba(56, 132, 244, 0.32);
+    font-size: 1.04rem;
+    font-weight: 800;
+}
+
+.o_portal_usuario_schedule_page {
+    min-height: 100vh;
+    padding: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.o_portal_usuario_schedule_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 22px;
+    background: rgba(5, 5, 31, 0.78);
+    backdrop-filter: blur(10px);
+}
+
+.o_portal_usuario_schedule_identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.o_portal_usuario_schedule_identity img {
+    width: 48px;
+    height: auto;
+}
+
+.o_portal_usuario_schedule_identity span {
+    display: block;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.o_portal_usuario_schedule_identity strong {
+    display: block;
+    overflow: hidden;
+    max-width: 58vw;
+    color: #fff;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_portal_usuario_logout_button,
+.o_portal_usuario_month_nav a {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 0.86rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.o_portal_usuario_logout_button {
+    padding: 9px 14px;
+}
+
+.o_portal_usuario_month_card {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 26px;
+    background: rgba(244, 240, 238, 0.96);
+    color: #101021;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.o_portal_usuario_month_nav {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.o_portal_usuario_month_nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 14px;
+    color: rgb(35, 29, 70);
+    background: #fff;
+}
+
+.o_portal_usuario_month_nav h1 {
+    margin: 0;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+}
+
+.o_portal_usuario_month_nav p {
+    margin: 2px 0 0;
+    color: #777;
+    text-align: center;
+    font-size: 0.84rem;
+}
+
+.o_portal_usuario_weekdays,
+.o_portal_usuario_calendar_grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+}
+
+.o_portal_usuario_weekdays {
+    margin-bottom: 6px;
+}
+
+.o_portal_usuario_weekdays span {
+    padding: 8px 4px;
+    border-radius: 12px;
+    color: #fff;
+    background: #080721;
+    text-align: center;
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+
+.o_portal_usuario_day {
+    display: flex;
+    flex-direction: column;
+    min-height: 94px;
+    max-height: 154px;
+    padding: 6px;
+    border: 1px solid rgba(7, 7, 33, 0.08);
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.o_portal_usuario_day--out {
+    background: rgba(255, 255, 255, 0.36);
+}
+
+.o_portal_usuario_day--today {
+    border-color: rgb(56, 132, 244);
+    box-shadow: inset 0 0 0 2px rgba(56, 132, 244, 0.18);
+}
+
+.o_portal_usuario_day--filled {
+    background: linear-gradient(180deg, #fff, #f0f5ff);
+}
+
+.o_portal_usuario_day_number {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+    color: #080721;
+    font-weight: 900;
+}
+
+.o_portal_usuario_day_number small {
+    padding: 2px 6px;
+    border-radius: 999px;
+    color: #fff;
+    background: rgb(56, 132, 244);
+    font-size: 0.64rem;
+}
+
+.o_portal_usuario_day_content,
+.o_portal_usuario_mobile_day_content {
+    display: grid;
+    gap: 4px;
+}
+
+.o_portal_usuario_day_content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.o_portal_usuario_work_item {
+    padding: 6px 7px;
+    border-radius: 10px;
+    font-size: 0.71rem;
+    line-height: 1.15;
+    color: #17172f;
+    background: rgba(56, 132, 244, 0.08);
+}
+
+.o_portal_usuario_work_item strong,
+.o_portal_usuario_work_item span {
+    display: block;
+}
+
+.o_portal_usuario_work_item strong {
+    font-size: 0.76rem;
+    line-height: 1.1;
+}
+
+.o_portal_usuario_work_item span {
+    margin-top: 2px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.o_portal_usuario_empty_day {
+    margin: 0;
+    color: #a5a0a0;
+    font-size: 0.68rem;
+    font-style: italic;
+}
+
+.o_portal_usuario_day_content::-webkit-scrollbar {
+    width: 5px;
+}
+
+.o_portal_usuario_day_content::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(8, 7, 33, 0.16);
+}
+
+.o_portal_usuario_calendar_list {
+    display: none;
+}
+
+@media (max-width: 680px) {
+    .o_portal_usuario_login_body,
+    .o_portal_usuario_schedule_body {
+        background-size: 420px auto, auto, auto, auto;
+    }
+
+    .o_portal_usuario_login_intro h1 {
+        font-size: 2rem;
+    }
+
+    .o_portal_usuario_schedule_page {
+        padding: 10px;
+    }
+
+    .o_portal_usuario_month_card {
+        padding: 10px;
+        border-radius: 22px;
+    }
+
+    .o_portal_usuario_month_nav {
+        gap: 8px;
+    }
+
+    .o_portal_usuario_month_nav a {
+        min-height: 36px;
+        padding: 0 10px;
+        font-size: 0.76rem;
+    }
+
+    .o_portal_usuario_month_nav h1 {
+        font-size: 1.25rem;
+    }
+
+    .o_portal_usuario_weekdays,
+    .o_portal_usuario_calendar_grid {
+        display: none;
+    }
+
+    .o_portal_usuario_calendar_list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .o_portal_usuario_mobile_day {
+        padding: 12px;
+        border: 1px solid rgba(8, 7, 33, 0.08);
+        border-radius: 16px;
+        background: #fff;
+    }
+
+    .o_portal_usuario_mobile_day--today {
+        border-color: rgb(56, 132, 244);
+        box-shadow: inset 0 0 0 2px rgba(56, 132, 244, 0.16);
+    }
+
+    .o_portal_usuario_mobile_day_header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .o_portal_usuario_mobile_day_header > div {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .o_portal_usuario_mobile_day_number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        color: #080721;
+        background: rgba(8, 7, 33, 0.06);
+        font-weight: 900;
+    }
+
+    .o_portal_usuario_mobile_day_header strong {
+        color: #080721;
+        font-size: 1rem;
+    }
+
+    .o_portal_usuario_mobile_day_header small {
+        color: #7b7685;
+        font-size: 0.72rem;
+        text-align: right;
+    }
+
+    .o_portal_usuario_mobile_day .o_portal_usuario_work_item {
+        padding: 9px 10px;
+        font-size: 0.82rem;
+    }
+
+    .o_portal_usuario_mobile_day .o_portal_usuario_work_item strong {
+        font-size: 0.92rem;
+    }
+
+    .o_portal_usuario_mobile_day .o_portal_usuario_work_item span {
+        font-size: 0.86rem;
+        line-height: 1.35;
+    }
+}

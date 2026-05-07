@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="login" name="Portal Usuario Login">
+        <t t-call="web.layout">
+            <t t-set="html_data" t-value="{'style': 'height: 100%;'}"/>
+            <t t-set="body_classname" t-value="'o_portal_usuario_body o_portal_usuario_login_body'"/>
+            <t t-set="title">Portal Usuario</t>
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend" t-js="false"/>
+            </t>
+
+            <main class="o_portal_usuario_login_page">
+                <section class="o_portal_usuario_login_shell">
+                    <div class="o_portal_usuario_login_brand">
+                        <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian" class="o_portal_usuario_login_logo"/>
+                    </div>
+
+                    <form action="/usuario/login" method="post" class="o_portal_usuario_login_form" autocomplete="off">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                        <div class="o_portal_usuario_login_intro">
+                            <p class="o_portal_usuario_login_kicker">Portal Usuario</p>
+                            <h1>Consulta tu atencion</h1>
+                            <p>Introduce tu DNI/NIE para ver tus dias y horas de atencion confirmados.</p>
+                        </div>
+
+                        <div class="o_portal_usuario_field">
+                            <label for="portal_usuario_dni">DNI/NIE</label>
+                            <input
+                                id="portal_usuario_dni"
+                                name="dni_nie"
+                                type="text"
+                                t-att-value="dni_nie"
+                                placeholder="12345678X o X1234567L"
+                                required="required"
+                                autocapitalize="characters"
+                                inputmode="text"
+                            />
+                            <span>Se aceptan espacios o guiones; los normalizamos automaticamente.</span>
+                        </div>
+
+                        <p class="o_portal_usuario_error" t-if="error" role="alert">
+                            <t t-esc="error"/>
+                        </p>
+
+                        <button type="submit" class="o_portal_usuario_primary_button">Entrar</button>
+                    </form>
+                </section>
+            </main>
+        </t>
+    </template>
+
+    <template id="schedule" name="Portal Usuario Horario">
+        <t t-call="web.layout">
+            <t t-set="body_classname" t-value="'o_portal_usuario_body o_portal_usuario_schedule_body'"/>
+            <t t-set="title">Mi Atencion</t>
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend" t-js="false"/>
+            </t>
+
+            <main class="o_portal_usuario_schedule_page">
+                <header class="o_portal_usuario_schedule_header">
+                    <div class="o_portal_usuario_schedule_identity">
+                        <img src="/ui_brian_theme/static/src/img/brian.png" alt="Brian"/>
+                        <div>
+                            <span t-esc="identity_caption or 'Mi Atencion'"/>
+                            <strong t-esc="identity_name"/>
+                        </div>
+                    </div>
+                    <form t-if="header_action_kind == 'logout'" t-att-action="header_action_url" method="post">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                        <button type="submit" class="o_portal_usuario_logout_button" t-esc="header_action_label or 'Salir'"/>
+                    </form>
+                    <a
+                        t-elif="header_action_kind == 'link'"
+                        t-att-href="header_action_url"
+                        class="o_portal_usuario_logout_button"
+                        t-esc="header_action_label or 'Volver'"
+                    />
+                </header>
+
+                <section class="o_portal_usuario_month_card">
+                    <nav class="o_portal_usuario_month_nav" aria-label="Navegacion mensual">
+                        <a t-att-href="previous['url']" aria-label="Mes anterior">Anterior</a>
+                        <div>
+                            <h1><t t-esc="month_label"/> <t t-esc="year"/></h1>
+                            <p><t t-esc="month_start"/> - <t t-esc="month_end"/></p>
+                        </div>
+                        <a t-att-href="next['url']" aria-label="Mes siguiente">Siguiente</a>
+                    </nav>
+
+                    <div class="o_portal_usuario_weekdays">
+                        <t t-foreach="weekday_labels" t-as="weekday">
+                            <span t-esc="weekday"/>
+                        </t>
+                    </div>
+
+                    <div class="o_portal_usuario_calendar_grid">
+                        <t t-foreach="weeks" t-as="week">
+                            <t t-foreach="week" t-as="day">
+                                <article t-att-class="'o_portal_usuario_day' + ('' if day['in_month'] else ' o_portal_usuario_day--out') + (' o_portal_usuario_day--today' if day['is_today'] else '') + (' o_portal_usuario_day--filled' if day['has_content'] else '')">
+                                    <t t-if="day['in_month']">
+                                        <div class="o_portal_usuario_day_number">
+                                            <span t-esc="day['day']"/>
+                                            <small t-if="day['is_today']">Hoy</small>
+                                        </div>
+
+                                        <div class="o_portal_usuario_day_content">
+                                            <t t-foreach="day['work_items']" t-as="item">
+                                                <div class="o_portal_usuario_work_item">
+                                                    <strong t-esc="item['time_range']"/>
+                                                    <span t-esc="item['label']"/>
+                                                </div>
+                                            </t>
+
+                                            <p class="o_portal_usuario_empty_day" t-if="not day['has_content']">Sin atencion</p>
+                                        </div>
+                                    </t>
+                                </article>
+                            </t>
+                        </t>
+                    </div>
+
+                    <div class="o_portal_usuario_calendar_list">
+                        <t t-foreach="month_days" t-as="day">
+                            <article t-att-class="'o_portal_usuario_mobile_day' + ('' if day['has_content'] else ' o_portal_usuario_mobile_day--empty') + (' o_portal_usuario_mobile_day--today' if day['is_today'] else '')">
+                                <header class="o_portal_usuario_mobile_day_header">
+                                    <div>
+                                        <span class="o_portal_usuario_mobile_day_number" t-esc="day['day']"/>
+                                        <strong t-esc="day['weekday_label']"/>
+                                    </div>
+                                    <small t-esc="day['date_string']"/>
+                                </header>
+                                <div class="o_portal_usuario_mobile_day_content">
+                                    <t t-foreach="day['work_items']" t-as="item">
+                                        <div class="o_portal_usuario_work_item">
+                                            <strong t-esc="item['time_range']"/>
+                                            <span t-esc="item['label']"/>
+                                        </div>
+                                    </t>
+
+                                    <p class="o_portal_usuario_empty_day" t-if="not day['has_content']" t-esc="mobile_empty_label or 'Sin atencion programada'"/>
+                                </div>
+                            </article>
+                        </t>
+                    </div>
+                </section>
+            </main>
+        </t>
+    </template>
+</odoo>
