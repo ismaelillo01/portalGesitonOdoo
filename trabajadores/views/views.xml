@@ -174,14 +174,14 @@
     </record>
 
     <!-- Top menu item -->
-    <menuitem name="AP" id="trabajadores.menu_root"/>
+    <menuitem name="AP" id="trabajadores.menu_root" action="trabajadores.action_window"/>
 
     <!-- menu categories -->
-    <menuitem name="AP" id="trabajadores.menu_trabajadores" parent="trabajadores.menu_root"/>
+    <menuitem name="AP" id="trabajadores.menu_trabajadores" parent="trabajadores.menu_root" active="False"/>
 
     <!-- actions -->
     <menuitem name="Todos los APs" id="trabajadores.menu_1_list" parent="trabajadores.menu_trabajadores"
-              action="trabajadores.action_window" sequence="10"/>
+              action="trabajadores.action_window" sequence="10" active="False"/>
     <menuitem name="Vacaciones AP" id="trabajadores.menu_vacaciones_cal" parent="trabajadores.menu_root"
               action="trabajadores.action_vacacion_window" sequence="20"/>
   </data>

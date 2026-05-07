@@ -112,14 +112,15 @@
       <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
     </record>
 
-    <menuitem name="Usuarios" id="usuarios.menu_root"/>
-    <menuitem name="Usuarios" id="usuarios.menu_usuarios" parent="usuarios.menu_root" sequence="10"/>
+    <menuitem name="Usuarios" id="usuarios.menu_root" action="usuarios.action_window"/>
+    <menuitem name="Usuarios" id="usuarios.menu_usuarios" parent="usuarios.menu_root" sequence="10" active="False"/>
     <menuitem name="Configuración" id="usuarios.menu_configuracion" parent="usuarios.menu_root" sequence="30" groups="base.group_system"/>
     <menuitem
       name="Todos los Usuarios"
       id="usuarios.menu_1_list"
       parent="usuarios.menu_usuarios"
       action="usuarios.action_window"
+      active="False"
     />
     <menuitem
       name="Servicios"
