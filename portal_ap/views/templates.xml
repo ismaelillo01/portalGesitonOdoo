@@ -181,7 +181,7 @@
                             <strong>APs</strong>
                         </div>
                     </div>
-                    <a href="/odoo" class="o_portal_ap_logout_button">Backend</a>
+                    <a href="/odoo" class="o_portal_ap_logout_button">Volver</a>
                 </header>
 
                 <section class="o_portal_ap_month_card o_portal_ap_user_list_shell">

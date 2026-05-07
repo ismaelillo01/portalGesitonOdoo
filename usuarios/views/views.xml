@@ -5,14 +5,6 @@
       <field name="model">usuarios.usuario</field>
       <field name="arch" type="xml">
         <list>
-          <header>
-            <button
-              name="%(usuarios.action_my_users_window)d"
-              type="action"
-              string="Ver mis usuarios"
-              display="always"
-            />
-          </header>
           <field name="manager_edit_blocked" column_invisible="True"/>
           <field name="name"/>
           <field name="apellido1"/>
