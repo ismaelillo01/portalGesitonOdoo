@@ -139,11 +139,19 @@ class Asignacion(models.Model):
         )
         self.env.cr.execute(
             f"""
-                UPDATE {self._table}
-                   SET gestor_owner_id = COALESCE(write_uid, create_uid)
+                SELECT 1 FROM {self._table}
                  WHERE gestor_owner_id IS NULL
+                 LIMIT 1
             """
         )
+        if self.env.cr.fetchone():
+            self.env.cr.execute(
+                f"""
+                    UPDATE {self._table}
+                       SET gestor_owner_id = COALESCE(write_uid, create_uid)
+                     WHERE gestor_owner_id IS NULL
+                """
+            )
 
     @api.depends('usuario_id.name', 'fecha')
     def _compute_name(self):
@@ -292,7 +300,8 @@ class Asignacion(models.Model):
 
     @staticmethod
     def _format_hora(hour_float):
-        return '%02d:%02d' % (int(hour_float), int((hour_float % 1) * 60))
+        from odoo.addons.portalGestor.models.utils import format_float_hour
+        return format_float_hour(hour_float)
 
     def _get_calendar_bucket_type(self):
         self.ensure_one()

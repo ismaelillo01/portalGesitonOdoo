@@ -35,9 +35,8 @@ class PortalUsuarioService(models.AbstractModel):
 
     @api.model
     def _format_float_hour(self, hour_float):
-        total_minutes = int(round((hour_float or 0.0) * 60))
-        hour, minute = divmod(total_minutes, 60)
-        return '%02d:%02d' % (hour % 24, minute)
+        from odoo.addons.portalGestor.models.utils import format_float_hour
+        return format_float_hour(hour_float)
 
     @api.model
     def _get_month_bounds(self, year, month):
@@ -59,7 +58,11 @@ class PortalUsuarioService(models.AbstractModel):
         if not normalized_dni:
             return Usuario.browse(), 'empty'
 
-        usuarios_with_dni = Usuario.search([('dni_nie', '!=', False)])
+        # Pre-filter inactive users at SQL level
+        usuarios_with_dni = Usuario.search([
+            ('dni_nie', '!=', False),
+            ('baja', '=', False),
+        ])
         matches = usuarios_with_dni.filtered(
             lambda usuario: self._normalize_dni(usuario.dni_nie) == normalized_dni
         )
@@ -67,8 +70,8 @@ class PortalUsuarioService(models.AbstractModel):
             return Usuario.browse(), 'not_found'
         if len(matches) > 1:
             return Usuario.browse(), 'duplicate'
-        if matches.baja:
-            return Usuario.browse(), 'not_found'
+        if not matches.has_ap_service:
+            return Usuario.browse(), 'no_ap_service'
         return matches, False
 
     @api.model

@@ -106,11 +106,19 @@ class AsignacionMensual(models.Model):
         )
         self.env.cr.execute(
             f"""
-                UPDATE {self._table}
-                   SET gestor_owner_id = COALESCE(write_uid, create_uid)
+                SELECT 1 FROM {self._table}
                  WHERE gestor_owner_id IS NULL
+                 LIMIT 1
             """
         )
+        if self.env.cr.fetchone():
+            self.env.cr.execute(
+                f"""
+                    UPDATE {self._table}
+                       SET gestor_owner_id = COALESCE(write_uid, create_uid)
+                     WHERE gestor_owner_id IS NULL
+                """
+            )
 
     @api.depends('usuario_id.name', 'fecha_inicio', 'fecha_fin', 'linea_fija_ids')
     def _compute_name(self):
@@ -710,24 +718,20 @@ class AsignacionMensual(models.Model):
             self.with_context(portalgestor_skip_fixed_sync=True),
         ).unlink()
 
-    def name_get(self):
+    @api.depends('usuario_id', 'fecha_inicio', 'fecha_fin', 'linea_fija_ids')
+    def _compute_display_name(self):
         user_view_data = self.env['usuarios.usuario'].get_portalgestor_user_view_data(
             self.mapped('usuario_id').ids
         )
-        return [
-            (
-                record.id,
-                _('%(usuario)s | %(fecha_inicio)s -> %(fecha_fin)s (%(tramos)s tramos)') % {
-                    'usuario': user_view_data.get(record.usuario_id.id, {}).get('display_name')
-                    or record.usuario_id.display_name
-                    or record.usuario_id.name,
-                    'fecha_inicio': fields.Date.to_string(record.fecha_inicio),
-                    'fecha_fin': fields.Date.to_string(record.fecha_fin),
-                    'tramos': len(record.linea_fija_ids),
-                },
-            )
-            for record in self
-        ]
+        for record in self:
+            record.display_name = _('%(usuario)s | %(fecha_inicio)s -> %(fecha_fin)s (%(tramos)s tramos)') % {
+                'usuario': user_view_data.get(record.usuario_id.id, {}).get('display_name')
+                or record.usuario_id.display_name
+                or record.usuario_id.name,
+                'fecha_inicio': fields.Date.to_string(record.fecha_inicio),
+                'fecha_fin': fields.Date.to_string(record.fecha_fin),
+                'tramos': len(record.linea_fija_ids),
+            }
 
 
 class AsignacionMensualLinea(models.Model):

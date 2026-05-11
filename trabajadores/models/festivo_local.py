@@ -22,6 +22,14 @@ class FestivoLocal(models.Model):
     )
     active = fields.Boolean(string='Activo', default=True)
 
+    _sql_constraints = [
+        (
+            'trabajadores_festivo_local_unique_localidad_fecha',
+            'unique(localidad_id, fecha)',
+            'Ya existe un festivo local para esta localidad en esa fecha.',
+        ),
+    ]
+
     def _get_local_holiday_label(self):
         self.ensure_one()
         description = (self.name or '').strip()
@@ -30,21 +38,10 @@ class FestivoLocal(models.Model):
             return "%s (%s)" % (description, localidad)
         return description or localidad
 
-    @api.model
-    def _ensure_locality_date_is_available(self, fecha, localidad_id, exclude_ids=None):
-        if not fecha or not localidad_id:
-            return
-        duplicate_domain = [
-            ('fecha', '=', fecha),
-            ('localidad_id', '=', localidad_id),
-        ]
-        if exclude_ids:
-            duplicate_domain.append(('id', 'not in', exclude_ids))
-        if self.search_count(duplicate_domain):
-            raise ValidationError(_("Ya existe un festivo local para esta localidad en esa fecha."))
-
     @api.model_create_multi
     def create(self, vals_list):
+        # Validate batch-internal duplicates only; cross-record uniqueness
+        # is enforced by _sql_constraints at the database level.
         seen_keys = set()
         for vals in vals_list:
             fecha = vals.get('fecha')
@@ -61,38 +58,12 @@ class FestivoLocal(models.Model):
             if key in seen_keys:
                 raise ValidationError(_("Ya existe un festivo local para esta localidad en esa fecha."))
             seen_keys.add(key)
-            self._ensure_locality_date_is_available(key[0], localidad_id)
         return super().create(vals_list)
 
     def write(self, vals):
-        for record in self:
-            fecha = vals.get('fecha', record.fecha)
-            localidad_id = vals.get('localidad_id', record.localidad_id.id)
-            if isinstance(localidad_id, tuple):
-                localidad_id = localidad_id[0]
-            fecha = fields.Date.to_date(fecha) if fecha else False
-            if not localidad_id:
-                raise ValidationError(_("Debes seleccionar una localidad para el festivo local."))
-            self._ensure_locality_date_is_available(fecha, localidad_id, exclude_ids=record.ids)
+        if 'localidad_id' in vals and not vals.get('localidad_id'):
+            raise ValidationError(_("Debes seleccionar una localidad para el festivo local."))
         return super().write(vals)
-
-    @api.constrains('fecha', 'localidad_id')
-    def _check_duplicate_locality_date(self):
-        for record in self:
-            if not record.fecha or not record.localidad_id:
-                continue
-            if self.search_count([
-                ('id', '!=', record.id),
-                ('fecha', '=', record.fecha),
-                ('localidad_id', '=', record.localidad_id.id),
-            ]):
-                raise ValidationError(_("Ya existe un festivo local para esta localidad en esa fecha."))
-
-    @api.constrains('localidad_id')
-    def _check_localidad_required(self):
-        for record in self:
-            if not record.localidad_id:
-                raise ValidationError(_("Debes seleccionar una localidad para el festivo local."))
 
     def init(self):
         super().init()

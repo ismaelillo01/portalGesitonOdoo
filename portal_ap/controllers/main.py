@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+import time
+
 from odoo import fields, http
 from odoo.http import request
+
+# Session timeout: 8 hours in seconds
+PORTAL_AP_SESSION_TIMEOUT = 8 * 60 * 60
 
 
 class PortalAPController(http.Controller):
@@ -24,9 +29,16 @@ class PortalAPController(http.Controller):
         if not worker_id:
             return request.env['trabajadores.trabajador'].sudo().browse()
 
+        login_ts = request.session.get('portal_ap_login_ts', 0)
+        if time.time() - login_ts > PORTAL_AP_SESSION_TIMEOUT:
+            request.session.pop('portal_ap_trabajador_id', None)
+            request.session.pop('portal_ap_login_ts', None)
+            return request.env['trabajadores.trabajador'].sudo().browse()
+
         worker = request.env['trabajadores.trabajador'].sudo().browse(int(worker_id)).exists()
         if not worker or worker.baja:
             request.session.pop('portal_ap_trabajador_id', None)
+            request.session.pop('portal_ap_login_ts', None)
             return request.env['trabajadores.trabajador'].sudo().browse()
         return worker
 
@@ -54,6 +66,7 @@ class PortalAPController(http.Controller):
             return self._render_login(error=error, dni_nie=dni_nie)
 
         request.session['portal_ap_trabajador_id'] = worker.id
+        request.session['portal_ap_login_ts'] = time.time()
         return request.redirect('/ap/horario')
 
     @http.route([
@@ -85,6 +98,7 @@ class PortalAPController(http.Controller):
     @http.route(['/ap/logout'], type='http', auth='public', methods=['POST'], csrf=True, sitemap=False)
     def portal_ap_logout(self, **post):
         request.session.pop('portal_ap_trabajador_id', None)
+        request.session.pop('portal_ap_login_ts', None)
         return request.redirect('/ap')
 
     @http.route(['/consultar-horario'], type='http', auth='user', methods=['GET'], sitemap=False)

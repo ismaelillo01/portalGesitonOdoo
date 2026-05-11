@@ -137,7 +137,6 @@
     <record model="ir.ui.view" id="trabajadores_localidad_festivos_form">
       <field name="name">zonastrabajo.localidad.festivos.form</field>
       <field name="model">zonastrabajo.localidad</field>
-      <field name="priority">99</field>
       <field name="arch" type="xml">
         <form string="Festivos locales por localidad">
           <sheet>

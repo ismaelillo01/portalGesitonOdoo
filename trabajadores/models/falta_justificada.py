@@ -52,8 +52,8 @@ class FaltaJustificada(models.Model):
 
     @staticmethod
     def _format_hour(hour_float):
-        total_minutes = int(round((hour_float or 0.0) * 60))
-        return '%02d:%02d' % (total_minutes // 60, total_minutes % 60)
+        from odoo.addons.portalGestor.models.utils import format_float_hour
+        return format_float_hour(hour_float)
 
     def action_verificar(self):
         self.write({'state': 'verified'})

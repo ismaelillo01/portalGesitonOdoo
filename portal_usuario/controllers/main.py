@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+import time
+
 from odoo import fields, http
 from odoo.http import request
+
+# Session timeout: 8 hours in seconds
+PORTAL_USUARIO_SESSION_TIMEOUT = 8 * 60 * 60
 
 
 class PortalUsuarioController(http.Controller):
@@ -18,9 +23,16 @@ class PortalUsuarioController(http.Controller):
         if not usuario_id:
             return request.env['usuarios.usuario'].sudo().browse()
 
+        login_ts = request.session.get('portal_usuario_login_ts', 0)
+        if time.time() - login_ts > PORTAL_USUARIO_SESSION_TIMEOUT:
+            request.session.pop('portal_usuario_usuario_id', None)
+            request.session.pop('portal_usuario_login_ts', None)
+            return request.env['usuarios.usuario'].sudo().browse()
+
         usuario = request.env['usuarios.usuario'].sudo().browse(int(usuario_id)).exists()
         if not usuario or usuario.baja:
             request.session.pop('portal_usuario_usuario_id', None)
+            request.session.pop('portal_usuario_login_ts', None)
             return request.env['usuarios.usuario'].sudo().browse()
         return usuario
 
@@ -43,11 +55,14 @@ class PortalUsuarioController(http.Controller):
         if error_code:
             if error_code == 'duplicate':
                 error = 'No se puede iniciar sesion con este DNI/NIE. Contacte con administracion.'
+            elif error_code == 'no_ap_service':
+                error = 'El usuario no tiene el servicio de Atencion Personal activo.'
             else:
                 error = 'No se ha encontrado ningun usuario con ese DNI/NIE.'
             return self._render_login(error=error, dni_nie=dni_nie)
 
         request.session['portal_usuario_usuario_id'] = usuario.id
+        request.session['portal_usuario_login_ts'] = time.time()
         return request.redirect('/usuario/horario')
 
     @http.route([
@@ -79,4 +94,5 @@ class PortalUsuarioController(http.Controller):
     @http.route(['/usuario/logout'], type='http', auth='public', methods=['POST'], csrf=True, sitemap=False)
     def portal_usuario_logout(self, **post):
         request.session.pop('portal_usuario_usuario_id', None)
+        request.session.pop('portal_usuario_login_ts', None)
         return request.redirect('/usuario')

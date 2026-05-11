@@ -35,9 +35,8 @@ class PortalAPService(models.AbstractModel):
 
     @api.model
     def _format_float_hour(self, hour_float):
-        total_minutes = int(round((hour_float or 0.0) * 60))
-        hour, minute = divmod(total_minutes, 60)
-        return '%02d:%02d' % (hour % 24, minute)
+        from odoo.addons.portalGestor.models.utils import format_float_hour
+        return format_float_hour(hour_float)
 
     @api.model
     def _get_month_bounds(self, year, month):

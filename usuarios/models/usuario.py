@@ -287,9 +287,8 @@ class Usuario(models.Model):
             if record.hogar_riesgo and not record._is_valid_hogar_riesgo_for_group(record.grupo, record.hogar_riesgo):
                 record.hogar_riesgo = False
 
-    def name_get(self):
-        safe_names = self._get_safe_display_name_map()
-        return [(record.id, safe_names.get(record.id, record._get_full_name())) for record in self]
+
+
 
     @api.constrains('gestor_id')
     def _check_gestor_not_admin(self):
