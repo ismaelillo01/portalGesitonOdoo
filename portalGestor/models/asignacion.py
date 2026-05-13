@@ -303,6 +303,14 @@ class Asignacion(models.Model):
         from odoo.addons.portalGestor.models.utils import format_float_hour
         return format_float_hour(hour_float)
 
+    @staticmethod
+    def _format_calendar_summary_duration(total_minutes):
+        total_minutes = max(int(round(total_minutes or 0)), 0)
+        hours, minutes = divmod(total_minutes, 60)
+        if minutes:
+            return f"{hours}h {minutes:02d}min"
+        return f"{hours}h"
+
     def _get_calendar_bucket_type(self):
         self.ensure_one()
         return self.calendar_bucket_type or self._calculate_calendar_bucket_type(self.lineas_ids)
@@ -618,6 +626,107 @@ class Asignacion(models.Model):
             }
             for record in records
         ]
+
+    @api.model
+    def get_user_month_ap_hours_summary(self, usuario_id, date_start, date_end):
+        start_date = fields.Date.to_date(date_start)
+        end_date = fields.Date.to_date(date_end)
+        try:
+            usuario_id = int(usuario_id) if usuario_id else False
+        except (TypeError, ValueError):
+            usuario_id = False
+
+        empty_summary = {
+            'visible': False,
+            'usuario_id': usuario_id or False,
+            'date_start': fields.Date.to_string(start_date) if start_date else False,
+            'date_end': fields.Date.to_string(end_date) if end_date else False,
+            'total_minutes': 0,
+            'total_label': self._format_calendar_summary_duration(0),
+            'unassigned_minutes': 0,
+            'unassigned_label': self._format_calendar_summary_duration(0),
+            'aps': [],
+        }
+        if not usuario_id or not start_date or not end_date or end_date < start_date:
+            return empty_summary
+
+        usuario = self.env['usuarios.usuario'].browse(usuario_id).exists()
+        if not usuario:
+            return empty_summary
+
+        self._ensure_current_user_can_manage_users(usuario)
+        Line = self.env['portalgestor.asignacion.linea']
+        domain = [
+            ('asignacion_id.usuario_id', '=', usuario.id),
+            ('asignacion_id.confirmado', '=', True),
+            ('fecha', '>=', start_date),
+            ('fecha', '<=', end_date),
+        ]
+        if self.env.context.get('portalgestor_only_my_schedules'):
+            domain.append(('gestor_owner_id', '=', self.env.user.id))
+
+        lines = Line.search(domain, order='fecha asc, hora_inicio asc, id asc')
+        ap_map = {}
+        total_minutes = 0
+        unassigned_minutes = 0
+
+        for line in lines:
+            line_minutes = line._get_total_duration_minutes()
+            if not line.trabajador_id:
+                unassigned_minutes += line_minutes
+                continue
+
+            ap_id = line.trabajador_id.id
+            ap_entry = ap_map.setdefault(
+                ap_id,
+                {
+                    'id': ap_id,
+                    'name': line.trabajador_id.display_name or line.trabajador_id.name,
+                    'minutes': 0,
+                    'justified_minutes': 0,
+                    'incidents': [],
+                },
+            )
+            justified_minutes = line.minutos_falta_justificada if line.tiene_falta_justificada else 0
+            computable_minutes = (
+                line.minutos_computables if line.tiene_falta_justificada else line_minutes
+            )
+            computable_minutes = min(max(computable_minutes or 0, 0), line_minutes)
+            justified_minutes = min(max(justified_minutes or 0, 0), line_minutes)
+
+            ap_entry['minutes'] += computable_minutes
+            ap_entry['justified_minutes'] += justified_minutes
+            total_minutes += computable_minutes
+
+            if justified_minutes:
+                ap_entry['incidents'].append({
+                    'date': fields.Date.to_string(line.fecha) if line.fecha else '',
+                    'range': f"{self._format_hora(line.hora_inicio)} - {self._format_hora(line.hora_fin)}",
+                    'minutes': justified_minutes,
+                    'label': self._format_calendar_summary_duration(justified_minutes),
+                    'title': line.incidencia_falta_justificada or _('Falta justificada'),
+                    'reason': line.motivo_falta_justificada or '',
+                })
+
+        aps = []
+        for ap_entry in sorted(ap_map.values(), key=lambda item: (item['name'] or '', item['id'])):
+            ap_entry['label'] = self._format_calendar_summary_duration(ap_entry['minutes'])
+            ap_entry['justified_label'] = self._format_calendar_summary_duration(
+                ap_entry['justified_minutes']
+            )
+            aps.append(ap_entry)
+
+        return {
+            'visible': True,
+            'usuario_id': usuario.id,
+            'date_start': fields.Date.to_string(start_date),
+            'date_end': fields.Date.to_string(end_date),
+            'total_minutes': total_minutes,
+            'total_label': self._format_calendar_summary_duration(total_minutes),
+            'unassigned_minutes': unassigned_minutes,
+            'unassigned_label': self._format_calendar_summary_duration(unassigned_minutes),
+            'aps': aps,
+        }
 
     @api.model
     def get_calendar_holiday_markers(self, date_start, date_end, worker_id=False):

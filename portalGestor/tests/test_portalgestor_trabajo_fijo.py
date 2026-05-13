@@ -64,6 +64,32 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(assignment.lineas_ids.trabajo_fijo_linea_id, line)
         self.assertEqual(assignment.lineas_ids.trabajador_id, self.worker_a)
 
+    def test_month_grid_accepts_unsaved_duplicate_time_lines(self):
+        fixed = self.env['portalgestor.trabajo_fijo'].new({
+            'usuario_id': self.usuario.id,
+            'month': '4',
+            'year': 2026,
+            'line_ids': [
+                (0, 0, {
+                    'fecha': fields.Date.to_date('2026-04-06'),
+                    'hora_inicio': 8.0,
+                    'hora_fin': 10.0,
+                    'trabajador_id': self.worker_a.id,
+                }),
+                (0, 0, {
+                    'fecha': fields.Date.to_date('2026-04-06'),
+                    'hora_inicio': 8.0,
+                    'hora_fin': 10.0,
+                    'trabajador_id': self.worker_b.id,
+                }),
+            ],
+        })
+
+        fixed._compute_month_grid_html()
+
+        self.assertIn('AP V2 A', fixed.month_grid_html)
+        self.assertIn('AP V2 B', fixed.month_grid_html)
+
     def test_seed_and_copy_week_work_from_parent_record(self):
         fixed = self._create_fixed()
         source_date = fields.Date.to_date('2026-04-06')

@@ -222,11 +222,20 @@ function getPortalGestorHolidayWorkerId(filterSections) {
     return activeFilter?.fieldName === WORKER_FILTER_FIELD ? activeFilter.value : false;
 }
 
+function getPortalGestorActiveUserFilter(filterSections) {
+    if (hasPortalGestorSearch(filterSections?.[WORKER_FILTER_FIELD])) {
+        return null;
+    }
+    const activeFilter = getSingleActivePortalGestorFilter(filterSections, [USER_FILTER_FIELD]);
+    return activeFilter?.fieldName === USER_FILTER_FIELD ? activeFilter : null;
+}
+
 patch(CalendarModel.prototype, {
     setup() {
         super.setup(...arguments);
         this.data.portalGestorBucketEvents = [];
         this.data.portalGestorHolidayMarkers = [];
+        this.data.portalGestorUserHoursSummary = null;
         this.portalGestorBucketCache = new Map();
         this.portalGestorBucketPendingRequests = new Map();
         this.portalGestorBucketCacheVersion = 0;
@@ -241,6 +250,10 @@ patch(CalendarModel.prototype, {
 
     get portalGestorHolidayMarkers() {
         return this.data.portalGestorHolidayMarkers || [];
+    },
+
+    get portalGestorUserHoursSummary() {
+        return this.data.portalGestorUserHoursSummary || null;
     },
 
     isPortalGestorOnlyMineEnabled() {
@@ -293,6 +306,14 @@ patch(CalendarModel.prototype, {
             this.getPortalGestorMonthRange(monthDate.minus({ months: 1 })),
             this.getPortalGestorMonthRange(monthDate.plus({ months: 1 })),
         ];
+    },
+
+    getPortalGestorSelectedMonthRange() {
+        const monthDate = this.meta.date.startOf("month");
+        return {
+            start: monthDate.startOf("day"),
+            end: monthDate.endOf("month").endOf("day"),
+        };
     },
 
     invalidatePortalGestorSummaryCache(changedDates = []) {
@@ -370,6 +391,28 @@ patch(CalendarModel.prototype, {
             this.resModel,
             "get_calendar_holiday_markers",
             [startISO, endISO, workerId || false],
+            { context: this.getPortalGestorOrmContext() }
+        );
+    },
+
+    async loadPortalGestorUserHoursSummary(data = this.data) {
+        if (this.resModel !== TARGET_RES_MODEL || this.scale !== "month") {
+            return null;
+        }
+        const activeUserFilter = getPortalGestorActiveUserFilter(data.filterSections);
+        if (!activeUserFilter) {
+            return null;
+        }
+
+        const monthRange = this.getPortalGestorSelectedMonthRange();
+        return this.orm.call(
+            this.resModel,
+            "get_user_month_ap_hours_summary",
+            [
+                activeUserFilter.value,
+                monthRange.start.toISODate(),
+                monthRange.end.toISODate(),
+            ],
             { context: this.getPortalGestorOrmContext() }
         );
     },
@@ -465,6 +508,7 @@ patch(CalendarModel.prototype, {
 
         if (this.isPortalGestorSummaryMode(data)) {
             data.records = {};
+            data.portalGestorUserHoursSummary = null;
             data.portalGestorBucketEvents = await this.loadPortalGestorBucketSummary(
                 data.range.start.toISODate(),
                 data.range.end.toISODate()
@@ -479,6 +523,7 @@ patch(CalendarModel.prototype, {
         }
 
         data.portalGestorBucketEvents = [];
+        data.portalGestorUserHoursSummary = await this.loadPortalGestorUserHoursSummary(data);
         data.portalGestorHolidayMarkers = await this.loadPortalGestorHolidayMarkers(
             data.range.start.toISODate(),
             data.range.end.toISODate(),
@@ -760,6 +805,18 @@ patch(CalendarCommonRenderer.prototype, {
 });
 
 patch(CalendarFilterPanel.prototype, {
+    get portalGestorUserHoursSummary() {
+        return this.props.model.portalGestorUserHoursSummary;
+    },
+
+    showPortalGestorUserHoursSummary(section) {
+        return (
+            this.props.model.resModel === TARGET_RES_MODEL &&
+            section.fieldName === WORKER_FILTER_FIELD &&
+            Boolean(this.portalGestorUserHoursSummary?.visible)
+        );
+    },
+
     getAutoCompleteProps(section) {
         const props = super.getAutoCompleteProps(...arguments);
         if (this.props.model.resModel !== TARGET_RES_MODEL || !FILTER_FIELDS.includes(section.fieldName)) {

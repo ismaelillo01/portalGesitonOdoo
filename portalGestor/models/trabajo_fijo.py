@@ -187,6 +187,18 @@ class TrabajoFijo(models.Model):
         return '%02d:%02d' % (hour, minute)
 
     @staticmethod
+    def _get_line_sort_key(line):
+        stable_id = line.id if isinstance(line.id, int) else (
+            line._origin.id if line._origin and isinstance(line._origin.id, int) else 0
+        )
+        return (
+            line.fecha or fields.Date.to_date('0001-01-01'),
+            line.hora_inicio or 0.0,
+            line.hora_fin or 0.0,
+            stable_id,
+        )
+
+    @staticmethod
     def _get_month_bounds(month_value, year_value):
         month_number = int(month_value)
         year_number = int(year_value)
@@ -258,7 +270,7 @@ class TrabajoFijo(models.Model):
                 continue
             record_id = record.id if isinstance(record.id, int) else False
             lines_by_date = defaultdict(list)
-            for line in record.line_ids.sorted(key=lambda item: (item.fecha, item.hora_inicio, item.hora_fin, item.id)):
+            for line in record.line_ids.sorted(key=self._get_line_sort_key):
                 if line.fecha:
                     lines_by_date[line.fecha].append(line)
 
@@ -456,7 +468,7 @@ class TrabajoFijo(models.Model):
                     'trabajador_id': line.trabajador_id.id,
                     'sequence': line.sequence,
                 }
-                for line in self.line_ids.sorted(key=lambda item: (item.fecha, item.hora_inicio, item.hora_fin, item.id))
+                for line in self.line_ids.sorted(key=self._get_line_sort_key)
             ],
         }
 
@@ -689,7 +701,7 @@ class TrabajoFijo(models.Model):
     def _get_target_specs(self):
         self.ensure_one()
         specs = defaultdict(list)
-        for line in self.line_ids.sorted(key=lambda item: (item.fecha, item.hora_inicio, item.hora_fin, item.id)):
+        for line in self.line_ids.sorted(key=self._get_line_sort_key):
             if not line.fecha:
                 continue
             specs[line.fecha].append({

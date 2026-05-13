@@ -69,6 +69,58 @@
         </Dialog>
     </t>
 
+    <t t-name="portalGestor.UserHoursSummaryPanel">
+        <t t-set="summary" t-value="portalGestorUserHoursSummary"/>
+        <section class="o_portalgestor_user_hours_summary" t-if="summary">
+            <div class="o_portalgestor_user_hours_summary_header">
+                <span class="o_portalgestor_user_hours_summary_title">Horas del mes</span>
+                <strong class="o_portalgestor_user_hours_summary_total" t-esc="summary.total_label"/>
+            </div>
+            <div class="o_portalgestor_user_hours_summary_body">
+                <t t-if="summary.aps.length">
+                    <t t-foreach="summary.aps" t-as="ap" t-key="ap.id">
+                        <article class="o_portalgestor_user_hours_summary_ap">
+                            <div class="o_portalgestor_user_hours_summary_ap_main">
+                                <span class="o_portalgestor_user_hours_summary_ap_name" t-esc="ap.name"/>
+                                <span class="o_portalgestor_user_hours_summary_ap_hours" t-esc="ap.label"/>
+                            </div>
+                            <div
+                                t-if="ap.justified_minutes"
+                                class="o_portalgestor_user_hours_summary_justified"
+                            >
+                                <span class="o_portalgestor_user_hours_summary_justified_total">
+                                    Falta justificada no computada:
+                                    <t t-esc="ap.justified_label"/>
+                                </span>
+                                <t t-foreach="ap.incidents" t-as="incident" t-key="incident.date + '-' + incident.range + '-' + incident.label">
+                                    <div class="o_portalgestor_user_hours_summary_incident">
+                                        <span t-esc="incident.date"/>
+                                        <span t-esc="incident.range"/>
+                                        <span t-esc="incident.label"/>
+                                        <span t-if="incident.reason" t-esc="incident.reason"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </article>
+                    </t>
+                </t>
+                <t t-else="">
+                    <div class="o_portalgestor_user_hours_summary_empty">
+                        No hay horas computables con AP asignado.
+                    </div>
+                </t>
+            </div>
+            <div
+                t-if="summary.unassigned_minutes"
+                class="o_portalgestor_user_hours_summary_unassigned"
+            >
+                Sin AP asignado:
+                <strong t-esc="summary.unassigned_label"/>
+                no computadas.
+            </div>
+        </section>
+    </t>
+
     <t t-inherit="web.CalendarController" t-inherit-mode="extension">
         <xpath expr="//button[contains(@class, 'o_calendar_button_today')]" position="after">
             <button
@@ -81,6 +133,14 @@
                 <i class="fa fa-user-o me-1"/>
                 <span>Ver mis horarios</span>
             </button>
+        </xpath>
+    </t>
+
+    <t t-inherit="web.CalendarFilterPanel" t-inherit-mode="extension">
+        <xpath expr="//div[contains(@class, 'o_calendar_filter')]" position="inside">
+            <t t-if="showPortalGestorUserHoursSummary(section)">
+                <t t-call="portalGestor.UserHoursSummaryPanel"/>
+            </t>
         </xpath>
     </t>
 </templates>
