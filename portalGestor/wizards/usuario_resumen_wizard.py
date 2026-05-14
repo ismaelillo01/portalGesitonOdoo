@@ -121,8 +121,6 @@ class UsuarioResumenWizard(models.TransientModel):
             ('fecha', '>=', self.fecha_inicio),
             ('fecha', '<=', self.fecha_fin),
         ]
-        if not self._is_current_user_portalgestor_summary_admin():
-            domain.append(('gestor_owner_id', '=', self.env.user.id))
 
         assignment_lines = self.env['portalgestor.asignacion.linea'].search(
             domain,

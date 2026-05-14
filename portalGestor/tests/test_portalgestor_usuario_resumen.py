@@ -139,6 +139,26 @@ class TestPortalGestorUsuarioResumen(TransactionCase):
         self.assertEqual(lines.mapped('usuario_id'), self.usuario_1)
         self.assertEqual(lines.ap_label, '2h')
 
+    def test_summary_counts_all_hours_for_current_manager_users(self):
+        self._create_assignment(
+            self.gestor_1_user,
+            self.usuario_1,
+            fields.Date.to_date('2026-03-06'),
+            [(8.0, 10.0, self.worker)],
+        )
+        self._create_assignment(
+            self.admin_user,
+            self.usuario_1,
+            fields.Date.to_date('2026-03-07'),
+            [(8.0, 9.0, self.worker)],
+        )
+
+        lines = self._build_summary_lines(self.gestor_1_user)
+
+        self.assertEqual(lines.mapped('usuario_id'), self.usuario_1)
+        self.assertEqual(lines.ap_total_minutes, 180)
+        self.assertEqual(lines.ap_label, '3h')
+
     def test_summary_totals_computable_hours_and_catering(self):
         provider = self.env['usuarios.catering.proveedor'].create({
             'name': 'Proveedor Resumen',
