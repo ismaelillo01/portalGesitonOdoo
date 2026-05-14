@@ -12,3 +12,4 @@ from . import test_portalgestor_schedule_ownership
 from . import test_portalgestor_user_manager_priority
 from . import test_portalgestor_user_hours_summary
 from . import test_portalgestor_usuario_catering_report
+from . import test_portalgestor_usuario_resumen

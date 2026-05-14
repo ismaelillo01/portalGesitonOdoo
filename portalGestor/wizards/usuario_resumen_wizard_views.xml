@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_portalgestor_usuario_resumen_wizard_form" model="ir.ui.view">
+        <field name="name">portalgestor.usuario.resumen.wizard.form</field>
+        <field name="model">portalgestor.usuario.resumen.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Resumen mensual de usuarios">
+                <sheet>
+                    <group>
+                        <field name="mes"/>
+                        <field name="anio"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Ver resumen" type="object" name="action_view_summary" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_portalgestor_usuario_resumen_line_list" model="ir.ui.view">
+        <field name="name">portalgestor.usuario.resumen.line.list</field>
+        <field name="model">portalgestor.usuario.resumen.line</field>
+        <field name="arch" type="xml">
+            <list string="Resumen mensual de usuarios" create="0" edit="0" delete="0">
+                <field name="wizard_id" column_invisible="True"/>
+                <field name="usuario_id" column_invisible="True"/>
+                <field name="ap_total_minutes" column_invisible="True"/>
+                <field name="name"/>
+                <field name="ap_label"/>
+                <field name="proveedor"/>
+                <field name="catering_comida_count"/>
+                <field name="catering_cena_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_portalgestor_usuario_resumen_wizard" model="ir.actions.act_window">
+        <field name="name">Resumen mensual de usuarios</field>
+        <field name="res_model">portalgestor.usuario.resumen.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_portalgestor_usuario_resumen_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <record id="portalgestor_usuario_list_inherit_resumen_button" model="ir.ui.view">
+        <field name="name">usuarios.usuario.list.portalgestor.resumen.button</field>
+        <field name="model">usuarios.usuario</field>
+        <field name="inherit_id" ref="usuarios.usuario_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/header/button[@type='action'][1]" position="after">
+                <button
+                    name="%(portalGestor.action_portalgestor_usuario_resumen_wizard)d"
+                    type="action"
+                    string="Resumen"
+                    display="always"
+                    groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

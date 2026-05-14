@@ -43,6 +43,7 @@
         'wizards/conflict_wizard_views.xml',
         'wizards/report_wizard_views.xml',
         'wizards/usuario_report_wizard_views.xml',
+        'wizards/usuario_resumen_wizard_views.xml',
         'wizards/hogar_riesgo_report_wizard_views.xml',
     ],
     'demo': [
