@@ -27,11 +27,11 @@
                 <field name="wizard_id" column_invisible="True"/>
                 <field name="usuario_id" column_invisible="True"/>
                 <field name="ap_total_minutes" column_invisible="True"/>
-                <field name="name"/>
-                <field name="ap_label"/>
-                <field name="proveedor"/>
-                <field name="catering_comida_count"/>
-                <field name="catering_cena_count"/>
+                <field name="name" width="42%"/>
+                <field name="ap_label" width="90px"/>
+                <field name="proveedor" width="220px"/>
+                <field name="catering_comida_count" string="Comidas" width="100px"/>
+                <field name="catering_cena_count" string="Cenas" width="90px"/>
             </list>
         </field>
     </record>
