@@ -35,14 +35,18 @@ class TestUsuarioCateringConfig(TransactionCase):
         self.assertEqual(action['context']['default_service_code'], 'catering_comida')
         self.assertNotIn('res_id', action)
 
+        provider = self.env['usuarios.catering.proveedor'].create({
+            'name': 'Proveedor de prueba',
+        })
         config = self.env['usuarios.catering.config'].create({
             'usuario_id': usuario.id,
             'service_code': 'catering_comida',
-            'proovedor': 'Proveedor de prueba',
+            'proveedor_id': provider.id,
             'date_start': date(2026, 5, 1),
             'date_stop': date(2026, 5, 31),
             'lunes': True,
         })
+        self.assertEqual(config.proveedor_id, provider)
         self.assertEqual(config.proovedor, 'Proveedor de prueba')
         self.env['usuarios.catering.suspension'].create({
             'config_id': config.id,
@@ -57,3 +61,23 @@ class TestUsuarioCateringConfig(TransactionCase):
             date(2026, 5, 18),
             date(2026, 5, 25),
         ])
+
+    def test_legacy_provider_string_creates_catalog_entry(self):
+        usuario = self.env['usuarios.usuario'].create({
+            'name': 'Usuario Catering Legacy',
+            'grupo': 'agusto',
+            'zona_trabajo_id': self.zone.id,
+            'localidad_id': self.localidad.id,
+            'servicio_ids': [(6, 0, [self.catering_comida_service.id])],
+        })
+
+        config = self.env['usuarios.catering.config'].create({
+            'usuario_id': usuario.id,
+            'service_code': 'catering_comida',
+            'proovedor': 'Proveedor heredado',
+            'date_start': date(2026, 6, 1),
+            'lunes': True,
+        })
+
+        self.assertEqual(config.proveedor_id.name, 'Proveedor heredado')
+        self.assertEqual(config.proovedor, 'Proveedor heredado')

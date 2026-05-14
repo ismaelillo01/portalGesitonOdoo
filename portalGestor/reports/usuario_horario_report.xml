@@ -80,7 +80,7 @@
                                         <tr>
                                             <th>Fecha</th>
                                             <th>Servicio</th>
-                                            <th>Proovedor</th>
+                                            <th>Proveedor</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -98,7 +98,7 @@
                                     <thead>
                                         <tr>
                                             <th>Servicio</th>
-                                            <th>Proovedor</th>
+                                            <th>Proveedor</th>
                                             <th>Total dias</th>
                                         </tr>
                                     </thead>

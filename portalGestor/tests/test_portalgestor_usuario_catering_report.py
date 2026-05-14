@@ -33,10 +33,13 @@ class TestPortalGestorUsuarioCateringReport(TransactionCase):
             'localidad_id': self.localidad.id,
             'servicio_ids': [(6, 0, [self.ap_service.id, self.catering_comida_service.id])],
         })
+        provider = self.env['usuarios.catering.proveedor'].create({
+            'name': 'Catering Central',
+        })
         config = self.env['usuarios.catering.config'].create({
             'usuario_id': usuario.id,
             'service_code': 'catering_comida',
-            'proovedor': 'Catering Central',
+            'proveedor_id': provider.id,
             'date_start': date(2026, 5, 1),
             'date_stop': date(2026, 5, 31),
             'lunes': True,

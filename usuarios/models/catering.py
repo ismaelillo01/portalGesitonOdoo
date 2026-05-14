@@ -5,6 +5,22 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
+class UsuarioCateringProveedor(models.Model):
+    _name = 'usuarios.catering.proveedor'
+    _description = 'Proveedor de catering'
+    _order = 'name, id'
+
+    name = fields.Char(string='Nombre', required=True)
+
+    _sql_constraints = [
+        (
+            'usuarios_catering_proveedor_name_uniq',
+            'unique(name)',
+            'Ya existe un proveedor de catering con ese nombre.',
+        ),
+    ]
+
+
 class UsuarioCateringConfig(models.Model):
     _name = 'usuarios.catering.config'
     _description = 'Configuracion de Catering de Usuario'
@@ -42,7 +58,17 @@ class UsuarioCateringConfig(models.Model):
         string='Configuracion',
         compute='_compute_display_name',
     )
-    proovedor = fields.Char(string='Proovedor')
+    proveedor_id = fields.Many2one(
+        'usuarios.catering.proveedor',
+        string='Proveedor',
+        ondelete='restrict',
+        index=True,
+    )
+    proovedor = fields.Char(
+        string='Proveedor legado',
+        compute='_compute_proovedor',
+        search='_search_proovedor',
+    )
     date_start = fields.Date(string='Inicio alta', required=True)
     date_stop = fields.Date(string='Inicio baja')
     lunes = fields.Boolean(string='Lunes')
@@ -66,6 +92,86 @@ class UsuarioCateringConfig(models.Model):
         ),
     ]
 
+    def init(self):
+        super().init()
+        self._migrate_legacy_provider_names()
+
+    @api.model
+    def _get_or_create_provider(self, provider_name):
+        provider_name = (provider_name or '').strip()
+        if not provider_name:
+            return self.env['usuarios.catering.proveedor']
+        Provider = self.env['usuarios.catering.proveedor'].sudo()
+        provider = Provider.search([('name', '=', provider_name)], limit=1)
+        return provider or Provider.create({'name': provider_name})
+
+    @api.model
+    def _normalize_provider_vals(self, vals):
+        if 'proovedor' not in vals:
+            return vals
+
+        vals = dict(vals)
+        if 'proveedor_id' in vals:
+            vals.pop('proovedor', None)
+            return vals
+
+        provider_name = vals.pop('proovedor') or ''
+        provider = self._get_or_create_provider(provider_name)
+        vals['proveedor_id'] = provider.id if provider else False
+        return vals
+
+    @api.model
+    def _migrate_legacy_provider_names(self):
+        config_table = self._table
+        provider_table = self.env['usuarios.catering.proveedor']._table
+        self.env.cr.execute(
+            """
+                SELECT column_name
+                  FROM information_schema.columns
+                 WHERE table_name = %s
+                   AND column_name IN ('proovedor', 'proveedor_id')
+            """,
+            [config_table],
+        )
+        config_columns = {row[0] for row in self.env.cr.fetchall()}
+        self.env.cr.execute("SELECT to_regclass(%s)", [provider_table])
+        provider_table_exists = bool(self.env.cr.fetchone()[0])
+        if not provider_table_exists or not {'proovedor', 'proveedor_id'} <= config_columns:
+            return
+
+        self.env.cr.execute(
+            f"""
+                SELECT DISTINCT btrim(proovedor)
+                  FROM {config_table}
+                 WHERE proveedor_id IS NULL
+                   AND proovedor IS NOT NULL
+                   AND btrim(proovedor) != ''
+                 ORDER BY btrim(proovedor)
+            """
+        )
+        for provider_name, in self.env.cr.fetchall():
+            provider = self._get_or_create_provider(provider_name)
+            if provider:
+                self.env.cr.execute(
+                    f"""
+                        UPDATE {config_table}
+                           SET proveedor_id = %s
+                         WHERE proveedor_id IS NULL
+                           AND btrim(proovedor) = %s
+                    """,
+                    [provider.id, provider_name],
+                )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([
+            self._normalize_provider_vals(vals)
+            for vals in vals_list
+        ])
+
+    def write(self, vals):
+        return super().write(self._normalize_provider_vals(vals))
+
     @api.depends('usuario_id', 'service_code')
     def _compute_display_name(self):
         service_labels = dict(self._SERVICE_SELECTION)
@@ -73,6 +179,15 @@ class UsuarioCateringConfig(models.Model):
             user_name = record.usuario_id._get_full_name() if record.usuario_id else ''
             service_label = service_labels.get(record.service_code, record.service_code or '')
             record.display_name = f"{service_label} - {user_name}".strip(' -')
+
+    @api.depends('proveedor_id.name')
+    def _compute_proovedor(self):
+        for record in self:
+            record.proovedor = record.proveedor_id.name or ''
+
+    @api.model
+    def _search_proovedor(self, operator, value):
+        return [('proveedor_id.name', operator, value)]
 
     @api.constrains('date_start', 'date_stop')
     def _check_date_range(self):

@@ -81,7 +81,7 @@ class UsuarioCatering(models.Model):
 
         for config in self._get_active_catering_configs():
             service_label = config._get_service_label()
-            provider_label = (config.proovedor or '').strip()
+            provider_label = (config.proveedor_id.name or '').strip()
             service_summary[service_label] = {
                 'service_label': service_label,
                 'provider_label': provider_label or '-',
