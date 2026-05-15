@@ -20,5 +20,15 @@
             <field name="code">producto_apoyo</field>
             <field name="sequence">40</field>
         </record>
+        <record id="usuarios_servicio_taxi" model="usuarios.servicio">
+            <field name="name">Taxi</field>
+            <field name="code">taxi</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="usuarios_servicio_lavanderia" model="usuarios.servicio">
+            <field name="name">Lavanderia</field>
+            <field name="code">lavanderia</field>
+            <field name="sequence">60</field>
+        </record>
     </data>
 </odoo>

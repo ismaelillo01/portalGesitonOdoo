@@ -1,0 +1,97 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="usuarios_servicio_registro_list">
+      <field name="name">usuarios.servicio.registro.list</field>
+      <field name="model">usuarios.servicio.registro</field>
+      <field name="arch" type="xml">
+        <list string="Registros de servicio" editable="bottom">
+          <field name="usuario_id" column_invisible="True"/>
+          <field name="service_code" column_invisible="True"/>
+          <field name="fecha"/>
+          <field name="cantidad"/>
+          <field name="coste"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_servicio_registro_form">
+      <field name="name">usuarios.servicio.registro.form</field>
+      <field name="model">usuarios.servicio.registro</field>
+      <field name="arch" type="xml">
+        <form string="Registro de servicio">
+          <sheet>
+            <group>
+              <field name="usuario_id" readonly="1" options="{'no_open': True}"/>
+              <field name="service_code" readonly="1"/>
+              <field name="fecha"/>
+              <field name="cantidad"/>
+              <field name="coste"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_servicio_registro_taxi_list">
+      <field name="name">usuarios.servicio.registro.taxi.list</field>
+      <field name="model">usuarios.servicio.registro</field>
+      <field name="arch" type="xml">
+        <list string="Viajes de taxi" editable="bottom">
+          <field name="usuario_id" column_invisible="True"/>
+          <field name="service_code" column_invisible="True"/>
+          <field name="fecha"/>
+          <field name="coste" string="Coste del viaje"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_servicio_registro_taxi_form">
+      <field name="name">usuarios.servicio.registro.taxi.form</field>
+      <field name="model">usuarios.servicio.registro</field>
+      <field name="arch" type="xml">
+        <form string="Viaje de taxi">
+          <sheet>
+            <group>
+              <field name="usuario_id" readonly="1" options="{'no_open': True}"/>
+              <field name="service_code" readonly="1"/>
+              <field name="fecha"/>
+              <field name="coste" string="Coste del viaje"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_servicio_registro_lavanderia_list">
+      <field name="name">usuarios.servicio.registro.lavanderia.list</field>
+      <field name="model">usuarios.servicio.registro</field>
+      <field name="arch" type="xml">
+        <list string="Usos de lavanderia" editable="bottom">
+          <field name="usuario_id" column_invisible="True"/>
+          <field name="service_code" column_invisible="True"/>
+          <field name="fecha"/>
+          <field name="cantidad" string="Usos"/>
+          <field name="coste" string="Coste por uso"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_servicio_registro_lavanderia_form">
+      <field name="name">usuarios.servicio.registro.lavanderia.form</field>
+      <field name="model">usuarios.servicio.registro</field>
+      <field name="arch" type="xml">
+        <form string="Uso de lavanderia">
+          <sheet>
+            <group>
+              <field name="usuario_id" readonly="1" options="{'no_open': True}"/>
+              <field name="service_code" readonly="1"/>
+              <field name="fecha"/>
+              <field name="cantidad" string="Usos"/>
+              <field name="coste" string="Coste por uso"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+  </data>
+</odoo>

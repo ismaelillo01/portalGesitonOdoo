@@ -198,6 +198,7 @@ class UsuarioReportWizard(models.TransientModel):
         total_minutes = sum(line['computable_minutes'] for line in lines)
         total_festive_minutes = sum(line['festive_minutes'] for line in lines)
         catering_data = usuario._get_catering_report_data(self.fecha_inicio, self.fecha_fin)
+        extra_services_data = usuario._get_extra_services_report_data(self.fecha_inicio, self.fecha_fin)
         return {
             'usuario_full_name': usuario._get_full_name(),
             'services_label': usuario._get_service_names() or 'Sin servicios',
@@ -208,6 +209,8 @@ class UsuarioReportWizard(models.TransientModel):
             'total_festive_label': self._format_duration(total_festive_minutes),
             'catering_lines': catering_data['lines'],
             'catering_summary_lines': catering_data['summary_lines'],
+            'extra_service_lines': extra_services_data['lines'],
+            'extra_service_summary_lines': extra_services_data['summary_lines'],
         }
 
     def _get_single_report_filename(self):
@@ -262,6 +265,17 @@ class UsuarioReportWizard(models.TransientModel):
         writer.writerow([])
         writer.writerow(['Total periodo', '', '', '', '', '', '', '', '', '', payload['total_duration_label']])
         writer.writerow(['Total horas festivas', '', '', '', '', '', '', payload['total_festive_label'], '', '', ''])
+
+        if payload['extra_service_summary_lines']:
+            writer.writerow([])
+            writer.writerow(['Servicios Taxi/Lavanderia'])
+            writer.writerow(['Servicio', 'Total', 'Coste total'])
+            for summary_line in payload['extra_service_summary_lines']:
+                writer.writerow([
+                    summary_line['service_label'],
+                    summary_line['total_quantity'],
+                    '%.2f' % summary_line['total_cost'],
+                ])
         return ('\ufeff' + output.getvalue()).encode('utf-8')
 
     def _build_download_action(self, filename, file_bytes):
