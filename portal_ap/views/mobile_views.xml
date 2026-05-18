@@ -110,7 +110,7 @@
         <field name="model">usuarios.usuario</field>
         <field name="inherit_id" ref="usuarios.usuario_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@string='Datos Asignacion']" position="after">
+            <xpath expr="//field[@name='grupo']/ancestor::group[2]" position="after">
                 <group string="QR Fichaje AP">
                     <group>
                         <field name="portal_ap_qr_active" readonly="manager_edit_blocked"/>
