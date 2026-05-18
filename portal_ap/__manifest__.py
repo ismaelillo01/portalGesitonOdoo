@@ -9,7 +9,7 @@
     'author': 'My Company',
     'license': 'LGPL-3',
     'category': 'Services',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'depends': [
         'web',
         'trabajadores',
@@ -18,7 +18,10 @@
         'ui_brian_theme',
     ],
     'data': [
+        'security/ir.model.access.csv',
         'views/backend_views.xml',
+        'views/mobile_views.xml',
+        'reports/mobile_reports.xml',
         'views/templates.xml',
     ],
     'assets': {

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_portal_ap_user_qr" model="ir.actions.report">
+        <field name="name">QR Fichaje AP</field>
+        <field name="model">usuarios.usuario</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">portal_ap.report_portal_ap_user_qr</field>
+        <field name="report_file">portal_ap.report_portal_ap_user_qr</field>
+        <field name="binding_model_id" ref="usuarios.model_usuarios_usuario"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_portal_ap_user_qr">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="user">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>QR Fichaje AP</h2>
+                        <p>
+                            <strong>Usuario:</strong>
+                            <span t-esc="user.display_name or user.name"/>
+                        </p>
+                        <p t-if="user.direccion">
+                            <strong>Direccion:</strong>
+                            <span t-esc="user.direccion"/>
+                        </p>
+                        <div style="margin-top: 24px; text-align: center;">
+                            <img
+                                t-if="user.portal_ap_qr_token and user.portal_ap_qr_active"
+                                t-att-src="'/report/barcode/QR/%s?width=320&amp;height=320' % user.portal_ap_qr_token"
+                                style="width: 320px; height: 320px;"
+                            />
+                            <p t-if="not user.portal_ap_qr_active">QR revocado. Regenera el QR antes de imprimir.</p>
+                        </div>
+                        <p style="margin-top: 24px; font-size: 12px;">
+                            Este QR identifica al usuario para el fichaje AP. No contiene DNI ni datos personales.
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_portal_ap_fichaje" model="ir.actions.report">
+        <field name="name">Informe Fichajes AP</field>
+        <field name="model">portal.ap.fichaje</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">portal_ap.report_portal_ap_fichaje</field>
+        <field name="report_file">portal_ap.report_portal_ap_fichaje</field>
+        <field name="binding_model_id" ref="model_portal_ap_fichaje"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_portal_ap_fichaje">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2>Informe Fichajes AP</h2>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Hora servidor</th>
+                                <th>Tipo</th>
+                                <th>AP</th>
+                                <th>Usuario</th>
+                                <th>Planificado</th>
+                                <th>Estado</th>
+                                <th>Origen</th>
+                                <th>Incidencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs" t-as="check">
+                                <td><span t-esc="check.server_datetime"/></td>
+                                <td><span t-esc="dict(check._fields['event_type'].selection).get(check.event_type)"/></td>
+                                <td><span t-esc="check.trabajador_id.display_name"/></td>
+                                <td><span t-esc="check.usuario_id.display_name"/></td>
+                                <td>
+                                    <span t-esc="check.assignment_date"/>
+                                    <span> </span>
+                                    <span t-esc="'%02d:%02d' % (int(check.planned_start), int(round((check.planned_start % 1) * 60)))"/>
+                                    <span> - </span>
+                                    <span t-esc="'%02d:%02d' % (int(check.planned_end), int(round((check.planned_end % 1) * 60)))"/>
+                                </td>
+                                <td><span t-esc="dict(check._fields['state'].selection).get(check.state)"/></td>
+                                <td><span t-esc="dict(check._fields['origin'].selection).get(check.origin)"/></td>
+                                <td><span t-esc="check.incidence or ''"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

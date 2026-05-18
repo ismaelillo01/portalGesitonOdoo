@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_portal_ap_fichaje_list" model="ir.ui.view">
+        <field name="name">portal.ap.fichaje.list</field>
+        <field name="model">portal.ap.fichaje</field>
+        <field name="arch" type="xml">
+            <list string="Fichajes AP" create="0">
+                <field name="server_datetime"/>
+                <field name="event_type"/>
+                <field name="state"/>
+                <field name="origin"/>
+                <field name="trabajador_id"/>
+                <field name="usuario_id"/>
+                <field name="assignment_date"/>
+                <field name="planned_start" widget="float_time"/>
+                <field name="planned_end" widget="float_time"/>
+                <field name="client_datetime" optional="show"/>
+                <field name="device_label" optional="show"/>
+                <field name="latitude" optional="hide"/>
+                <field name="longitude" optional="hide"/>
+                <field name="incidence" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_portal_ap_fichaje_form" model="ir.ui.view">
+        <field name="name">portal.ap.fichaje.form</field>
+        <field name="model">portal.ap.fichaje</field>
+        <field name="arch" type="xml">
+            <form string="Fichaje AP" create="0">
+                <sheet>
+                    <group>
+                        <group string="Fichaje">
+                            <field name="event_type" readonly="1"/>
+                            <field name="state" readonly="1"/>
+                            <field name="origin" readonly="1"/>
+                            <field name="server_datetime" readonly="1"/>
+                            <field name="client_datetime" readonly="1"/>
+                            <field name="client_event_id" readonly="1"/>
+                        </group>
+                        <group string="Planificacion">
+                            <field name="trabajador_id" readonly="1"/>
+                            <field name="usuario_id" readonly="1"/>
+                            <field name="assignment_line_id" readonly="1"/>
+                            <field name="assignment_date" readonly="1"/>
+                            <field name="planned_start" readonly="1" widget="float_time"/>
+                            <field name="planned_end" readonly="1" widget="float_time"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="GPS">
+                            <field name="latitude" readonly="1"/>
+                            <field name="longitude" readonly="1"/>
+                            <field name="accuracy" readonly="1"/>
+                        </group>
+                        <group string="Dispositivo">
+                            <field name="device_id" readonly="1"/>
+                            <field name="device_label" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Incidencia">
+                        <field name="incidence" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_portal_ap_fichaje_search" model="ir.ui.view">
+        <field name="name">portal.ap.fichaje.search</field>
+        <field name="model">portal.ap.fichaje</field>
+        <field name="arch" type="xml">
+            <search string="Buscar fichajes">
+                <field name="trabajador_id"/>
+                <field name="usuario_id"/>
+                <field name="assignment_date"/>
+                <field name="state"/>
+                <field name="origin"/>
+                <filter name="warning" string="Con incidencia" domain="[('state', '=', 'warning')]"/>
+                <filter name="rejected" string="Rechazados" domain="[('state', '=', 'rejected')]"/>
+                <filter name="offline" string="Offline" domain="[('origin', '=', 'offline')]"/>
+                <group expand="0" string="Agrupar">
+                    <filter name="group_worker" string="AP" context="{'group_by': 'trabajador_id'}"/>
+                    <filter name="group_user" string="Usuario" context="{'group_by': 'usuario_id'}"/>
+                    <filter name="group_date" string="Fecha planificada" context="{'group_by': 'assignment_date'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_portal_ap_fichaje" model="ir.actions.act_window">
+        <field name="name">Fichajes AP</field>
+        <field name="res_model">portal.ap.fichaje</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_portal_ap_fichaje_search"/>
+    </record>
+
+    <menuitem
+        id="menu_portal_ap_fichaje"
+        name="Fichajes AP"
+        parent="menu_manager_schedule_root"
+        action="action_portal_ap_fichaje"
+        sequence="40"
+        groups="gestores.group_gestores_agusto,gestores.group_gestores_intecum,gestores.group_gestores_administrador"
+    />
+
+    <record id="usuarios_usuario_form_portal_ap_qr" model="ir.ui.view">
+        <field name="name">usuarios.usuario.form.portal.ap.qr</field>
+        <field name="model">usuarios.usuario</field>
+        <field name="inherit_id" ref="usuarios.usuario_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@string='Datos Asignacion']" position="after">
+                <group string="QR Fichaje AP">
+                    <group>
+                        <field name="portal_ap_qr_active" readonly="manager_edit_blocked"/>
+                        <field name="portal_ap_qr_generated_at" readonly="1"/>
+                        <field name="portal_ap_qr_token" readonly="1"/>
+                    </group>
+                    <group>
+                        <button name="action_portal_ap_regenerate_qr" type="object" string="Regenerar QR" class="btn-primary"/>
+                        <button name="action_portal_ap_revoke_qr" type="object" string="Revocar QR"/>
+                        <button name="action_portal_ap_print_qr" type="object" string="Imprimir QR"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
