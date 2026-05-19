@@ -79,7 +79,20 @@
         >
             <div class="o_portalgestor_user_hours_dialog_header">
                 <span class="o_portalgestor_user_hours_dialog_caption">AP</span>
-                <strong t-esc="props.ap.name"/>
+                <div class="o_portalgestor_user_hours_dialog_worker">
+                    <button
+                        type="button"
+                        class="o_portalgestor_user_hours_dialog_worker_name"
+                        t-on-click="() => this.openWorker()"
+                        title="Abrir ficha del AP"
+                    >
+                        <t t-esc="props.ap.name"/>
+                    </button>
+                    <span
+                        class="o_portalgestor_user_hours_dialog_worker_phone"
+                        t-esc="props.ap.phone || 'Sin telefono'"
+                    />
+                </div>
             </div>
             <div class="o_portalgestor_user_hours_dialog_grid">
                 <div class="o_portalgestor_user_hours_dialog_metric">

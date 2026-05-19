@@ -30,6 +30,7 @@ class TestPortalGestorUserHoursSummary(TransactionCase):
         return cls.env['trabajadores.trabajador'].create({
             'name': f'AP Resumen {suffix}',
             'grupo': 'agusto',
+            'telefono': '600123123',
             'zona_trabajo_ids': [(6, 0, [cls.zone.id])],
         })
 
@@ -95,6 +96,7 @@ class TestPortalGestorUserHoursSummary(TransactionCase):
         self.assertEqual(summary['total_minutes'], 300)
         self.assertEqual(by_ap[ap_1.id]['minutes'], 180)
         self.assertEqual(by_ap[ap_2.id]['minutes'], 120)
+        self.assertEqual(by_ap[ap_1.id]['phone'], '600123123')
         self.assertEqual(summary['total_label'], '5h')
 
     def test_unassigned_lines_are_not_computable(self):

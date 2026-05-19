@@ -155,6 +155,22 @@ export class PortalGestorUserHoursSummaryApDialog extends Component {
         ap: Object,
         close: Function,
     };
+
+    setup() {
+        this.actionService = useService("action");
+    }
+
+    openWorker() {
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: this.props.ap.name || _t("AP"),
+            res_model: "trabajadores.trabajador",
+            res_id: this.props.ap.id,
+            views: [[false, "form"]],
+            target: "current",
+        });
+        this.props.close();
+    }
 }
 
 function getPortalGestorRecordFilterIds(section) {

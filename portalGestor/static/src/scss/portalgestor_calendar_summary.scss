@@ -417,6 +417,50 @@
     text-transform: uppercase;
 }
 
+.o_portalgestor_user_hours_dialog_worker {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.o_portalgestor_user_hours_dialog_worker_name {
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.35);
+    text-overflow: ellipsis;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+}
+
+.o_portalgestor_user_hours_dialog_worker_name:hover,
+.o_portalgestor_user_hours_dialog_worker_name:focus-visible {
+    color: #ffd7ea;
+    outline: none;
+    text-decoration-color: #ffd7ea;
+}
+
+.o_portalgestor_user_hours_dialog_worker_phone {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    color: #fff;
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 10px;
+    white-space: nowrap;
+}
+
 .o_portalgestor_user_hours_dialog_grid {
     display: grid;
     gap: 10px;

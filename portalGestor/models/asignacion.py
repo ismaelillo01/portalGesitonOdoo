@@ -686,6 +686,7 @@ class Asignacion(models.Model):
                 {
                     'id': ap_id,
                     'name': line.trabajador_id.display_name or line.trabajador_id.name,
+                    'phone': line.trabajador_id.telefono or '',
                     'minutes': 0,
                     'justified_minutes': 0,
                     'incidents': [],
