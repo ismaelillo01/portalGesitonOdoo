@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from odoo import fields
 from odoo.tests import tagged
@@ -59,6 +59,9 @@ class TestPortalAPMobileService(TransactionCase):
         self.assertTrue(response['session_token'])
         return response['session_token']
 
+    def _line_datetime(self, hour, minute):
+        return datetime.combine(fields.Date.to_date(self.line.fecha), time(hour, minute))
+
     def test_mobile_login_normalizes_dni(self):
         token = self._login()
         session = self.env['portal.ap.mobile.session'].search([('token', '=', token)])
@@ -102,6 +105,38 @@ class TestPortalAPMobileService(TransactionCase):
         self.assertFalse(response['ok'])
         self.assertEqual(response['fichaje']['state'], 'rejected')
         self.assertIn('QR', response['error']['message'])
+
+    def test_mobile_time_warning_allows_five_minutes_tolerance(self):
+        self.assertFalse(self.service._mobile_time_warning(self.line, self._line_datetime(7, 55)))
+        self.assertFalse(self.service._mobile_time_warning(self.line, self._line_datetime(10, 5)))
+        self.assertTrue(self.service._mobile_time_warning(self.line, self._line_datetime(7, 54)))
+        self.assertTrue(self.service._mobile_time_warning(self.line, self._line_datetime(10, 6)))
+
+    def test_mobile_sync_uses_offline_client_datetime_for_tolerance(self):
+        token = self._login()
+        planned_date = fields.Date.to_date(self.line.fecha)
+        valid_event = {
+            'assignment_line_id': self.line.id,
+            'qr_token': self.usuario.portal_ap_qr_token,
+            'event_type': 'in',
+            'client_event_id': 'event-offline-valid-tolerance',
+            'client_datetime': '%sT07:55:00+00:00' % planned_date.isoformat(),
+            'origin': 'offline',
+        }
+        warning_event = dict(valid_event, **{
+            'client_event_id': 'event-offline-warning-tolerance',
+            'client_datetime': '%sT07:54:00+00:00' % planned_date.isoformat(),
+        })
+
+        service = self.service.with_context(tz='UTC')
+        valid_response = service._mobile_sync(token, [valid_event])
+        warning_response = service._mobile_sync(token, [warning_event])
+
+        self.assertTrue(valid_response['ok'])
+        self.assertEqual(valid_response['results'][0]['fichaje']['state'], 'valid')
+        self.assertTrue(warning_response['ok'])
+        self.assertEqual(warning_response['results'][0]['fichaje']['state'], 'warning')
+        self.assertIn('rango horario', warning_response['results'][0]['fichaje']['incidence'])
 
     def test_mobile_sync_is_idempotent_by_client_event_id(self):
         token = self._login()

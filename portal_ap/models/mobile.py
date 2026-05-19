@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, time, timedelta, timezone
 import re
 import secrets
 import uuid
@@ -152,6 +153,8 @@ class UsuarioPortalAPQR(models.Model):
 class PortalAPServiceMobile(models.AbstractModel):
     _inherit = 'portal.ap.service'
 
+    _MOBILE_TIME_TOLERANCE = timedelta(minutes=5)
+
     @api.model
     def _mobile_error(self, code, message):
         return {'ok': False, 'error': {'code': code, 'message': message}}
@@ -304,14 +307,32 @@ class PortalAPServiceMobile(models.AbstractModel):
         }
 
     @api.model
-    def _mobile_time_warning(self, line):
-        now_utc = fields.Datetime.now()
-        local_now = fields.Datetime.context_timestamp(self, now_utc)
-        if local_now.date() != line.fecha:
-            return _('Fichaje realizado en fecha distinta al tramo planificado.')
+    def _mobile_local_datetime_from_payload(self, payload, origin):
+        if origin == 'offline' and payload.get('client_datetime'):
+            raw_datetime = str(payload.get('client_datetime') or '').strip()
+            try:
+                parsed = datetime.fromisoformat(raw_datetime.replace('Z', '+00:00'))
+                if parsed.tzinfo:
+                    parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+                return fields.Datetime.context_timestamp(self, parsed)
+            except (TypeError, ValueError):
+                pass
+        return fields.Datetime.context_timestamp(self, fields.Datetime.now())
 
-        current_hour = local_now.hour + (local_now.minute / 60.0)
-        if current_hour < line.hora_inicio or current_hour > line.hora_fin:
+    @api.model
+    def _mobile_time_warning(self, line, local_datetime=None):
+        local_datetime = local_datetime or fields.Datetime.context_timestamp(self, fields.Datetime.now())
+        if getattr(local_datetime, 'tzinfo', None):
+            local_datetime = local_datetime.replace(tzinfo=None)
+
+        planned_date = fields.Date.to_date(line.fecha)
+        planned_start = datetime.combine(planned_date, time.min) + timedelta(hours=line.hora_inicio)
+        planned_end = datetime.combine(planned_date, time.min) + timedelta(hours=line.hora_fin)
+
+        if (
+            local_datetime < planned_start - self._MOBILE_TIME_TOLERANCE
+            or local_datetime > planned_end + self._MOBILE_TIME_TOLERANCE
+        ):
             return _('Fichaje fuera del rango horario planificado.')
         return False
 
@@ -341,6 +362,9 @@ class PortalAPServiceMobile(models.AbstractModel):
         qr_token = (payload.get('qr_token') or '').strip()
         state = 'valid'
         incidences = []
+        origin = force_origin or payload.get('origin') or 'online'
+        if origin not in ('online', 'offline'):
+            origin = 'online'
 
         if not line:
             state = 'rejected'
@@ -357,14 +381,13 @@ class PortalAPServiceMobile(models.AbstractModel):
                 state = 'rejected'
                 incidences.append(_('El QR escaneado no corresponde al usuario del tramo.'))
             else:
-                warning = self._mobile_time_warning(line)
+                warning = self._mobile_time_warning(
+                    line,
+                    self._mobile_local_datetime_from_payload(payload, origin),
+                )
                 if warning:
                     state = 'warning'
                     incidences.append(warning)
-
-        origin = force_origin or payload.get('origin') or 'online'
-        if origin not in ('online', 'offline'):
-            origin = 'online'
 
         check = self.env['portal.ap.fichaje'].sudo().create({
             'trabajador_id': worker.id,
