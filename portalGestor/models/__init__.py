@@ -12,3 +12,4 @@ from . import falta_justificada
 from . import festivo
 from . import vacacion
 from . import vacacion_calendar_filter
+from . import movilidad

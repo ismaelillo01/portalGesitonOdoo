@@ -7,3 +7,4 @@ access_usuarios_catering_proveedor_admin,usuarios.catering.proveedor,model_usuar
 access_usuarios_catering_config_user,usuarios.catering.config,model_usuarios_catering_config,base.group_user,1,1,1,1
 access_usuarios_catering_suspension_user,usuarios.catering.suspension,model_usuarios_catering_suspension,base.group_user,1,1,1,1
 access_usuarios_servicio_registro_user,usuarios.servicio.registro,model_usuarios_servicio_registro,base.group_user,1,1,1,1
+access_usuarios_kilometraje_config_admin,usuarios.kilometraje.config,model_usuarios_kilometraje_config,base.group_system,1,1,1,1

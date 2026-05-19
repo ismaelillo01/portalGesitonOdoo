@@ -69,6 +69,53 @@
         </Dialog>
     </t>
 
+    <t t-name="portalGestor.UserHoursSummaryApDialog">
+        <Dialog
+            title="'Detalle de kilometraje'"
+            size="'md'"
+            contentClass="'o_portalgestor_user_hours_dialog'"
+            bodyClass="'o_portalgestor_user_hours_dialog_body'"
+            footer="false"
+        >
+            <div class="o_portalgestor_user_hours_dialog_header">
+                <span class="o_portalgestor_user_hours_dialog_caption">AP</span>
+                <strong t-esc="props.ap.name"/>
+            </div>
+            <div class="o_portalgestor_user_hours_dialog_grid">
+                <div class="o_portalgestor_user_hours_dialog_metric">
+                    <span>Dias atendidos</span>
+                    <strong t-esc="props.ap.attended_day_count"/>
+                </div>
+                <div class="o_portalgestor_user_hours_dialog_metric">
+                    <span>Kilometraje</span>
+                    <strong t-esc="props.ap.kilometraje_km_label"/>
+                </div>
+                <div class="o_portalgestor_user_hours_dialog_metric">
+                    <span>Valor kilometro</span>
+                    <strong t-esc="props.ap.kilometraje_rate_label"/>
+                </div>
+                <div class="o_portalgestor_user_hours_dialog_metric">
+                    <span>Desplazamiento</span>
+                    <strong t-esc="props.ap.desplazamiento_label"/>
+                </div>
+            </div>
+            <div class="o_portalgestor_user_hours_dialog_total">
+                <span>
+                    <t t-esc="props.ap.kilometraje_km_label"/>
+                    x
+                    <t t-esc="props.ap.attended_day_count"/>
+                    dias
+                    x
+                    <t t-esc="props.ap.kilometraje_rate_label"/>
+                </span>
+                <strong t-esc="props.ap.kilometraje_total_label"/>
+            </div>
+            <p class="o_portalgestor_user_hours_dialog_note">
+                El desplazamiento es informativo y no se suma a las horas computables del mes.
+            </p>
+        </Dialog>
+    </t>
+
     <t t-name="portalGestor.UserHoursSummaryPanel">
         <t t-set="summary" t-value="portalGestorUserHoursSummary"/>
         <section class="o_portalgestor_user_hours_summary" t-if="summary">
@@ -79,12 +126,20 @@
             <div class="o_portalgestor_user_hours_summary_body">
                 <t t-if="summary.aps.length">
                     <t t-foreach="summary.aps" t-as="ap" t-key="ap.id">
-                        <article class="o_portalgestor_user_hours_summary_ap">
-                            <div class="o_portalgestor_user_hours_summary_ap_main">
+                        <button
+                            type="button"
+                            class="o_portalgestor_user_hours_summary_ap"
+                            t-on-click="() => this.openPortalGestorUserHoursSummaryAp(ap)"
+                        >
+                            <span class="o_portalgestor_user_hours_summary_ap_main">
                                 <span class="o_portalgestor_user_hours_summary_ap_name" t-esc="ap.name"/>
                                 <span class="o_portalgestor_user_hours_summary_ap_hours" t-esc="ap.label"/>
-                            </div>
-                            <div
+                            </span>
+                            <span class="o_portalgestor_user_hours_summary_ap_meta">
+                                <span t-esc="ap.kilometraje_total_label"/>
+                                <span t-esc="ap.desplazamiento_label"/>
+                            </span>
+                            <span
                                 t-if="ap.justified_minutes"
                                 class="o_portalgestor_user_hours_summary_justified"
                             >
@@ -93,15 +148,15 @@
                                     <t t-esc="ap.justified_label"/>
                                 </span>
                                 <t t-foreach="ap.incidents" t-as="incident" t-key="incident.date + '-' + incident.range + '-' + incident.label">
-                                    <div class="o_portalgestor_user_hours_summary_incident">
+                                    <span class="o_portalgestor_user_hours_summary_incident">
                                         <span t-esc="incident.date"/>
                                         <span t-esc="incident.range"/>
                                         <span t-esc="incident.label"/>
                                         <span t-if="incident.reason" t-esc="incident.reason"/>
-                                    </div>
+                                    </span>
                                 </t>
-                            </div>
-                        </article>
+                            </span>
+                        </button>
                     </t>
                 </t>
                 <t t-else="">

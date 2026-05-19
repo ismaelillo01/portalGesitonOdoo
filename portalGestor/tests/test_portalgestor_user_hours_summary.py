@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -154,3 +155,119 @@ class TestPortalGestorUserHoursSummary(TransactionCase):
 
         self.assertEqual(summary['total_minutes'], 60)
         self.assertEqual(summary['aps'][0]['minutes'], 60)
+
+    def test_kilometraje_config_wizard_default_and_save(self):
+        Config = self.env['usuarios.kilometraje.config']
+        self.env['ir.config_parameter'].sudo().search([
+            ('key', '=', Config.PARAM_KILOMETRAJE_VALOR_KM),
+        ]).unlink()
+
+        self.assertEqual(Config.get_kilometraje_rate(), 0.26)
+
+        wizard = Config.create({'valor_km': 0.31})
+        wizard.action_save()
+
+        self.assertEqual(Config.get_kilometraje_rate(), 0.31)
+        with self.assertRaises(ValidationError):
+            Config.create({'valor_km': -0.01})
+
+    def test_line_proxy_updates_and_reuses_user_ap_mobility(self):
+        usuario = self._create_user('Movilidad Proxy')
+        ap = self._create_worker('Movilidad Proxy')
+        assignment = self._create_assignment(
+            usuario,
+            fields.Date.to_date('2026-03-11'),
+            [(8.0, 10.0, ap)],
+            confirmed=False,
+        )
+
+        assignment.lineas_ids.write({
+            'kilometraje_km': 12.5,
+            'desplazamiento_horas': 0.5,
+        })
+
+        Mobility = self.env['portalgestor.usuario.ap.movilidad']
+        mobility = Mobility.search([
+            ('usuario_id', '=', usuario.id),
+            ('trabajador_id', '=', ap.id),
+        ])
+        self.assertEqual(len(mobility), 1)
+        self.assertEqual(mobility.kilometraje_km, 12.5)
+        self.assertEqual(mobility.desplazamiento_horas, 0.5)
+
+        next_assignment = self._create_assignment(
+            usuario,
+            fields.Date.to_date('2026-03-12'),
+            [(9.0, 11.0, ap)],
+            confirmed=False,
+        )
+        next_line = next_assignment.lineas_ids
+        self.assertEqual(next_line.kilometraje_km, 12.5)
+        self.assertEqual(next_line.desplazamiento_horas, 0.5)
+
+        self.assertEqual(
+            Mobility._get_or_create_for_pair(usuario.id, ap.id),
+            mobility,
+        )
+        self.assertEqual(Mobility.search_count([
+            ('usuario_id', '=', usuario.id),
+            ('trabajador_id', '=', ap.id),
+        ]), 1)
+
+    def test_mobility_rejects_negative_values(self):
+        usuario = self._create_user('Movilidad Negativa')
+        ap = self._create_worker('Movilidad Negativa')
+        Mobility = self.env['portalgestor.usuario.ap.movilidad']
+
+        with self.assertRaises(ValidationError):
+            Mobility.create({
+                'usuario_id': usuario.id,
+                'trabajador_id': ap.id,
+                'kilometraje_km': -1.0,
+            })
+
+        with self.assertRaises(ValidationError):
+            Mobility.create({
+                'usuario_id': usuario.id,
+                'trabajador_id': ap.id,
+                'desplazamiento_horas': -0.25,
+            })
+
+    def test_summary_reports_kilometraje_by_distinct_computable_days(self):
+        usuario = self._create_user('Kilometraje Resumen')
+        ap = self._create_worker('Kilometraje Resumen')
+        Config = self.env['usuarios.kilometraje.config']
+        self.env['ir.config_parameter'].sudo().set_param(
+            Config.PARAM_KILOMETRAJE_VALOR_KM,
+            '0.26',
+        )
+        self.env['portalgestor.usuario.ap.movilidad'].create({
+            'usuario_id': usuario.id,
+            'trabajador_id': ap.id,
+            'kilometraje_km': 10.0,
+            'desplazamiento_horas': 0.5,
+        })
+        self._create_assignment(
+            usuario,
+            fields.Date.to_date('2026-03-11'),
+            [(8.0, 9.0, ap), (10.0, 11.0, ap)],
+        )
+        self._create_assignment(
+            usuario,
+            fields.Date.to_date('2026-03-12'),
+            [(8.0, 10.0, ap)],
+        )
+        full_absence_date = fields.Date.to_date('2026-03-13')
+        self._create_assignment(usuario, full_absence_date, [(8.0, 10.0, ap)])
+        self._create_verified_absence(ap, full_absence_date, 8.0, 10.0)
+
+        summary = self._get_summary(usuario)
+        ap_summary = summary['aps'][0]
+
+        self.assertEqual(ap_summary['attended_day_count'], 2)
+        self.assertEqual(ap_summary['kilometraje_km'], 10.0)
+        self.assertEqual(ap_summary['kilometraje_rate'], 0.26)
+        self.assertAlmostEqual(ap_summary['kilometraje_total_amount'], 5.2)
+        self.assertEqual(ap_summary['kilometraje_total_label'], '5,20 €')
+        self.assertEqual(ap_summary['desplazamiento_minutes'], 30)
+        self.assertEqual(ap_summary['desplazamiento_label'], '0h 30min')

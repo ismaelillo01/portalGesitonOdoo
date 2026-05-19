@@ -149,6 +149,8 @@
                                   }"
                                   domain="[('baja', '=', False)]"
                                 />
+                                <field name="kilometraje_km"/>
+                                <field name="desplazamiento_horas" widget="float_time"/>
                               </list>
                               <form string="Tramo">
                                 <group>
@@ -173,6 +175,8 @@
                                     }"
                                     domain="[('baja', '=', False)]"
                                   />
+                                  <field name="kilometraje_km"/>
+                                  <field name="desplazamiento_horas" widget="float_time"/>
                                 </group>
                               </form>
                             </field>
@@ -201,6 +205,8 @@
                       }"
                       domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id]), ('baja', '=', False)]"
                     />
+                    <field name="kilometraje_km"/>
+                    <field name="desplazamiento_horas" widget="float_time"/>
                   </list>
                   <form string="Tramo Fijo">
                     <group>
@@ -219,6 +225,8 @@
                         }"
                         domain="[('zona_trabajo_ids', 'in', [parent.usuario_zona_trabajo_id]), ('baja', '=', False)]"
                       />
+                      <field name="kilometraje_km"/>
+                      <field name="desplazamiento_horas" widget="float_time"/>
                     </group>
                   </form>
                 </field>
@@ -230,6 +238,8 @@
                     <field name="hora_inicio" widget="float_time"/>
                     <field name="hora_fin" widget="float_time"/>
                     <field name="trabajador_id"/>
+                    <field name="kilometraje_km"/>
+                    <field name="desplazamiento_horas" widget="float_time"/>
                     <field name="asignacion_id"/>
                   </list>
                 </field>

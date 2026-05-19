@@ -311,6 +311,10 @@ class Asignacion(models.Model):
             return f"{hours}h {minutes:02d}min"
         return f"{hours}h"
 
+    @staticmethod
+    def _format_calendar_summary_money(amount):
+        return f"{amount or 0.0:.2f}".replace('.', ',') + " €"
+
     def _get_calendar_bucket_type(self):
         self.ensure_one()
         return self.calendar_bucket_type or self._calculate_calendar_bucket_type(self.lineas_ids)
@@ -685,6 +689,7 @@ class Asignacion(models.Model):
                     'minutes': 0,
                     'justified_minutes': 0,
                     'incidents': [],
+                    'attended_dates': set(),
                 },
             )
             justified_minutes = line.minutos_falta_justificada if line.tiene_falta_justificada else 0
@@ -696,6 +701,8 @@ class Asignacion(models.Model):
 
             ap_entry['minutes'] += computable_minutes
             ap_entry['justified_minutes'] += justified_minutes
+            if computable_minutes > 0 and line.fecha:
+                ap_entry['attended_dates'].add(line.fecha)
             total_minutes += computable_minutes
 
             if justified_minutes:
@@ -708,11 +715,42 @@ class Asignacion(models.Model):
                     'reason': line.motivo_falta_justificada or '',
                 })
 
+        kilometraje_rate = self.env['usuarios.kilometraje.config'].get_kilometraje_rate()
+        mobility_records = self.env['portalgestor.usuario.ap.movilidad'].sudo().search([
+            ('usuario_id', '=', usuario.id),
+            ('trabajador_id', 'in', list(ap_map)),
+        ]) if ap_map else self.env['portalgestor.usuario.ap.movilidad']
+        mobility_by_worker = {
+            mobility.trabajador_id.id: mobility
+            for mobility in mobility_records
+        }
+
         aps = []
         for ap_entry in sorted(ap_map.values(), key=lambda item: (item['name'] or '', item['id'])):
+            mobility = mobility_by_worker.get(ap_entry['id'])
+            attended_day_count = len(ap_entry.pop('attended_dates', set()))
+            kilometraje_km = mobility.kilometraje_km if mobility else 0.0
+            desplazamiento_minutes = self.env['portalgestor.asignacion.linea']._float_hours_to_minutes(
+                mobility.desplazamiento_horas if mobility else 0.0
+            )
+            kilometraje_total = kilometraje_km * attended_day_count * kilometraje_rate
+
             ap_entry['label'] = self._format_calendar_summary_duration(ap_entry['minutes'])
             ap_entry['justified_label'] = self._format_calendar_summary_duration(
                 ap_entry['justified_minutes']
+            )
+            ap_entry['attended_day_count'] = attended_day_count
+            ap_entry['kilometraje_km'] = kilometraje_km
+            ap_entry['kilometraje_km_label'] = f"{kilometraje_km:g} km"
+            ap_entry['kilometraje_rate'] = kilometraje_rate
+            ap_entry['kilometraje_rate_label'] = (
+                f"{kilometraje_rate:.2f}".replace('.', ',') + " €/km"
+            )
+            ap_entry['kilometraje_total_amount'] = kilometraje_total
+            ap_entry['kilometraje_total_label'] = self._format_calendar_summary_money(kilometraje_total)
+            ap_entry['desplazamiento_minutes'] = desplazamiento_minutes
+            ap_entry['desplazamiento_label'] = self._format_calendar_summary_duration(
+                desplazamiento_minutes
             )
             aps.append(ap_entry)
 

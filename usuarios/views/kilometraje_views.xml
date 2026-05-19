@@ -1,0 +1,42 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="usuarios_kilometraje_config_form">
+      <field name="name">usuarios.kilometraje.config.form</field>
+      <field name="model">usuarios.kilometraje.config</field>
+      <field name="arch" type="xml">
+        <form string="Ajustar kilometraje">
+          <sheet>
+            <group>
+              <field name="valor_km"/>
+            </group>
+            <div class="text-muted">
+              Este valor se usa para calcular el coste de kilometraje en el resumen mensual de Portal Gestor.
+            </div>
+          </sheet>
+          <footer>
+            <button name="action_save" string="Guardar" type="object" class="btn-primary"/>
+            <button string="Cancelar" special="cancel" class="btn-secondary"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_kilometraje_config">
+      <field name="name">Ajustar kilometraje</field>
+      <field name="res_model">usuarios.kilometraje.config</field>
+      <field name="view_mode">form</field>
+      <field name="view_id" ref="usuarios_kilometraje_config_form"/>
+      <field name="target">new</field>
+      <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
+    </record>
+
+    <menuitem
+      name="Ajustar kilometraje"
+      id="menu_kilometraje_config"
+      parent="usuarios.menu_configuracion"
+      action="action_kilometraje_config"
+      sequence="50"
+      groups="base.group_system"
+    />
+  </data>
+</odoo>

@@ -148,6 +148,15 @@ export class PortalGestorBucketDialog extends Component {
     }
 }
 
+export class PortalGestorUserHoursSummaryApDialog extends Component {
+    static template = "portalGestor.UserHoursSummaryApDialog";
+    static components = { Dialog };
+    static props = {
+        ap: Object,
+        close: Function,
+    };
+}
+
 function getPortalGestorRecordFilterIds(section) {
     return (
         section?.filters
@@ -805,6 +814,11 @@ patch(CalendarCommonRenderer.prototype, {
 });
 
 patch(CalendarFilterPanel.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this.addDialog = useOwnedDialogs();
+    },
+
     get portalGestorUserHoursSummary() {
         return this.props.model.portalGestorUserHoursSummary;
     },
@@ -815,6 +829,10 @@ patch(CalendarFilterPanel.prototype, {
             section.fieldName === WORKER_FILTER_FIELD &&
             Boolean(this.portalGestorUserHoursSummary?.visible)
         );
+    },
+
+    openPortalGestorUserHoursSummaryAp(ap) {
+        this.addDialog(PortalGestorUserHoursSummaryApDialog, { ap });
     },
 
     getAutoCompleteProps(section) {

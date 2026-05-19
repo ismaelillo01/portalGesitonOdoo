@@ -32,6 +32,7 @@ Long description of module's purpose
         'data/servicio_data.xml',
         'views/views.xml',
         'views/catering_views.xml',
+        'views/kilometraje_views.xml',
         'views/servicio_extra_views.xml',
         'views/templates.xml',
     ],
