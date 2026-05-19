@@ -230,6 +230,12 @@ class PortalGestorInternalController(http.Controller):
                 'portal_ap.menu_manager_schedule_root',
                 'Busqueda rapida del calendario mensual de un AP.',
             ),
+            'fichajes_ap': self._build_menu_link(
+                'fichajes_ap',
+                'Fichajes AP',
+                'portal_ap.menu_portal_ap_fichaje',
+                'Listado de registros de fichajes de los asistentes personales.',
+            ),
         }
         return links
 
@@ -334,6 +340,7 @@ class PortalGestorInternalController(http.Controller):
             'aps',
             'usuarios',
             'consultar_horario',
+            'fichajes_ap',
             'help',
         ):
             link = link_map.get(key)
@@ -344,7 +351,7 @@ class PortalGestorInternalController(http.Controller):
             side_nav_links.append(link_data)
 
         quick_access_links = []
-        for key in ('portal_gestor', 'aps', 'usuarios', 'help'):
+        for key in ('portal_gestor', 'aps', 'usuarios', 'fichajes_ap', 'help'):
             link = link_map.get(key)
             if link:
                 quick_access_links.append(deepcopy(link))
