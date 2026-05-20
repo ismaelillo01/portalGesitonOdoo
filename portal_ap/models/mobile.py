@@ -154,6 +154,7 @@ class PortalAPServiceMobile(models.AbstractModel):
     _inherit = 'portal.ap.service'
 
     _MOBILE_TIME_TOLERANCE = timedelta(minutes=5)
+    _MOBILE_DEFAULT_TIMEZONE = 'Europe/Madrid'
 
     @api.model
     def _mobile_error(self, code, message):
@@ -307,17 +308,34 @@ class PortalAPServiceMobile(models.AbstractModel):
         }
 
     @api.model
+    def _mobile_timezone(self):
+        return self.env.context.get('tz') or self._MOBILE_DEFAULT_TIMEZONE
+
+    @api.model
+    def _mobile_to_local_datetime(self, utc_datetime):
+        if getattr(utc_datetime, 'tzinfo', None):
+            utc_datetime = utc_datetime.astimezone(timezone.utc).replace(tzinfo=None)
+        local_datetime = fields.Datetime.context_timestamp(
+            self.with_context(tz=self._mobile_timezone()),
+            utc_datetime,
+        )
+        if getattr(local_datetime, 'tzinfo', None):
+            local_datetime = local_datetime.replace(tzinfo=None)
+        return local_datetime
+
+    @api.model
     def _mobile_local_datetime_from_payload(self, payload, origin):
         if origin == 'offline' and payload.get('client_datetime'):
             raw_datetime = str(payload.get('client_datetime') or '').strip()
             try:
                 parsed = datetime.fromisoformat(raw_datetime.replace('Z', '+00:00'))
-                if parsed.tzinfo:
-                    parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
-                return fields.Datetime.context_timestamp(self, parsed)
+                if not parsed.tzinfo:
+                    return parsed
+                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+                return self._mobile_to_local_datetime(parsed)
             except (TypeError, ValueError):
                 pass
-        return fields.Datetime.context_timestamp(self, fields.Datetime.now())
+        return self._mobile_to_local_datetime(fields.Datetime.now())
 
     @api.model
     def _mobile_time_warning(self, line, local_datetime=None):

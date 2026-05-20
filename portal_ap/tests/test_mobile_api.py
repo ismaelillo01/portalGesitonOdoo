@@ -112,6 +112,11 @@ class TestPortalAPMobileService(TransactionCase):
         self.assertTrue(self.service._mobile_time_warning(self.line, self._line_datetime(7, 54)))
         self.assertTrue(self.service._mobile_time_warning(self.line, self._line_datetime(10, 6)))
 
+    def test_mobile_datetime_defaults_to_spain_timezone(self):
+        service = self.service.with_context(tz=False)
+        local_datetime = service._mobile_to_local_datetime(datetime(2026, 5, 20, 15, 0, 0))
+        self.assertEqual(local_datetime, datetime(2026, 5, 20, 17, 0, 0))
+
     def test_mobile_sync_uses_offline_client_datetime_for_tolerance(self):
         token = self._login()
         planned_date = fields.Date.to_date(self.line.fecha)
