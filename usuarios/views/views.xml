@@ -47,8 +47,6 @@
                 <field name="name" readonly="manager_edit_blocked"/>
                 <field name="apellido1" readonly="manager_edit_blocked"/>
                 <field name="apellido2" readonly="manager_edit_blocked"/>
-                <field name="codigo" readonly="manager_edit_blocked"/>
-                <field name="grado_dependencia" readonly="manager_edit_blocked"/>
                 <field name="dni_nie" readonly="manager_edit_blocked"/>
               </group>
               <group string="Datos de Contacto">
@@ -61,6 +59,8 @@
             <group string="Datos Asignacion">
               <group>
                 <field name="grupo" readonly="manager_edit_blocked or group_selection_locked"/>
+                <field name="codigo" readonly="manager_edit_blocked"/>
+                <field name="grado_dependencia" readonly="manager_edit_blocked"/>
                 <field name="hogar_riesgo_agusto" string="Hogar de Riesgo" readonly="manager_edit_blocked" invisible="grupo != 'agusto'"/>
                 <field name="hogar_riesgo_intecum" string="Hogar de Riesgo" readonly="manager_edit_blocked" invisible="grupo != 'intecum'"/>
                 <field name="zona_trabajo_id" readonly="manager_edit_blocked" options="{'no_create': True, 'no_open': True}"/>

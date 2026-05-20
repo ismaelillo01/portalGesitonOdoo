@@ -3,7 +3,7 @@ import calendar
 import io
 import re
 from collections import OrderedDict, defaultdict
-from datetime import date
+from datetime import date, datetime, timezone
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -114,11 +114,45 @@ class PortalAPFichajeReportWizard(models.TransientModel):
             return '%sh %02dm' % (hours, remaining)
         return '%sh' % hours
 
+    def _report_timezone(self):
+        return self.env.context.get('tz') or self.env.user.tz or 'Europe/Madrid'
+
+    def _to_report_local_datetime(self, value):
+        if not value:
+            return False
+        local_value = fields.Datetime.context_timestamp(
+            self.with_context(tz=self._report_timezone()),
+            value,
+        )
+        if getattr(local_value, 'tzinfo', None):
+            local_value = local_value.replace(tzinfo=None)
+        return local_value
+
+    def _parse_client_datetime_for_report(self, value):
+        raw_value = (value or '').strip()
+        if not raw_value:
+            return False
+        try:
+            parsed = datetime.fromisoformat(raw_value.replace('Z', '+00:00'))
+        except (TypeError, ValueError):
+            return False
+        if not parsed.tzinfo:
+            return parsed
+        parsed_utc = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return self._to_report_local_datetime(parsed_utc)
+
+    def _get_effective_check_datetime(self, check):
+        self.ensure_one()
+        if check.origin == 'offline':
+            client_datetime = self._parse_client_datetime_for_report(check.client_datetime)
+            if client_datetime:
+                return client_datetime
+        return self._to_report_local_datetime(check.server_datetime)
+
     def _format_datetime_for_report(self, value):
         if not value:
             return ''
-        local_value = fields.Datetime.context_timestamp(self, value)
-        return local_value.strftime('%H:%M:%S')
+        return value.strftime('%H:%M:%S')
 
     def _get_report_data(self):
         self.ensure_one()
@@ -137,7 +171,9 @@ class PortalAPFichajeReportWizard(models.TransientModel):
         total_minutes = 0
         for data in grouped.values():
             line = data['line']
-            checks = data['checks'].sorted(key=lambda item: (item.server_datetime, item.id))
+            checks = data['checks'].sorted(
+                key=lambda item: (self._get_effective_check_datetime(item) or datetime.min, item.id)
+            )
             check_ins = checks.filtered(lambda item: item.event_type == 'in')
             check_outs = checks.filtered(lambda item: item.event_type == 'out')
             check_in = check_ins[:1]
@@ -155,8 +191,10 @@ class PortalAPFichajeReportWizard(models.TransientModel):
             incidences.extend(checks.filtered('incidence').mapped('incidence'))
 
             minutes = 0
+            check_in_datetime = self._get_effective_check_datetime(check_in) if check_in else False
+            check_out_datetime = self._get_effective_check_datetime(check_out) if check_out else False
             if check_in and check_out:
-                delta = check_out.server_datetime - check_in.server_datetime
+                delta = check_out_datetime - check_in_datetime
                 if delta.total_seconds() >= 0:
                     minutes = int(round(delta.total_seconds() / 60))
                 else:
@@ -170,8 +208,8 @@ class PortalAPFichajeReportWizard(models.TransientModel):
                 'date': report_date,
                 'ap': self.trabajador_id.display_name or self.trabajador_id.nombre_completo or self.trabajador_id.name,
                 'usuario': usuario.display_name or usuario.name or '',
-                'check_in': check_in.server_datetime if check_in else False,
-                'check_out': check_out.server_datetime if check_out else False,
+                'check_in': check_in_datetime,
+                'check_out': check_out_datetime,
                 'minutes': minutes,
                 'incidence': ' | '.join(dict.fromkeys(item for item in incidences if item)),
             })

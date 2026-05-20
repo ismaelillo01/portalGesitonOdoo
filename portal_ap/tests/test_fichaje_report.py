@@ -52,8 +52,22 @@ class TestPortalAPFichajeReport(TransactionCase):
         cls._create_check(cls.line_2, 'out', datetime(2026, 5, 19, 12, 30), 'event-report-2-out')
         cls._create_check(cls.incomplete_line, 'in', datetime(2026, 5, 20, 8, 0), 'event-report-3-in')
         cls._create_check(cls.incomplete_line, 'out', datetime(2026, 5, 20, 9, 0), 'event-report-rejected-out', state='rejected')
-        cls._create_check(cls.line_3, 'in', datetime(2026, 5, 20, 10, 0), 'event-report-4-in')
-        cls._create_check(cls.line_3, 'out', datetime(2026, 5, 20, 11, 0), 'event-report-4-out')
+        cls._create_check(
+            cls.line_3,
+            'in',
+            datetime(2026, 5, 20, 15, 0),
+            'event-report-4-in',
+            origin='offline',
+            client_datetime='2026-05-20T10:00:00+02:00',
+        )
+        cls._create_check(
+            cls.line_3,
+            'out',
+            datetime(2026, 5, 20, 16, 0),
+            'event-report-4-out',
+            origin='offline',
+            client_datetime='2026-05-20T11:00:00+02:00',
+        )
 
     @classmethod
     def _create_line(cls, assignment, start, end):
@@ -65,14 +79,25 @@ class TestPortalAPFichajeReport(TransactionCase):
         })
 
     @classmethod
-    def _create_check(cls, line, event_type, server_datetime, client_event_id, state='valid'):
+    def _create_check(
+        cls,
+        line,
+        event_type,
+        server_datetime,
+        client_event_id,
+        state='valid',
+        origin='online',
+        client_datetime='',
+    ):
         return cls.env['portal.ap.fichaje'].create({
             'trabajador_id': cls.worker.id,
             'usuario_id': cls.usuario.id,
             'assignment_line_id': line.id,
             'event_type': event_type,
             'server_datetime': fields.Datetime.to_string(server_datetime),
+            'client_datetime': client_datetime,
             'client_event_id': client_event_id,
+            'origin': origin,
             'state': state,
         })
 
@@ -95,6 +120,13 @@ class TestPortalAPFichajeReport(TransactionCase):
         incomplete_row = next(row for row in data['rows'] if row['check_out'] is False)
         self.assertEqual(incomplete_row['minutes'], 0)
         self.assertIn('Sin salida', incomplete_row['incidence'])
+        offline_row = next(
+            row
+            for row in data['rows']
+            if row['date'] == date(2026, 5, 20) and row['minutes'] == 60
+        )
+        self.assertEqual(offline_row['check_in'], datetime(2026, 5, 20, 10, 0))
+        self.assertEqual(offline_row['check_out'], datetime(2026, 5, 20, 11, 0))
 
     def test_xlsx_generation_returns_excel_file(self):
         content = self._create_wizard()._generate_xlsx_content()
