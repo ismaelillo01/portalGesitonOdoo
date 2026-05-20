@@ -20,6 +20,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/backend_views.xml',
+        'wizards/fichaje_report_wizard_views.xml',
         'views/mobile_views.xml',
         'reports/mobile_reports.xml',
         'views/templates.xml',

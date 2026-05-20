@@ -2,3 +2,4 @@
 
 from . import main
 from . import mobile_api
+from . import fichaje_report

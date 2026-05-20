@@ -5,6 +5,14 @@
         <field name="model">portal.ap.fichaje</field>
         <field name="arch" type="xml">
             <list string="Fichajes AP" create="0">
+                <header>
+                    <button
+                        name="%(portal_ap.action_portal_ap_fichaje_report_wizard)d"
+                        type="action"
+                        string="Reporte Excel"
+                        display="always"
+                    />
+                </header>
                 <field name="server_datetime"/>
                 <field name="event_type"/>
                 <field name="state"/>

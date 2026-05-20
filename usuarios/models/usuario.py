@@ -47,6 +47,17 @@ class Usuario(models.Model):
     name = fields.Char(string='Nombre', required=True)
     apellido1 = fields.Char(string='Primer Apellido')
     apellido2 = fields.Char(string='Segundo Apellido')
+    codigo = fields.Char(string='Codigo')
+    grado_dependencia = fields.Selection(
+        [
+            ('0', '0'),
+            ('1', '1'),
+            ('2', '2'),
+            ('3', '3'),
+            ('3_plus', '3+'),
+        ],
+        string='Grado de dependencia',
+    )
     dni_nie = fields.Char(string='DNI o NIE')
     telefono = fields.Char(string='Telefono')
     direccion = fields.Char(string='Direccion')
