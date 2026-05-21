@@ -182,6 +182,7 @@
     <record model="ir.ui.view" id="trabajadores_trabajador_festivo_localidad_list">
       <field name="name">trabajadores.trabajador.festivo.localidad.list</field>
       <field name="model">trabajadores.trabajador</field>
+      <field name="priority" eval="99"/>
       <field name="arch" type="xml">
         <list string="Asignar fiestas AP">
           <field name="nombre_completo"/>
@@ -195,6 +196,7 @@
     <record model="ir.ui.view" id="trabajadores_trabajador_festivo_localidad_form">
       <field name="name">trabajadores.trabajador.festivo.localidad.form</field>
       <field name="model">trabajadores.trabajador</field>
+      <field name="priority" eval="99"/>
       <field name="arch" type="xml">
         <form string="Asignar fiestas AP">
           <sheet>

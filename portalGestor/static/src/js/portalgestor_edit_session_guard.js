@@ -1,9 +1,11 @@
 /** @odoo-module **/
 
 import { patch } from "@web/core/utils/patch";
+import { Dialog } from "@web/core/dialog/dialog";
 import { useService } from "@web/core/utils/hooks";
 import { FormController } from "@web/views/form/form_controller";
 import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
+import { Component, onMounted, useRef, useState } from "@odoo/owl";
 
 const TARGET_MODELS = new Set([
     "portalgestor.asignacion",
@@ -12,6 +14,8 @@ const TARGET_MODELS = new Set([
 ]);
 const TARGET_FIXED_MODEL = "portalgestor.asignacion.mensual";
 const TARGET_FIXED_V2_MODEL = "portalgestor.trabajo_fijo";
+const DELETE_ACTION_NAME = "action_eliminar_horario";
+const DELETE_CONFIRM_WORD = "aceptar";
 
 function isPortalGestorExistingRecord(controller) {
     return Boolean(
@@ -30,6 +34,58 @@ function shouldWarnBeforePortalGestorUnload(controller) {
     );
 }
 
+function isPortalGestorDeleteAction(controller, clickParams) {
+    return Boolean(
+        TARGET_MODELS.has(controller.props.resModel) &&
+            clickParams?.type === "object" &&
+            clickParams?.name === DELETE_ACTION_NAME
+    );
+}
+
+class PortalGestorDeleteConfirmDialog extends Component {
+    static template = "portalGestor.DeleteConfirmDialog";
+    static components = { Dialog };
+    static props = {
+        close: Function,
+        confirm: Function,
+        cancel: { type: Function, optional: true },
+    };
+
+    setup() {
+        this.state = useState({ value: "" });
+        this.inputRef = useRef("confirmationInput");
+        onMounted(() => this.inputRef.el?.focus());
+    }
+
+    get isConfirmed() {
+        return this.state.value.trim().toLowerCase() === DELETE_CONFIRM_WORD;
+    }
+
+    onInput(ev) {
+        this.state.value = ev.target.value;
+    }
+
+    onKeydown(ev) {
+        if (ev.key === "Enter" && this.isConfirmed) {
+            ev.preventDefault();
+            this.confirmDelete();
+        }
+    }
+
+    confirmDelete() {
+        if (!this.isConfirmed) {
+            return;
+        }
+        this.props.confirm();
+        this.props.close();
+    }
+
+    cancel() {
+        this.props.cancel?.();
+        this.props.close();
+    }
+}
+
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
@@ -42,15 +98,50 @@ patch(FormController.prototype, {
             return;
         }
         this.portalGestorLeaveHandled = true;
-        if (await this.model.root.isDirty()) {
-            await this.model.root.discard();
+        try {
+            if (await this.model.root.isDirty()) {
+                await this.model.root.discard();
+            }
+            await this.orm.call(this.props.resModel, "action_descartar_edicion", [[this.model.root.resId]]);
+            if (this.props.resModel === TARGET_FIXED_MODEL || this.props.resModel === TARGET_FIXED_V2_MODEL) {
+                await this.orm.call(this.props.resModel, "action_eliminar_borrador_no_verificado", [
+                    [this.model.root.resId],
+                ]);
+            }
+        } catch (e) {
+            // Record may have been deleted by action_eliminar_horario;
+            // silently ignore "record not found" errors during cleanup.
         }
-        await this.orm.call(this.props.resModel, "action_descartar_edicion", [[this.model.root.resId]]);
-        if (this.props.resModel === TARGET_FIXED_MODEL || this.props.resModel === TARGET_FIXED_V2_MODEL) {
-            await this.orm.call(this.props.resModel, "action_eliminar_borrador_no_verificado", [
-                [this.model.root.resId],
-            ]);
+    },
+
+    async _confirmPortalGestorDelete() {
+        return new Promise((resolve) => {
+            let settled = false;
+            const settle = (value) => {
+                if (!settled) {
+                    settled = true;
+                    resolve(value);
+                }
+            };
+            this.dialogService.add(
+                PortalGestorDeleteConfirmDialog,
+                {
+                    confirm: () => settle(true),
+                    cancel: () => settle(false),
+                },
+                { onClose: () => settle(false) }
+            );
+        });
+    },
+
+    async beforeExecuteActionButton(clickParams) {
+        if (isPortalGestorDeleteAction(this, clickParams)) {
+            const confirmed = await this._confirmPortalGestorDelete();
+            if (!confirmed) {
+                return false;
+            }
         }
+        return super.beforeExecuteActionButton(...arguments);
     },
 
     async beforeLeave() {

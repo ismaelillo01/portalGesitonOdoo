@@ -64,6 +64,16 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(assignment.lineas_ids.trabajo_fijo_linea_id, line)
         self.assertEqual(assignment.lineas_ids.trabajador_id, self.worker_a)
 
+    def test_delete_fixed_work_returns_safe_navigation_action(self):
+        fixed = self._create_fixed()
+
+        action = fixed.action_eliminar_horario()
+
+        self.assertFalse(fixed.exists())
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'portalgestor.trabajo_fijo')
+        self.assertEqual(action.get('target'), 'current')
+
     def test_month_grid_accepts_unsaved_duplicate_time_lines(self):
         fixed = self.env['portalgestor.trabajo_fijo'].new({
             'usuario_id': self.usuario.id,

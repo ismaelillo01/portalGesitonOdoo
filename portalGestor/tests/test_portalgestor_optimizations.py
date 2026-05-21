@@ -921,6 +921,37 @@ class TestPortalGestorOptimizations(TransactionCase):
             ])
         )
 
+    def test_delete_daily_assignment_returns_safe_navigation_action(self):
+        trabajador = self._create_worker('Borrado Diario')
+        asignacion = self._create_assignment(
+            self.usuario_a,
+            fields.Date.to_date('2099-06-03'),
+            [(9.0, 11.0, trabajador)],
+        )
+
+        action = asignacion.action_eliminar_horario()
+
+        self.assertFalse(asignacion.exists())
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'portalgestor.asignacion')
+        self.assertEqual(action.get('target'), 'current')
+
+    def test_delete_monthly_assignment_returns_safe_navigation_action(self):
+        trabajador = self._create_worker('Borrado Mensual')
+        asignacion_mensual = self._create_fixed_assignment(
+            self.usuario_a,
+            fields.Date.to_date('2099-06-04'),
+            fields.Date.to_date('2099-06-05'),
+            [(9.0, 11.0, trabajador)],
+        )
+
+        action = asignacion_mensual.action_eliminar_horario()
+
+        self.assertFalse(asignacion_mensual.exists())
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'portalgestor.asignacion.mensual')
+        self.assertEqual(action.get('target'), 'current')
+
     def test_fixed_assignment_manual_day_override_survives_later_fixed_sync(self):
         trabajador_original = self._create_worker('Fijo Override Original')
         trabajador_nuevo = self._create_worker('Fijo Override Nuevo')
@@ -1396,9 +1427,14 @@ class TestPortalGestorOptimizations(TransactionCase):
     def test_assignment_forms_include_delete_button(self):
         asignacion_form_arch = self.env.ref('portalGestor.portalgestor_asignacion_form').arch_db
         asignacion_mensual_form_arch = self.env.ref('portalGestor.portalgestor_asignacion_mensual_form').arch_db
+        trabajo_fijo_form_arch = self.env.ref('portalGestor.portalgestor_trabajo_fijo_form').arch_db
 
         self.assertIn('action_eliminar_horario', asignacion_form_arch)
         self.assertIn('action_eliminar_horario', asignacion_mensual_form_arch)
+        self.assertIn('action_eliminar_horario', trabajo_fijo_form_arch)
+        self.assertNotIn('confirm="Desea eliminar el horario?"', asignacion_form_arch)
+        self.assertNotIn('confirm="Desea eliminar el horario?"', asignacion_mensual_form_arch)
+        self.assertNotIn('confirm="Desea eliminar el horario?"', trabajo_fijo_form_arch)
 
     def test_confirmed_assignment_restore_snapshot_when_edit_is_discarded(self):
         fecha_confirmada = fields.Date.to_date('2099-08-20')

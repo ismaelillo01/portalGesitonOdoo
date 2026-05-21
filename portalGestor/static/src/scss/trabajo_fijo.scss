@@ -94,3 +94,45 @@
     border-radius: 10px;
     padding: 8px 10px;
 }
+
+.o_portalgestor_delete_confirm_dialog .modal-content {
+    border: 1px solid rgba(210, 40, 132, 0.18);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(14, 9, 32, 0.22);
+}
+
+.o_portalgestor_delete_confirm_dialog_body {
+    padding: 20px 22px 12px;
+}
+
+.o_portalgestor_delete_confirm_warning {
+    background: #fff4f0;
+    border: 1px solid rgba(220, 53, 69, 0.24);
+    border-radius: 14px;
+    color: #23182f;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+}
+
+.o_portalgestor_delete_confirm_label {
+    color: #4e4662;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.o_portalgestor_delete_confirm_input {
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.o_portalgestor_delete_confirm_input:focus {
+    border-color: #d22884;
+    box-shadow: 0 0 0 0.2rem rgba(210, 40, 132, 0.16);
+}
+
+.o_portalgestor_delete_confirm_hint {
+    color: #706780;
+    font-size: 13px;
+    margin: 8px 0 0;
+}

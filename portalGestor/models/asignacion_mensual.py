@@ -693,8 +693,10 @@ class AsignacionMensual(models.Model):
     def action_eliminar_horario(self):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        action = self.env.ref('portalGestor.action_portalgestor_asignacion_mensual').read()[0]
+        action['target'] = 'current'
         self.unlink()
-        return {'type': 'ir.actions.act_window_close'}
+        return action
 
     def unlink(self):
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
