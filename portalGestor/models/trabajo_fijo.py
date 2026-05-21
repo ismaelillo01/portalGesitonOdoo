@@ -418,6 +418,54 @@ class TrabajoFijo(models.Model):
             'legacy_asignacion_mensual_id',
         })
 
+    @api.model
+    def _audit_model(self):
+        return self.env['portalgestor.audit.log']
+
+    @api.model
+    def _audit_gestor_name(self):
+        return self._audit_model().display_record_name(self.env.user)
+
+    def _audit_fixed_snapshot(self):
+        self.ensure_one()
+        audit = self._audit_model()
+        usuario_name = audit.display_record_name(self.usuario_id)
+        month_label = audit.format_month_label(self.month, self.year)
+        target_label = "trabajo fijo de %s de %s" % (usuario_name or 'usuario sin nombre', month_label)
+        return {
+            'fixed_id': self.id,
+            'usuario': self.usuario_id,
+            'usuario_name': usuario_name,
+            'usuario_grupo': self.usuario_id.grupo or False,
+            'target_label': target_label,
+            'month_label': month_label,
+        }
+
+    def _audit_log_fixed(self, action_type, verb, snapshot=False, detail=False, payload=False):
+        audit = self._audit_model()
+        if audit.should_skip_schedule_audit():
+            return False
+        record = self[:1]
+        if not snapshot:
+            record.ensure_one()
+        data = snapshot or self._audit_fixed_snapshot()
+        summary = "Gestor %s %s %s" % (self._audit_gestor_name(), verb, data['target_label'])
+        technical_payload = dict(payload or {})
+        technical_payload.setdefault('trabajo_fijo_id', data.get('fixed_id') or (record.id if record else False))
+        return audit.create_event(
+            action_type,
+            'fixed_work',
+            summary,
+            detail=detail,
+            usuario=data.get('usuario') if data.get('usuario') and data.get('usuario').exists() else False,
+            trabajo_fijo=record if record and record.exists() else False,
+            usuario_name=data.get('usuario_name'),
+            usuario_grupo=data.get('usuario_grupo'),
+            target_label=data.get('target_label'),
+            month_label=data.get('month_label'),
+            technical_payload=technical_payload,
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         prepared_vals = []
@@ -432,7 +480,10 @@ class TrabajoFijo(models.Model):
                 self._ensure_current_user_can_manage_users(user)
             values.setdefault('confirmado', False)
             prepared_vals.append(values)
-        return super().create(prepared_vals)
+        records = super().create(prepared_vals)
+        for record in records:
+            record._audit_log_fixed('create', 'creo')
+        return records
 
     def write(self, vals):
         values = self._prepare_month_vals(vals)
@@ -451,7 +502,26 @@ class TrabajoFijo(models.Model):
             records_with_lines = self.filtered('line_ids')
             if records_with_lines and not self.env.context.get('portalgestor_skip_trabajo_fijo_edit_check'):
                 raise ValidationError(_("Para cambiar mes o ano elimina primero los tramos de la plantilla."))
-        return super().write(values)
+        audit_fields = {'usuario_id', 'month', 'year', 'fecha_inicio', 'fecha_fin'}
+        should_audit_write = (
+            bool(audit_fields & set(values))
+            and not self._is_status_only_vals(values)
+            and not self._audit_model().should_skip_schedule_audit()
+        )
+        audit_before = {}
+        if should_audit_write:
+            audit_before = {record.id: record._audit_fixed_snapshot() for record in self}
+        result = super().write(values)
+        if should_audit_write:
+            for record in self.exists():
+                before = audit_before.get(record.id)
+                after = record._audit_fixed_snapshot()
+                detail = "Antes: %s\nAhora: %s" % (
+                    before.get('target_label') if before else '',
+                    after.get('target_label'),
+                )
+                record._audit_log_fixed('write', 'modifico', snapshot=after, detail=detail)
+        return result
 
     def _get_edit_snapshot_payload(self):
         self.ensure_one()
@@ -518,12 +588,16 @@ class TrabajoFijo(models.Model):
             record._ensure_current_user_can_manage_users(record.mapped('usuario_id'))
             if record.confirmado and not record.edit_session_pending:
                 record._set_edit_snapshot()
+            record._audit_log_fixed('edit', 'edito')
         return True
 
     def action_descartar_edicion(self):
+        snapshots = {record.id: record._audit_fixed_snapshot() for record in self}
         for record in self:
             record._ensure_current_user_can_manage_users(record.mapped('usuario_id'))
-        self._restore_edit_snapshot()
+        self.with_context(portalgestor_skip_audit=True)._restore_edit_snapshot()
+        for record in self.exists():
+            record._audit_log_fixed('discard', 'descarto cambios de', snapshot=snapshots.get(record.id))
         return True
 
     def action_eliminar_borrador_no_verificado(self):
@@ -1039,17 +1113,25 @@ class TrabajoFijo(models.Model):
         if batch_conflicts['info_summary'] and not self.env.context.get('portalgestor_skip_trabajo_fijo_same_day_warning'):
             return self._launch_info_wizard(batch_conflicts['info_summary'])
 
-        return self._apply_confirmation(target_specs)
+        result = self._apply_confirmation(target_specs)
+        self._audit_log_fixed('confirm', 'confirmo')
+        return result
 
     def unlink(self):
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        audit_snapshots = []
+        if not self._audit_model().should_skip_schedule_audit():
+            audit_snapshots = [record._audit_fixed_snapshot() for record in self]
         touched_assignments = self.mapped('asignacion_linea_ids.asignacion_id')
         self.mapped('asignacion_linea_ids').with_context(
             portalgestor_skip_fixed_sync=True,
             portalgestor_skip_fixed_exception=True,
         ).unlink()
         touched_assignments.cleanup_empty_assignments()
-        return super().unlink()
+        result = super().unlink()
+        for snapshot in audit_snapshots:
+            self.browse()._audit_log_fixed('delete', 'elimino', snapshot=snapshot)
+        return result
 
     @api.model
     def _migrate_from_monthly_template(self):
@@ -1213,6 +1295,74 @@ class TrabajoFijoLinea(models.Model):
         if locked_records:
             raise ValidationError(_("Pulsa Modificar Horario antes de cambiar un trabajo fijo confirmado."))
 
+    @api.model
+    def _audit_model(self):
+        return self.env['portalgestor.audit.log']
+
+    @api.model
+    def _audit_gestor_name(self):
+        return self._audit_model().display_record_name(self.env.user)
+
+    def _audit_line_snapshot(self):
+        self.ensure_one()
+        audit = self._audit_model()
+        parent = self.trabajo_fijo_id
+        usuario = parent.usuario_id
+        trabajador = self.trabajador_id
+        usuario_name = audit.display_record_name(usuario)
+        trabajador_name = audit.display_record_name(trabajador)
+        date_label = audit.format_date_label(self.fecha)
+        month_label = audit.format_month_label(parent.month, parent.year)
+        hour_range = audit.format_hour_range_label(self.hora_inicio, self.hora_fin)
+        target_label = "tramo %s con AP %s del trabajo fijo de %s del %s" % (
+            hour_range,
+            trabajador_name or 'sin AP',
+            usuario_name or 'usuario sin nombre',
+            date_label or month_label,
+        )
+        return {
+            'line_id': self.id,
+            'parent': parent,
+            'parent_id': parent.id,
+            'usuario': usuario,
+            'usuario_name': usuario_name,
+            'usuario_grupo': usuario.grupo or False,
+            'trabajador': trabajador,
+            'trabajador_name': trabajador_name,
+            'date_label': date_label,
+            'month_label': month_label,
+            'target_label': target_label,
+        }
+
+    def _audit_log_line(self, action_type, verb, snapshot=False, detail=False, payload=False):
+        audit = self._audit_model()
+        if audit.should_skip_schedule_audit():
+            return False
+        record = self[:1]
+        if not snapshot:
+            record.ensure_one()
+        data = snapshot or self._audit_line_snapshot()
+        summary = "Gestor %s %s %s" % (self._audit_gestor_name(), verb, data['target_label'])
+        technical_payload = dict(payload or {})
+        technical_payload.setdefault('trabajo_fijo_linea_id', data.get('line_id') or (record.id if record else False))
+        technical_payload.setdefault('trabajo_fijo_id', data.get('parent_id'))
+        return audit.create_event(
+            action_type,
+            'fixed_work_line',
+            summary,
+            detail=detail,
+            usuario=data.get('usuario') if data.get('usuario') and data.get('usuario').exists() else False,
+            trabajador=data.get('trabajador') if data.get('trabajador') and data.get('trabajador').exists() else False,
+            trabajo_fijo=data.get('parent') if data.get('parent') and data.get('parent').exists() else False,
+            usuario_name=data.get('usuario_name'),
+            trabajador_name=data.get('trabajador_name'),
+            usuario_grupo=data.get('usuario_grupo'),
+            target_label=data.get('target_label'),
+            date_label=data.get('date_label'),
+            month_label=data.get('month_label'),
+            technical_payload=technical_payload,
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         parent_ids = [vals.get('trabajo_fijo_id') for vals in vals_list if vals.get('trabajo_fijo_id')]
@@ -1221,6 +1371,8 @@ class TrabajoFijoLinea(models.Model):
             self._ensure_parent_editable(parent_records)
         records = super().create(vals_list)
         records._check_dates_inside_parent_month()
+        for record in records:
+            record._audit_log_line('add_line', 'anadio')
         return records
 
     def write(self, vals):
@@ -1228,14 +1380,34 @@ class TrabajoFijoLinea(models.Model):
         if vals.get('trabajo_fijo_id'):
             parent_records |= self.env['portalgestor.trabajo_fijo'].browse(vals['trabajo_fijo_id']).exists()
         self._ensure_parent_editable(parent_records)
+        audit_fields = {'fecha', 'hora_inicio', 'hora_fin', 'trabajador_id', 'trabajo_fijo_id'}
+        should_audit_write = bool(audit_fields & set(vals)) and not self._audit_model().should_skip_schedule_audit()
+        audit_before = {}
+        if should_audit_write:
+            audit_before = {line.id: line._audit_line_snapshot() for line in self}
         result = super().write(vals)
         self._check_dates_inside_parent_month()
+        if should_audit_write:
+            for line in self.exists():
+                before = audit_before.get(line.id)
+                after = line._audit_line_snapshot()
+                detail = "Antes: %s\nAhora: %s" % (
+                    before.get('target_label') if before else '',
+                    after.get('target_label'),
+                )
+                line._audit_log_line('write', 'modifico', snapshot=after, detail=detail)
         return result
 
     def unlink(self):
         parent_records = self.mapped('trabajo_fijo_id')
         self._ensure_parent_editable(parent_records)
-        return super().unlink()
+        audit_snapshots = []
+        if not self._audit_model().should_skip_schedule_audit():
+            audit_snapshots = [line._audit_line_snapshot() for line in self]
+        result = super().unlink()
+        for snapshot in audit_snapshots:
+            self.browse()._audit_log_line('delete', 'elimino', snapshot=snapshot)
+        return result
 
     @api.constrains('fecha', 'trabajo_fijo_id')
     def _check_dates_inside_parent_month(self):

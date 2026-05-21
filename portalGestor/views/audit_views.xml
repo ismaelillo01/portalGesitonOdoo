@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <record id="portalgestor_audit_log_list" model="ir.ui.view">
+      <field name="name">portalgestor.audit.log.list</field>
+      <field name="model">portalgestor.audit.log</field>
+      <field name="arch" type="xml">
+        <list string="Auditoria PortalGestor" create="0" edit="0" delete="0">
+          <field name="event_datetime"/>
+          <field name="gestor_id"/>
+          <field name="action_type"/>
+          <field name="summary"/>
+          <field name="usuario_name"/>
+          <field name="trabajador_name"/>
+          <field name="target_type"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="portalgestor_audit_log_form" model="ir.ui.view">
+      <field name="name">portalgestor.audit.log.form</field>
+      <field name="model">portalgestor.audit.log</field>
+      <field name="arch" type="xml">
+        <form string="Registro de auditoria" create="0" edit="0" delete="0">
+          <sheet>
+            <group>
+              <group>
+                <field name="event_datetime" readonly="1"/>
+                <field name="gestor_id" readonly="1"/>
+                <field name="action_type" readonly="1"/>
+                <field name="target_type" readonly="1"/>
+              </group>
+              <group>
+                <field name="usuario_name" readonly="1"/>
+                <field name="trabajador_name" readonly="1"/>
+                <field name="target_label" readonly="1"/>
+                <field name="date_label" readonly="1"/>
+                <field name="month_label" readonly="1"/>
+              </group>
+            </group>
+            <group>
+              <field name="summary" readonly="1"/>
+              <field name="detail" readonly="1"/>
+            </group>
+            <group string="Referencias">
+              <field name="usuario_id" readonly="1"/>
+              <field name="trabajador_id" readonly="1"/>
+              <field name="asignacion_id" readonly="1"/>
+              <field name="trabajo_fijo_id" readonly="1"/>
+              <field name="asignacion_mensual_id" readonly="1"/>
+            </group>
+            <group string="Soporte tecnico">
+              <field name="technical_payload" readonly="1"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="portalgestor_audit_log_search" model="ir.ui.view">
+      <field name="name">portalgestor.audit.log.search</field>
+      <field name="model">portalgestor.audit.log</field>
+      <field name="arch" type="xml">
+        <search string="Buscar auditoria">
+          <field name="summary"/>
+          <field name="gestor_id"/>
+          <field name="usuario_id"/>
+          <field name="trabajador_id"/>
+          <field name="action_type"/>
+          <field name="target_type"/>
+          <filter string="Hoy" name="today" domain="[('event_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+          <filter string="Esta semana" name="this_week" domain="[('event_date', '&gt;=', (context_today() - relativedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+          <filter string="Mes actual" name="this_month" domain="[('event_date', '&gt;=', context_today().strftime('%Y-%m-01'))]"/>
+          <separator/>
+          <filter string="Creado" name="action_create" domain="[('action_type', '=', 'create')]"/>
+          <filter string="Anadido tramo" name="action_add_line" domain="[('action_type', '=', 'add_line')]"/>
+          <filter string="Modificado" name="action_write" domain="[('action_type', '=', 'write')]"/>
+          <filter string="Confirmado" name="action_confirm" domain="[('action_type', '=', 'confirm')]"/>
+          <filter string="Editado" name="action_edit" domain="[('action_type', '=', 'edit')]"/>
+          <filter string="Descartado" name="action_discard" domain="[('action_type', '=', 'discard')]"/>
+          <filter string="Eliminado" name="action_delete" domain="[('action_type', '=', 'delete')]"/>
+          <filter string="Liberado" name="action_release" domain="[('action_type', '=', 'release')]"/>
+          <separator/>
+          <filter string="Por accion" name="group_action" context="{'group_by': 'action_type'}"/>
+          <filter string="Por gestor" name="group_gestor" context="{'group_by': 'gestor_id'}"/>
+          <filter string="Por usuario" name="group_usuario" context="{'group_by': 'usuario_id'}"/>
+          <filter string="Por AP" name="group_trabajador" context="{'group_by': 'trabajador_id'}"/>
+          <filter string="Por dia" name="group_day" context="{'group_by': 'event_date'}"/>
+          <filter string="Por tipo" name="group_target" context="{'group_by': 'target_type'}"/>
+        </search>
+      </field>
+    </record>
+
+    <record id="action_portalgestor_audit_log" model="ir.actions.act_window">
+      <field name="name">Auditoria</field>
+      <field name="res_model">portalgestor.audit.log</field>
+      <field name="view_mode">list,form</field>
+      <field name="search_view_id" ref="portalgestor_audit_log_search"/>
+      <field name="context">{'search_default_this_month': 1}</field>
+    </record>
+
+    <menuitem
+      id="portalgestor_audit_log_menu"
+      name="Auditoria"
+      parent="portalgestor_menu_root"
+      action="action_portalgestor_audit_log"
+      sequence="95"
+    />
+
+  </data>
+</odoo>
