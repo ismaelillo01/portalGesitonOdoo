@@ -1396,9 +1396,14 @@ class TestPortalGestorOptimizations(TransactionCase):
     def test_assignment_forms_include_delete_button(self):
         asignacion_form_arch = self.env.ref('portalGestor.portalgestor_asignacion_form').arch_db
         asignacion_mensual_form_arch = self.env.ref('portalGestor.portalgestor_asignacion_mensual_form').arch_db
+        trabajo_fijo_form_arch = self.env.ref('portalGestor.portalgestor_trabajo_fijo_form').arch_db
 
         self.assertIn('action_eliminar_horario', asignacion_form_arch)
         self.assertIn('action_eliminar_horario', asignacion_mensual_form_arch)
+        self.assertIn('action_eliminar_horario', trabajo_fijo_form_arch)
+        self.assertNotIn('confirm="Desea eliminar el horario?"', asignacion_form_arch)
+        self.assertNotIn('confirm="Desea eliminar el horario?"', asignacion_mensual_form_arch)
+        self.assertNotIn('confirm="Desea eliminar el horario?"', trabajo_fijo_form_arch)
 
     def test_confirmed_assignment_restore_snapshot_when_edit_is_discarded(self):
         fecha_confirmada = fields.Date.to_date('2099-08-20')

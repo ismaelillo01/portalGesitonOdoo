@@ -26,7 +26,6 @@
               string="Eliminar Horario"
               type="object"
               class="btn-secondary"
-              confirm="Desea eliminar el horario?"
               invisible="manager_edit_blocked"
             />
           </header>

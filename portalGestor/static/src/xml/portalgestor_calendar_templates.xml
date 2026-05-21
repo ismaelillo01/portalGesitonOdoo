@@ -1,5 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <t t-name="portalGestor.DeleteConfirmDialog">
+        <Dialog
+            size="'md'"
+            title="'Eliminar horario'"
+            contentClass="'o_portalgestor_delete_confirm_dialog'"
+            bodyClass="'o_portalgestor_delete_confirm_dialog_body'"
+        >
+            <div class="o_portalgestor_delete_confirm_warning">
+                Esta acción eliminará el horario seleccionado. Para confirmar, escribe
+                <strong>Aceptar</strong>.
+            </div>
+            <label class="o_portalgestor_delete_confirm_label" for="portalgestor_delete_confirm_input">
+                Texto de confirmación
+            </label>
+            <input
+                id="portalgestor_delete_confirm_input"
+                t-ref="confirmationInput"
+                type="text"
+                class="form-control o_portalgestor_delete_confirm_input"
+                placeholder="Aceptar"
+                autocomplete="off"
+                t-att-value="state.value"
+                t-on-input="onInput"
+                t-on-keydown="onKeydown"
+            />
+            <p class="o_portalgestor_delete_confirm_hint">
+                No importa si usas mayúsculas o minúsculas.
+            </p>
+            <t t-set-slot="footer">
+                <button
+                    class="btn btn-danger"
+                    t-att-disabled="!isConfirmed"
+                    t-on-click="confirmDelete"
+                >
+                    Eliminar horario
+                </button>
+                <button class="btn btn-secondary" t-on-click="cancel">
+                    Cancelar
+                </button>
+            </t>
+        </Dialog>
+    </t>
+
     <t t-name="portalGestor.UserAutocompleteOption">
         <span class="o_portalgestor_user_option">
             <span class="o_portalgestor_user_option_name">
