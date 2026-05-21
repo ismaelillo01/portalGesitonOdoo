@@ -921,6 +921,37 @@ class TestPortalGestorOptimizations(TransactionCase):
             ])
         )
 
+    def test_delete_daily_assignment_returns_safe_navigation_action(self):
+        trabajador = self._create_worker('Borrado Diario')
+        asignacion = self._create_assignment(
+            self.usuario_a,
+            fields.Date.to_date('2099-06-03'),
+            [(9.0, 11.0, trabajador)],
+        )
+
+        action = asignacion.action_eliminar_horario()
+
+        self.assertFalse(asignacion.exists())
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'portalgestor.asignacion')
+        self.assertEqual(action.get('target'), 'current')
+
+    def test_delete_monthly_assignment_returns_safe_navigation_action(self):
+        trabajador = self._create_worker('Borrado Mensual')
+        asignacion_mensual = self._create_fixed_assignment(
+            self.usuario_a,
+            fields.Date.to_date('2099-06-04'),
+            fields.Date.to_date('2099-06-05'),
+            [(9.0, 11.0, trabajador)],
+        )
+
+        action = asignacion_mensual.action_eliminar_horario()
+
+        self.assertFalse(asignacion_mensual.exists())
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'portalgestor.asignacion.mensual')
+        self.assertEqual(action.get('target'), 'current')
+
     def test_fixed_assignment_manual_day_override_survives_later_fixed_sync(self):
         trabajador_original = self._create_worker('Fijo Override Original')
         trabajador_nuevo = self._create_worker('Fijo Override Nuevo')

@@ -1272,8 +1272,10 @@ class Asignacion(models.Model):
     def action_eliminar_horario(self):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        action = self.env.ref('portalGestor.action_portalgestor_asignacion').read()[0]
+        action['target'] = 'current'
         self.unlink()
-        return {'type': 'ir.actions.act_window_close'}
+        return action
 
     def _launch_wizard(self, conflict_type, linea_actual_id, linea_conflicto_id, asignacion_mensual_id=False):
         wizard = self.env['portalgestor.conflict.wizard'].create({
