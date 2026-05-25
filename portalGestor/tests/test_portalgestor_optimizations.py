@@ -183,43 +183,79 @@ class TestPortalGestorOptimizations(TransactionCase):
 
         self.assertEqual(trabajadores.ids, [trabajador_disponible.id])
 
-    def test_vacation_rejects_days_with_existing_assignments(self):
+    def test_vacation_releases_days_with_existing_assignments(self):
         fecha = fields.Date.to_date('2026-03-24')
         trabajador = self._create_worker('Vacacion Con Trabajo')
 
-        self._create_assignment(
+        asignacion = self._create_assignment(
             self.usuario_a,
             fecha,
             [(8.0, 12.0, trabajador)],
         )
 
-        with self.assertRaises(ValidationError) as error:
-            self.env['trabajadores.vacacion'].create({
-                'trabajador_id': trabajador.id,
-                'date_start': fecha,
-                'date_stop': fecha,
-            })
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fecha,
+            'date_stop': fecha,
+        })
 
-        self.assertIn('2026-03-24', str(error.exception))
+        linea = asignacion.lineas_ids
+        linea.invalidate_recordset(['trabajador_id', 'hora_inicio', 'hora_fin'])
+        self.assertFalse(linea.trabajador_id)
+        self.assertEqual(linea.hora_inicio, 8.0)
+        self.assertEqual(linea.hora_fin, 12.0)
 
-    def test_vacation_rejects_days_with_existing_fixed_assignments(self):
+    def test_vacation_write_releases_new_range_without_restoring_previous_lines(self):
+        fecha_1 = fields.Date.to_date('2026-03-24')
+        fecha_2 = fields.Date.to_date('2026-03-25')
+        trabajador = self._create_worker('Vacacion Cambio Rango')
+        asignacion_1 = self._create_assignment(self.usuario_a, fecha_1, [(8.0, 12.0, trabajador)])
+        asignacion_2 = self._create_assignment(self.usuario_b, fecha_2, [(9.0, 11.0, trabajador)])
+
+        vacacion = self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fecha_1,
+            'date_stop': fecha_1,
+        })
+        vacacion.write({
+            'date_start': fecha_2,
+            'date_stop': fecha_2,
+        })
+
+        asignacion_1.lineas_ids.invalidate_recordset(['trabajador_id'])
+        asignacion_2.lineas_ids.invalidate_recordset(['trabajador_id'])
+        self.assertFalse(asignacion_1.lineas_ids.trabajador_id)
+        self.assertFalse(asignacion_2.lineas_ids.trabajador_id)
+
+    def test_vacation_releases_days_with_existing_fixed_assignments(self):
         fecha_inicio = fields.Date.to_date('2026-03-25')
         fecha_fin = fields.Date.to_date('2026-03-27')
         trabajador = self._create_worker('Vacacion Fijo')
 
-        self._create_fixed_assignment(
+        trabajo_fijo = self._create_fixed_assignment(
             self.usuario_a,
             fecha_inicio,
             fecha_fin,
             [(9.0, 11.0, trabajador)],
         )
 
-        with self.assertRaises(ValidationError):
-            self.env['trabajadores.vacacion'].create({
-                'trabajador_id': trabajador.id,
-                'date_start': fields.Date.to_date('2026-03-26'),
-                'date_stop': fields.Date.to_date('2026-03-26'),
-            })
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': trabajador.id,
+            'date_start': fields.Date.to_date('2026-03-26'),
+            'date_stop': fields.Date.to_date('2026-03-26'),
+        })
+
+        linea_afectada = self.env['portalgestor.asignacion.linea'].search([
+            ('asignacion_id.usuario_id', '=', self.usuario_a.id),
+            ('fecha', '=', fields.Date.to_date('2026-03-26')),
+            ('hora_inicio', '=', 9.0),
+            ('hora_fin', '=', 11.0),
+        ], limit=1)
+        self.assertTrue(linea_afectada)
+        self.assertFalse(linea_afectada.trabajador_id)
+        self.assertFalse(linea_afectada.asignacion_mensual_id)
+        self.assertFalse(linea_afectada.asignacion_mensual_linea_id)
+        self.assertEqual(trabajo_fijo.linea_fija_ids.trabajador_id, trabajador)
 
     def test_vacation_rejects_overlapping_ranges_for_same_worker(self):
         trabajador = self._create_worker('Solape Vacacion')

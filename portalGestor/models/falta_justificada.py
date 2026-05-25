@@ -6,21 +6,25 @@ class FaltaJustificada(models.Model):
     _inherit = 'trabajadores.falta.justificada'
 
     def _get_portalgestor_impacted_lines(self):
-        keys = {
-            (record.trabajador_id.id, record.fecha)
-            for record in self
-            if record.trabajador_id and record.fecha
-        }
-        if not keys:
+        records = self.filtered(lambda record: record.trabajador_id and record.fecha_inicio and record.fecha_fin)
+        if not records:
             return self.env['portalgestor.asignacion.linea']
 
-        worker_ids = sorted({worker_id for worker_id, __fecha in keys})
-        dates = sorted({fecha for __worker_id, fecha in keys})
+        worker_ids = records.mapped('trabajador_id').ids
+        date_start = min(records.mapped('fecha_inicio'))
+        date_end = max(records.mapped('fecha_fin'))
         lines = self.env['portalgestor.asignacion.linea'].search([
             ('trabajador_id', 'in', worker_ids),
-            ('fecha', 'in', dates),
+            ('fecha', '>=', date_start),
+            ('fecha', '<=', date_end),
         ])
-        return lines.filtered(lambda line: (line.trabajador_id.id, line.fecha) in keys)
+        return lines.filtered(
+            lambda line: any(
+                record.trabajador_id == line.trabajador_id
+                and record.fecha_inicio <= line.fecha <= record.fecha_fin
+                for record in records
+            )
+        )
 
     def _sync_portalgestor_justified_absences(self, before_lines=None, action_kind='write'):
         line_model = self.env['portalgestor.asignacion.linea']

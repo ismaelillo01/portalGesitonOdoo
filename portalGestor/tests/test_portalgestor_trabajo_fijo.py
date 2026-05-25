@@ -64,6 +64,42 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(assignment.lineas_ids.trabajo_fijo_linea_id, line)
         self.assertEqual(assignment.lineas_ids.trabajador_id, self.worker_a)
 
+    def test_vacation_releases_generated_fixed_work_day(self):
+        fixed = self._create_fixed()
+        template_line = self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-04-06'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+        generated_line = self.env['portalgestor.asignacion.linea'].search([
+            ('trabajo_fijo_id', '=', fixed.id),
+            ('fecha', '=', fields.Date.to_date('2026-04-06')),
+        ], limit=1)
+        self.assertEqual(generated_line.trabajador_id, self.worker_a)
+
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': self.worker_a.id,
+            'date_start': fields.Date.to_date('2026-04-06'),
+            'date_stop': fields.Date.to_date('2026-04-06'),
+        })
+
+        generated_line.invalidate_recordset([
+            'trabajador_id',
+            'hora_inicio',
+            'hora_fin',
+            'trabajo_fijo_id',
+            'trabajo_fijo_linea_id',
+        ])
+        self.assertFalse(generated_line.trabajador_id)
+        self.assertEqual(generated_line.hora_inicio, 8.0)
+        self.assertEqual(generated_line.hora_fin, 10.0)
+        self.assertFalse(generated_line.trabajo_fijo_id)
+        self.assertFalse(generated_line.trabajo_fijo_linea_id)
+        self.assertEqual(template_line.trabajador_id, self.worker_a)
+
     def test_delete_fixed_work_returns_safe_navigation_action(self):
         fixed = self._create_fixed()
 

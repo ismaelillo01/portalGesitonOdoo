@@ -34,6 +34,7 @@ Long description of module's purpose
         'views/catering_views.xml',
         'views/kilometraje_views.xml',
         'views/servicio_extra_views.xml',
+        'views/usuario_falta_justificada_views.xml',
         'views/templates.xml',
     ],
     # only loaded in demonstration mode

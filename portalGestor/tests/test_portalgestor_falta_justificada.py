@@ -77,6 +77,9 @@ class TestPortalGestorFaltaJustificada(TransactionCase):
         self.assertIn('Vacaciones', form_arch)
         self.assertIn('action_open_faltas_justificadas', inherited_arch)
         self.assertIn('Faltas justificadas', inherited_arch)
+        absence_form_arch = self.env.ref('trabajadores.trabajadores_falta_justificada_form').arch_db
+        self.assertIn('fecha_inicio', absence_form_arch)
+        self.assertIn('fecha_fin', absence_form_arch)
 
     def test_justified_absence_draft_does_not_affect_assignment(self):
         usuario = self._create_user('Draft')
@@ -116,6 +119,58 @@ class TestPortalGestorFaltaJustificada(TransactionCase):
         self.assertEqual(asignacion.calendar_bucket_type, 'justified')
         self.assertEqual(asignacion.color_calendario, 4)
         self.assertIn('Revision medica', asignacion.calendar_popover_html)
+
+    def test_justified_absence_range_marks_all_days_inside_range(self):
+        trabajador = self._create_worker('Range')
+        fecha_inicio = fields.Date.to_date('2099-04-20')
+        fecha_fin = fields.Date.to_date('2099-04-21')
+        fecha_fuera = fields.Date.to_date('2099-04-22')
+        asignacion_1 = self._create_assignment(
+            self._create_user('Range 1'),
+            fecha_inicio,
+            [(8.0, 10.0, trabajador)],
+            confirmed=True,
+        )
+        asignacion_2 = self._create_assignment(
+            self._create_user('Range 2'),
+            fecha_fin,
+            [(8.0, 10.0, trabajador)],
+            confirmed=True,
+        )
+        asignacion_fuera = self._create_assignment(
+            self._create_user('Range Out'),
+            fecha_fuera,
+            [(8.0, 10.0, trabajador)],
+            confirmed=True,
+        )
+
+        absence = self.env['trabajadores.falta.justificada'].create({
+            'trabajador_id': trabajador.id,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'hora_inicio': 8.5,
+            'hora_fin': 9.5,
+            'motivo': 'Rango medico',
+        })
+        absence.action_verificar()
+
+        for asignacion in asignacion_1 | asignacion_2:
+            linea = asignacion.lineas_ids
+            linea.invalidate_recordset([
+                'tiene_falta_justificada',
+                'minutos_falta_justificada',
+                'minutos_computables',
+                'motivo_falta_justificada',
+            ])
+            self.assertTrue(linea.tiene_falta_justificada)
+            self.assertEqual(linea.minutos_falta_justificada, 60)
+            self.assertEqual(linea.minutos_computables, 60)
+            self.assertIn('Rango medico', linea.motivo_falta_justificada)
+
+        linea_fuera = asignacion_fuera.lineas_ids
+        linea_fuera.invalidate_recordset(['tiene_falta_justificada', 'minutos_falta_justificada'])
+        self.assertFalse(linea_fuera.tiene_falta_justificada)
+        self.assertEqual(linea_fuera.minutos_falta_justificada, 0)
 
     def test_justified_absence_without_overlap_keeps_assignment_completed(self):
         usuario = self._create_user('No Overlap')
@@ -174,6 +229,27 @@ class TestPortalGestorFaltaJustificada(TransactionCase):
         self._create_absence(trabajador, fecha, 9.0, 11.0)
         with self.assertRaises(ValidationError):
             self._create_absence(trabajador, fecha, 10.0, 12.0)
+
+    def test_justified_absence_rejects_overlapping_date_ranges_for_same_worker(self):
+        trabajador = self._create_worker('Overlap Range Constraint')
+
+        self.env['trabajadores.falta.justificada'].create({
+            'trabajador_id': trabajador.id,
+            'fecha_inicio': fields.Date.to_date('2099-04-20'),
+            'fecha_fin': fields.Date.to_date('2099-04-22'),
+            'hora_inicio': 9.0,
+            'hora_fin': 11.0,
+            'motivo': 'Primera falta',
+        })
+        with self.assertRaises(ValidationError):
+            self.env['trabajadores.falta.justificada'].create({
+                'trabajador_id': trabajador.id,
+                'fecha_inicio': fields.Date.to_date('2099-04-22'),
+                'fecha_fin': fields.Date.to_date('2099-04-24'),
+                'hora_inicio': 10.0,
+                'hora_fin': 12.0,
+                'motivo': 'Solape rango',
+            })
 
     def test_calendar_bucket_summary_orders_missing_pending_justified_completed(self):
         fecha = fields.Date.to_date('2099-04-16')

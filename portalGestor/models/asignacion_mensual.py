@@ -391,6 +391,15 @@ class AsignacionMensual(models.Model):
 
         for record in self:
             target_dates = record._get_target_dates()
+            absent_dates = (
+                self.env['usuarios.falta.justificada']._get_absent_dates_by_user(
+                    record.usuario_id.ids,
+                    target_dates[0],
+                    target_dates[-1],
+                ).get(record.usuario_id.id, set())
+                if target_dates and record.usuario_id
+                else set()
+            )
             target_dates_by_key = {
                 fields.Date.to_string(target_date): target_date
                 for target_date in target_dates
@@ -404,6 +413,8 @@ class AsignacionMensual(models.Model):
             active_dates = set()
             for date_key, target_date in target_dates_by_key.items():
                 if record.usuario_id.baja and target_date >= today:
+                    continue
+                if target_date in absent_dates:
                     continue
                 if date_key in manual_exception_dates:
                     continue

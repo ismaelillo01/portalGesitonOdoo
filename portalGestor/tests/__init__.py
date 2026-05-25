@@ -3,6 +3,7 @@
 from . import test_portalgestor_portal_home
 from . import test_portalgestor_audit
 from . import test_portalgestor_falta_justificada
+from . import test_portalgestor_usuario_falta_justificada
 from . import test_portalgestor_festivos
 from . import test_portalgestor_hogar_riesgo_report
 from . import test_portalgestor_optimizations

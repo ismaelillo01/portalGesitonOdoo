@@ -777,8 +777,20 @@ class TrabajoFijo(models.Model):
     def _get_target_specs(self):
         self.ensure_one()
         specs = defaultdict(list)
+        line_dates = sorted({line.fecha for line in self.line_ids if line.fecha})
+        absent_dates = (
+            self.env['usuarios.falta.justificada']._get_absent_dates_by_user(
+                self.usuario_id.ids,
+                line_dates[0],
+                line_dates[-1],
+            ).get(self.usuario_id.id, set())
+            if line_dates and self.usuario_id
+            else set()
+        )
         for line in self.line_ids.sorted(key=self._get_line_sort_key):
             if not line.fecha:
+                continue
+            if line.fecha in absent_dates:
                 continue
             specs[line.fecha].append({
                 'line_id': line.id,

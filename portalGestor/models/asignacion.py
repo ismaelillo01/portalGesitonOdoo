@@ -1270,6 +1270,18 @@ class Asignacion(models.Model):
             raise ValidationError(_("No puedes confirmar un horario para un usuario dado de baja."))
         if not self.usuario_id.has_ap_service:
             raise ValidationError(_("Solo puedes confirmar horarios para usuarios con el servicio AP activo."))
+        user_absence = self._get_user_absence_for_date()
+        if user_absence:
+            raise ValidationError(
+                _(
+                    "El usuario %(user)s tiene una falta justificada del %(start)s al %(end)s y no necesita asistencia."
+                )
+                % {
+                    'user': self.usuario_id.display_name or self.usuario_id.name,
+                    'start': fields.Date.to_string(user_absence.fecha_inicio),
+                    'end': fields.Date.to_string(user_absence.fecha_fin),
+                }
+            )
 
         lineas_con_trabajador = self.lineas_ids.filtered('trabajador_id').sorted(
             key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
@@ -1633,18 +1645,19 @@ class AsignacionLinea(models.Model):
 
         worker_ids = sorted(set(lines.mapped('trabajador_id').ids))
         dates = sorted({date_value for date_value in lines.mapped('fecha') if date_value})
-        absences_by_key = defaultdict(list)
+        absences_by_worker = defaultdict(list)
         if worker_ids and dates:
             absences = self.env['trabajadores.falta.justificada'].search(
                 [
                     ('state', '=', 'verified'),
                     ('trabajador_id', 'in', worker_ids),
-                    ('fecha', 'in', dates),
+                    ('fecha_inicio', '<=', dates[-1]),
+                    ('fecha_fin', '>=', dates[0]),
                 ],
                 order='hora_inicio asc, id asc',
             )
             for absence in absences:
-                absences_by_key[(absence.trabajador_id.id, absence.fecha)].append(absence)
+                absences_by_worker[absence.trabajador_id.id].append(absence)
 
         for line in lines:
             total_minutes = line._get_total_duration_minutes()
@@ -1660,7 +1673,11 @@ class AsignacionLinea(models.Model):
                 applied_absence = False
                 justified_minutes = 0
                 motivos = []
-                for absence in absences_by_key.get((line.trabajador_id.id, line.fecha), []):
+                for absence in absences_by_worker.get(line.trabajador_id.id, []):
+                    if not absence.fecha_inicio or not absence.fecha_fin:
+                        continue
+                    if not (absence.fecha_inicio <= line.fecha <= absence.fecha_fin):
+                        continue
                     overlap = min(line.hora_fin, absence.hora_fin) - max(line.hora_inicio, absence.hora_inicio)
                     if overlap <= 0:
                         continue
