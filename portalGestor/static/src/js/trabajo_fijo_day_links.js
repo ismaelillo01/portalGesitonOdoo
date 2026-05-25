@@ -75,33 +75,48 @@ patch(FormController.prototype, {
         ev.stopPropagation();
         ev.stopImmediatePropagation();
 
+        if (this.model?.root?.data?.manager_edit_blocked) {
+            this.portalGestorFixedNotification.add(
+                _t("No tienes permisos para interactuar con los horarios de este usuario."),
+                { type: "warning" }
+            );
+            return;
+        }
+
         const fixedId = await this.ensurePortalGestorFixedSaved();
         if (!fixedId) {
             return;
         }
 
-        if (wizardButton) {
-            const methodName = wizardButton.getAttribute("name");
-            if (!WIZARD_BUTTON_METHODS.has(methodName)) {
+        try {
+            if (wizardButton) {
+                const methodName = wizardButton.getAttribute("name");
+                if (!WIZARD_BUTTON_METHODS.has(methodName)) {
+                    return;
+                }
+                const action = await this.portalGestorFixedOrm.call(TARGET_MODEL, methodName, [[fixedId]]);
+                await this.openPortalGestorFixedAction(fixedId, action);
                 return;
             }
-            const action = await this.portalGestorFixedOrm.call(TARGET_MODEL, methodName, [[fixedId]]);
-            await this.openPortalGestorFixedAction(fixedId, action);
-            return;
-        }
 
-        const date = link.dataset.date;
-        if (!date) {
-            this.portalGestorFixedNotification.add(_t("Guarda el trabajo fijo antes de abrir los tramos de un dia."), {
-                type: "warning",
-            });
-            return;
+            const date = link.dataset.date;
+            if (!date) {
+                this.portalGestorFixedNotification.add(_t("Guarda el trabajo fijo antes de abrir los tramos de un dia."), {
+                    type: "warning",
+                });
+                return;
+            }
+            const action = await this.portalGestorFixedOrm.call(
+                TARGET_MODEL,
+                "action_open_day_lines",
+                [[fixedId], date]
+            );
+            await this.openPortalGestorFixedAction(fixedId, action);
+        } catch {
+            this.portalGestorFixedNotification.add(
+                _t("No tienes permisos para interactuar con los horarios de este usuario."),
+                { type: "warning" }
+            );
         }
-        const action = await this.portalGestorFixedOrm.call(
-            TARGET_MODEL,
-            "action_open_day_lines",
-            [[fixedId], date]
-        );
-        await this.openPortalGestorFixedAction(fixedId, action);
     },
 });

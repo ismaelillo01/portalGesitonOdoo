@@ -97,6 +97,9 @@ patch(FormController.prototype, {
         if (this.portalGestorLeaveHandled || !isPortalGestorExistingRecord(this)) {
             return;
         }
+        if (this.model?.root?.data?.manager_edit_blocked) {
+            return;
+        }
         this.portalGestorLeaveHandled = true;
         try {
             if (await this.model.root.isDirty()) {
