@@ -662,6 +662,31 @@ class TrabajoFijo(models.Model):
             'context': {'default_trabajo_fijo_id': self.id},
         }
 
+    def action_open_copy_year_wizard(self):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        if not self.confirmado or self.edit_session_pending:
+            raise ValidationError(_("Solo puedes copiar para el ano trabajos fijos ya verificados y sin edicion pendiente."))
+
+        source_month = int(self.month or 0)
+        defaults = {
+            'default_trabajo_fijo_id': self.id,
+        }
+        for month_number in range(1, 13):
+            defaults[f'default_month_{month_number}'] = month_number > source_month
+
+        view = self.env.ref('portalGestor.portalgestor_trabajo_fijo_copy_year_wizard_form')
+        return {
+            'name': 'Copiar para todo el ano',
+            'type': 'ir.actions.act_window',
+            'res_model': 'portalgestor.trabajo_fijo.copy_year.wizard',
+            'view_mode': 'form',
+            'view_id': view.id,
+            'views': [(view.id, 'form')],
+            'target': 'new',
+            'context': defaults,
+        }
+
     def _replace_date_lines_from_source(self, source_lines, target_date):
         self.ensure_one()
         Line = self.env['portalgestor.trabajo_fijo.linea']
@@ -773,6 +798,168 @@ class TrabajoFijo(models.Model):
 
     def action_copy_week_to_remaining(self, source_week_number):
         return self._copy_week(source_week_number, scope='remaining')
+
+    def _get_copy_year_source_date_for_target(self, target_date):
+        self.ensure_one()
+        source_start, source_end = self._get_month_bounds(self.month, self.year)
+        source_day_count = (source_end - source_start).days + 1
+        target_day = fields.Date.to_date(target_date).day
+        if target_day > source_day_count:
+            return False
+        source_day = target_day
+        return source_start.replace(day=source_day)
+
+    def _prepare_copy_year_line_vals(self, target_month):
+        self.ensure_one()
+        line_vals = []
+        source_lines_by_date = defaultdict(list)
+        for source_line in self.line_ids.sorted(key=self._get_line_sort_key):
+            if not source_line.fecha:
+                continue
+            source_lines_by_date[source_line.fecha].append(source_line)
+        target_start, target_end = self._get_month_bounds(target_month, self.year)
+        target_vals_by_date = {}
+        target_date = target_start
+        while target_date <= target_end:
+            source_date = self._get_copy_year_source_date_for_target(target_date)
+            source_day_lines = source_lines_by_date.get(source_date, []) if source_date else []
+            target_day_vals = []
+            for source_line in source_day_lines:
+                vals = {
+                    'fecha': target_date,
+                    'hora_inicio': source_line.hora_inicio,
+                    'hora_fin': source_line.hora_fin,
+                    'trabajador_id': source_line.trabajador_id.id,
+                    'sequence': source_line.sequence,
+                }
+                if 'kilometraje_km' in source_line._fields:
+                    vals['kilometraje_km'] = source_line.kilometraje_km
+                if 'desplazamiento_horas' in source_line._fields:
+                    vals['desplazamiento_horas'] = source_line.desplazamiento_horas
+                target_day_vals.append(vals)
+            if not target_day_vals and not source_date:
+                previous_week_date = target_date - timedelta(days=7)
+                if previous_week_date >= target_start:
+                    target_day_vals = [
+                        dict(previous_vals, fecha=target_date)
+                        for previous_vals in target_vals_by_date.get(previous_week_date, [])
+                    ]
+            target_vals_by_date[target_date] = target_day_vals
+            line_vals.extend(target_day_vals)
+            target_date += timedelta(days=1)
+        return line_vals
+
+    def _get_or_create_copy_year_target(self, target_month):
+        self.ensure_one()
+        TrabajoFijoModel = self.env['portalgestor.trabajo_fijo']
+        target = TrabajoFijoModel.search([
+            ('usuario_id', '=', self.usuario_id.id),
+            ('month', '=', str(target_month)),
+            ('year', '=', self.year),
+        ], limit=1)
+        if target:
+            return target
+        return TrabajoFijoModel.create({
+            'usuario_id': self.usuario_id.id,
+            'month': str(target_month),
+            'year': self.year,
+        })
+
+    def _apply_copy_year_to_month(self, target_month):
+        self.ensure_one()
+        target_month = int(target_month)
+        if target_month == int(self.month):
+            return False
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        line_vals = self._prepare_copy_year_line_vals(target_month)
+        month_label = MONTH_LABELS.get(str(target_month), str(target_month))
+        if not line_vals:
+            raise ValidationError(
+                _("No hay tramos copiables para %(month)s %(year)s.") % {
+                    'month': month_label,
+                    'year': self.year,
+                }
+            )
+
+        copy_context = dict(
+            self.env.context,
+            portalgestor_skip_trabajo_fijo_edit_check=True,
+            portalgestor_skip_trabajo_fijo_line_check=True,
+            portalgestor_skip_trabajo_fijo_same_day_warning=True,
+        )
+        target = self._get_or_create_copy_year_target(target_month).with_context(**copy_context)
+        target.line_ids.with_context(**copy_context).unlink()
+        target.with_context(**copy_context).write({
+            'confirmado': False,
+            'edit_session_pending': False,
+            'edit_snapshot_data': False,
+            'gestor_owner_id': self.env.user.id,
+        })
+
+        for vals in line_vals:
+            vals['trabajo_fijo_id'] = target.id
+        self.env['portalgestor.trabajo_fijo.linea'].with_context(**copy_context).create(line_vals)
+
+        target_specs = target._get_target_specs()
+        if not target_specs:
+            raise ValidationError(
+                _("No hay tramos confirmables para %(month)s %(year)s.") % {
+                    'month': month_label,
+                    'year': self.year,
+                }
+            )
+
+        conflicts = target.with_context(**copy_context)._collect_conflicts(target_specs)
+        if conflicts['protected']:
+            raise ValidationError(
+                _("No se puede copiar %(month)s %(year)s porque hay conflictos protegidos:\n%(summary)s") % {
+                    'month': month_label,
+                    'year': self.year,
+                    'summary': conflicts['protected_summary'],
+                }
+            )
+        if conflicts['overlapping']:
+            raise ValidationError(
+                _("No se puede copiar %(month)s %(year)s porque hay solapes:\n%(summary)s") % {
+                    'month': month_label,
+                    'year': self.year,
+                    'summary': conflicts['overlap_summary'],
+                }
+            )
+
+        target.with_context(**copy_context)._apply_confirmation(target_specs)
+        target._audit_log_fixed('confirm', 'confirmo')
+        return target
+
+    def action_copy_to_year_months(self, target_months):
+        self.ensure_one()
+        self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        if not self.confirmado or self.edit_session_pending:
+            raise ValidationError(_("Solo puedes copiar trabajos fijos ya verificados y sin edicion pendiente."))
+
+        source_month = int(self.month)
+        clean_months = sorted({
+            int(month)
+            for month in target_months
+            if int(month) != source_month and 1 <= int(month) <= 12
+        })
+        if not clean_months:
+            raise ValidationError(_("Selecciona al menos un mes destino distinto al mes origen."))
+
+        copied_targets = self.env['portalgestor.trabajo_fijo']
+        with self.env.cr.savepoint():
+            for month_number in clean_months:
+                copied_targets |= self._apply_copy_year_to_month(month_number)
+
+        copied_labels = ", ".join(MONTH_LABELS.get(str(target.month), str(target.month)) for target in copied_targets)
+        return self._build_feedback_action(
+            _("Se copiaron y verificaron %(count)s meses: %(months)s.") % {
+                'count': len(copied_targets),
+                'months': copied_labels,
+            },
+            title=_("Copia anual realizada"),
+            close=True,
+        )
 
     def _get_target_specs(self):
         self.ensure_one()
@@ -989,6 +1176,7 @@ class TrabajoFijo(models.Model):
         existing_generated_lines = AssignmentLine.search([
             ('trabajo_fijo_id', '=', self.id),
         ])
+        existing_generated_assignments = existing_generated_lines.mapped('asignacion_id')
         existing_by_template_line = {
             line.trabajo_fijo_linea_id.id: line
             for line in existing_generated_lines
@@ -1079,10 +1267,10 @@ class TrabajoFijo(models.Model):
                 portalgestor_skip_fixed_exception=True,
             ).unlink()
         touched_assignments = (
-            existing_generated_lines.mapped('asignacion_id')
+            existing_generated_assignments
             | self.asignacion_linea_ids.mapped('asignacion_id')
             | Assignment.browse([assignment.id for assignment in assignments_by_date.values()])
-        )
+        ).exists()
         touched_assignments.cleanup_empty_assignments()
         touched_assignments.exists().write({
             'confirmado': True,
@@ -1586,3 +1774,49 @@ class TrabajoFijoCopyWeekWizard(models.TransientModel):
     def action_apply_remaining(self):
         self.ensure_one()
         return self.trabajo_fijo_id.action_copy_week_to_remaining(self.source_week_number)
+
+
+class TrabajoFijoCopyYearWizard(models.TransientModel):
+    _name = 'portalgestor.trabajo_fijo.copy_year.wizard'
+    _description = 'Copiar trabajo fijo a meses del ano'
+
+    trabajo_fijo_id = fields.Many2one(
+        'portalgestor.trabajo_fijo',
+        string='Trabajo fijo origen',
+        required=True,
+        ondelete='cascade',
+    )
+    source_month = fields.Selection(
+        related='trabajo_fijo_id.month',
+        string='Mes origen',
+        readonly=True,
+    )
+    source_year = fields.Integer(
+        related='trabajo_fijo_id.year',
+        string='Ano',
+        readonly=True,
+    )
+    month_1 = fields.Boolean(string='Enero')
+    month_2 = fields.Boolean(string='Febrero')
+    month_3 = fields.Boolean(string='Marzo')
+    month_4 = fields.Boolean(string='Abril')
+    month_5 = fields.Boolean(string='Mayo')
+    month_6 = fields.Boolean(string='Junio')
+    month_7 = fields.Boolean(string='Julio')
+    month_8 = fields.Boolean(string='Agosto')
+    month_9 = fields.Boolean(string='Septiembre')
+    month_10 = fields.Boolean(string='Octubre')
+    month_11 = fields.Boolean(string='Noviembre')
+    month_12 = fields.Boolean(string='Diciembre')
+
+    def _get_selected_months(self):
+        self.ensure_one()
+        return [
+            month_number
+            for month_number in range(1, 13)
+            if getattr(self, f'month_{month_number}')
+        ]
+
+    def action_apply(self):
+        self.ensure_one()
+        return self.trabajo_fijo_id.action_copy_to_year_months(self._get_selected_months())

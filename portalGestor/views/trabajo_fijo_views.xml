@@ -22,6 +22,13 @@
               invisible="manager_edit_blocked or confirmado == False or edit_session_pending == True"
             />
             <button
+              name="action_open_copy_year_wizard"
+              string="Copiar para todo el ano"
+              type="object"
+              class="btn-secondary"
+              invisible="manager_edit_blocked or confirmado == False or edit_session_pending == True"
+            />
+            <button
               name="action_descartar_edicion"
               string="Descartar cambios"
               type="object"
@@ -349,6 +356,47 @@
           <footer>
             <button string="Copiar a la siguiente" type="object" name="action_apply_next" class="btn-primary"/>
             <button string="Copiar para todo el mes" type="object" name="action_apply_remaining" class="btn-secondary"/>
+            <button string="Cancelar" special="cancel" class="btn-secondary"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="portalgestor_trabajo_fijo_copy_year_wizard_form">
+      <field name="name">portalgestor.trabajo_fijo.copy_year.wizard.form</field>
+      <field name="model">portalgestor.trabajo_fijo.copy_year.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Copiar para todo el ano">
+          <sheet>
+            <group string="Origen">
+              <field name="trabajo_fijo_id" readonly="1"/>
+              <field name="source_month" readonly="1"/>
+              <field name="source_year" readonly="1"/>
+            </group>
+            <div class="alert alert-info" role="alert">
+              Se copiara el patron semanal del mes origen a los meses seleccionados. Los meses existentes se sobrescribiran y quedaran verificados.
+            </div>
+            <group string="Meses destino">
+              <group>
+                <field name="month_1" readonly="source_month == '1'"/>
+                <field name="month_2" readonly="source_month == '2'"/>
+                <field name="month_3" readonly="source_month == '3'"/>
+                <field name="month_4" readonly="source_month == '4'"/>
+                <field name="month_5" readonly="source_month == '5'"/>
+                <field name="month_6" readonly="source_month == '6'"/>
+              </group>
+              <group>
+                <field name="month_7" readonly="source_month == '7'"/>
+                <field name="month_8" readonly="source_month == '8'"/>
+                <field name="month_9" readonly="source_month == '9'"/>
+                <field name="month_10" readonly="source_month == '10'"/>
+                <field name="month_11" readonly="source_month == '11'"/>
+                <field name="month_12" readonly="source_month == '12'"/>
+              </group>
+            </group>
+          </sheet>
+          <footer>
+            <button string="Copiar meses seleccionados" type="object" name="action_apply" class="btn-primary"/>
             <button string="Cancelar" special="cancel" class="btn-secondary"/>
           </footer>
         </form>
