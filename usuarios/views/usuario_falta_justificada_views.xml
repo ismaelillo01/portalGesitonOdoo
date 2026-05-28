@@ -1,0 +1,90 @@
+<odoo>
+  <data>
+    <record model="ir.ui.view" id="usuarios_falta_justificada_list">
+      <field name="name">usuarios.falta.justificada.list</field>
+      <field name="model">usuarios.falta.justificada</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="usuario_id"/>
+          <field name="fecha_inicio"/>
+          <field name="fecha_fin"/>
+          <field name="motivo" optional="show"/>
+          <field name="usuario_grupo" optional="hide"/>
+        </list>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_falta_justificada_form">
+      <field name="name">usuarios.falta.justificada.form</field>
+      <field name="model">usuarios.falta.justificada</field>
+      <field name="arch" type="xml">
+        <form string="Falta justificada de usuario">
+          <sheet>
+            <group>
+              <field name="usuario_id" options="{'no_create': True, 'no_open': True}"/>
+              <field name="fecha_inicio"/>
+              <field name="fecha_fin"/>
+              <field name="motivo" placeholder="Motivo de la falta justificada..."/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_falta_justificada_search">
+      <field name="name">usuarios.falta.justificada.search</field>
+      <field name="model">usuarios.falta.justificada</field>
+      <field name="arch" type="xml">
+        <search>
+          <field name="usuario_id"/>
+          <field name="fecha_inicio"/>
+          <field name="fecha_fin"/>
+          <field name="usuario_grupo"/>
+          <filter
+            name="active_today"
+            string="Activas hoy"
+            domain="[('fecha_inicio', '&lt;=', context_today()), ('fecha_fin', '&gt;=', context_today())]"
+          />
+          <group expand="0" string="Agrupar por">
+            <filter name="group_usuario" string="Usuario" context="{'group_by': 'usuario_id'}"/>
+            <filter name="group_grupo" string="Grupo" context="{'group_by': 'usuario_grupo'}"/>
+            <filter name="group_inicio" string="Fecha inicio" context="{'group_by': 'fecha_inicio'}"/>
+          </group>
+        </search>
+      </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="usuarios_action_falta_justificada_window">
+      <field name="name">Faltas justificadas de usuarios</field>
+      <field name="res_model">usuarios.falta.justificada</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <record model="ir.ui.view" id="usuarios_usuario_form_faltas_justificadas">
+      <field name="name">usuarios.usuario.form.faltas.justificadas</field>
+      <field name="model">usuarios.usuario</field>
+      <field name="inherit_id" ref="usuarios.usuario_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='baja']/../.." position="after">
+          <group string="Faltas justificadas">
+            <field name="falta_justificada_ids" readonly="manager_edit_blocked" context="{'default_usuario_id': id}">
+              <list>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
+                <field name="motivo"/>
+              </list>
+            </field>
+          </group>
+        </xpath>
+      </field>
+    </record>
+
+    <menuitem
+      name="Faltas justificadas"
+      id="usuarios_menu_faltas_justificadas"
+      parent="usuarios.menu_root"
+      action="usuarios.usuarios_action_falta_justificada_window"
+      sequence="20"
+    />
+  </data>
+</odoo>
