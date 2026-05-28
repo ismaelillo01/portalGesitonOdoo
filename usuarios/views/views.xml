@@ -17,7 +17,8 @@
           <field name="name"/>
           <field name="apellido1"/>
           <field name="apellido2"/>
-          <field name="dni_nie"/>
+          <field name="codigo_autenticacion"/>
+          <field name="privado"/>
           <field name="telefono"/>
           <field name="localidad_id"/>
           <field name="gestor_id" optional="show" options="{'no_open': True}"/>
@@ -47,7 +48,8 @@
                 <field name="name" readonly="manager_edit_blocked"/>
                 <field name="apellido1" readonly="manager_edit_blocked"/>
                 <field name="apellido2" readonly="manager_edit_blocked"/>
-                <field name="dni_nie" readonly="manager_edit_blocked"/>
+                <field name="codigo_autenticacion" readonly="1"/>
+                <field name="privado" readonly="manager_edit_blocked"/>
               </group>
               <group string="Datos de Contacto">
                 <field name="telefono" readonly="manager_edit_blocked"/>

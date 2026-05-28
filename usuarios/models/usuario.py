@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import random
+
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
@@ -17,10 +19,18 @@ class UsuarioServicio(models.Model):
     ]
 
 
+
+
+
 class Usuario(models.Model):
     _name = 'usuarios.usuario'
     _description = 'Usuario'
     _order = 'name, apellido1, apellido2, id'
+
+    _sql_constraints = [
+        ('usuarios_usuario_codigo_autenticacion_uniq', 'unique(codigo_autenticacion)',
+         'El codigo de autenticacion debe ser unico.'),
+    ]
 
     _HOGAR_RIESGO_AGUSTO_SELECTION = [
         ('hr1', 'HR1'),
@@ -58,7 +68,8 @@ class Usuario(models.Model):
         ],
         string='Grado de dependencia',
     )
-    dni_nie = fields.Char(string='DNI o NIE')
+    codigo_autenticacion = fields.Char(string='Codigo de Autenticacion', copy=False)
+    privado = fields.Boolean(string='Privado', default=False)
     telefono = fields.Char(string='Telefono')
     direccion = fields.Char(string='Direccion')
     localidad_id = fields.Many2one(
@@ -215,8 +226,8 @@ class Usuario(models.Model):
                 values['apellido1'] = ''
             if 'apellido2' in values:
                 values['apellido2'] = ''
-            if 'dni_nie' in values:
-                values['dni_nie'] = ''
+            if 'codigo_autenticacion' in values:
+                values['codigo_autenticacion'] = ''
             if 'telefono' in values:
                 values['telefono'] = ''
             if 'direccion' in values:
@@ -294,7 +305,16 @@ class Usuario(models.Model):
 
     @api.onchange('grupo')
     def _onchange_grupo_hogar_riesgo(self):
+        viewer = self._get_security_viewer()
         for record in self:
+            if record.grupo and not viewer._can_manage_target_group(record.grupo):
+                record.grupo = 'agusto'
+                return {
+                    'warning': {
+                        'title': _("Grupo no permitido"),
+                        'message': _("No tienes permisos para asignar usuarios al grupo Intecum."),
+                    }
+                }
             if record.hogar_riesgo and not record._is_valid_hogar_riesgo_for_group(record.grupo, record.hogar_riesgo):
                 record.hogar_riesgo = False
 
@@ -423,9 +443,25 @@ class Usuario(models.Model):
             for user in users
         }
 
+    @api.model
+    def _generate_unique_codigos(self, count):
+        existing = set(self.sudo().search([('codigo_autenticacion', '!=', False)]).mapped('codigo_autenticacion'))
+        available = [f'{i:04d}' for i in range(10000) if f'{i:04d}' not in existing]
+        if len(available) < count:
+            raise ValidationError(_("No hay suficientes codigos de autenticacion disponibles (maximo 9999 usuarios)."))
+        return random.sample(available, count)
+
     @api.model_create_multi
     def create(self, vals_list):
         self._ensure_current_user_can_manage_target_groups(vals.get('grupo') for vals in vals_list)
+        without_code = [vals for vals in vals_list if not vals.get('codigo_autenticacion')]
+        if without_code:
+            codes = self._generate_unique_codigos(len(without_code))
+            idx = 0
+            for vals in vals_list:
+                if not vals.get('codigo_autenticacion'):
+                    vals['codigo_autenticacion'] = codes[idx]
+                    idx += 1
         return super().create(vals_list)
 
     def write(self, vals):

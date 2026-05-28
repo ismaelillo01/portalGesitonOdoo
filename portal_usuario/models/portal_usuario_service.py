@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import calendar
-import re
 from collections import defaultdict
 from datetime import timedelta
 
@@ -30,10 +29,6 @@ class PortalUsuarioService(models.AbstractModel):
     _description = 'Servicio del Portal Movil de Usuario'
 
     @api.model
-    def _normalize_dni(self, value):
-        return re.sub(r'[\s-]+', '', value or '').upper()
-
-    @api.model
     def _format_float_hour(self, hour_float):
         from odoo.addons.portalGestor.models.utils import format_float_hour
         return format_float_hour(hour_float)
@@ -51,21 +46,17 @@ class PortalUsuarioService(models.AbstractModel):
         return MONTH_LABELS.get(int(month), '')
 
     @api.model
-    def _find_usuario_by_dni(self, dni_nie):
-        """Find a usuario by DNI/NIE, normalizing spaces/hyphens/case."""
-        normalized_dni = self._normalize_dni(dni_nie)
+    def _find_usuario_by_codigo(self, codigo):
+        """Find a usuario by their 4-digit authentication code."""
+        codigo = (codigo or '').strip()
         Usuario = self.env['usuarios.usuario'].sudo()
-        if not normalized_dni:
+        if not codigo:
             return Usuario.browse(), 'empty'
 
-        # Pre-filter inactive users at SQL level
-        usuarios_with_dni = Usuario.search([
-            ('dni_nie', '!=', False),
+        matches = Usuario.search([
+            ('codigo_autenticacion', '=', codigo),
             ('baja', '=', False),
         ])
-        matches = usuarios_with_dni.filtered(
-            lambda usuario: self._normalize_dni(usuario.dni_nie) == normalized_dni
-        )
         if not matches:
             return Usuario.browse(), 'not_found'
         if len(matches) > 1:

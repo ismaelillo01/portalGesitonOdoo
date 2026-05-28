@@ -22,22 +22,22 @@
                         <div class="o_portal_usuario_login_intro">
                             <p class="o_portal_usuario_login_kicker">Portal Usuario</p>
                             <h1>Consulta tu atencion</h1>
-                            <p>Introduce tu DNI/NIE para ver tus dias y horas de atencion confirmados.</p>
+                            <p>Introduce tu codigo de autenticacion de 4 digitos para ver tus dias y horas de atencion confirmados.</p>
                         </div>
 
                         <div class="o_portal_usuario_field">
-                            <label for="portal_usuario_dni">DNI/NIE</label>
+                            <label for="portal_usuario_codigo">Codigo de Autenticacion</label>
                             <input
-                                id="portal_usuario_dni"
-                                name="dni_nie"
+                                id="portal_usuario_codigo"
+                                name="codigo"
                                 type="text"
-                                t-att-value="dni_nie"
-                                placeholder="12345678X o X1234567L"
+                                t-att-value="codigo"
+                                placeholder="0000"
                                 required="required"
-                                autocapitalize="characters"
-                                inputmode="text"
+                                maxlength="4"
+                                inputmode="numeric"
+                                pattern="[0-9]{4}"
                             />
-                            <span>Se aceptan espacios o guiones; los normalizamos automaticamente.</span>
                         </div>
 
                         <p class="o_portal_usuario_error" t-if="error" role="alert">

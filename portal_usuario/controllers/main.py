@@ -36,10 +36,10 @@ class PortalUsuarioController(http.Controller):
             return request.env['usuarios.usuario'].sudo().browse()
         return usuario
 
-    def _render_login(self, error=False, dni_nie=''):
+    def _render_login(self, error=False, codigo=''):
         return request.render('portal_usuario.login', {
             'error': error,
-            'dni_nie': dni_nie or '',
+            'codigo': codigo or '',
         })
 
     @http.route(['/usuario'], type='http', auth='public', methods=['GET'], sitemap=False)
@@ -50,16 +50,16 @@ class PortalUsuarioController(http.Controller):
 
     @http.route(['/usuario/login'], type='http', auth='public', methods=['POST'], csrf=True, sitemap=False)
     def portal_usuario_login_submit(self, **post):
-        dni_nie = post.get('dni_nie') or ''
-        usuario, error_code = self._service(sudo=True)._find_usuario_by_dni(dni_nie)
+        codigo = post.get('codigo') or ''
+        usuario, error_code = self._service(sudo=True)._find_usuario_by_codigo(codigo)
         if error_code:
             if error_code == 'duplicate':
-                error = 'No se puede iniciar sesion con este DNI/NIE. Contacte con administracion.'
+                error = 'No se puede iniciar sesion con este codigo. Contacte con administracion.'
             elif error_code == 'no_ap_service':
                 error = 'El usuario no tiene el servicio de Atencion Personal activo.'
             else:
-                error = 'No se ha encontrado ningun usuario con ese DNI/NIE.'
-            return self._render_login(error=error, dni_nie=dni_nie)
+                error = 'No se ha encontrado ningun usuario con ese codigo.'
+            return self._render_login(error=error, codigo=codigo)
 
         request.session['portal_usuario_usuario_id'] = usuario.id
         request.session['portal_usuario_login_ts'] = time.time()
