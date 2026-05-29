@@ -548,7 +548,11 @@ patch(CalendarModel.prototype, {
         }
 
         data.portalGestorBucketEvents = [];
-        data.portalGestorUserHoursSummary = await this.loadPortalGestorUserHoursSummary(data);
+        try {
+            data.portalGestorUserHoursSummary = await this.loadPortalGestorUserHoursSummary(data);
+        } catch {
+            data.portalGestorUserHoursSummary = null;
+        }
         data.portalGestorHolidayMarkers = await this.loadPortalGestorHolidayMarkers(
             data.range.start.toISODate(),
             data.range.end.toISODate(),

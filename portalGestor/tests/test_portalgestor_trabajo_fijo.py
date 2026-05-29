@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -33,10 +34,14 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
 
     @classmethod
     def _create_fixed(cls):
+        return cls._create_fixed_for('4', 2026)
+
+    @classmethod
+    def _create_fixed_for(cls, month, year):
         return cls.env['portalgestor.trabajo_fijo'].create({
             'usuario_id': cls.usuario.id,
-            'month': '4',
-            'year': 2026,
+            'month': str(month),
+            'year': year,
         })
 
     def test_fixed_work_generates_confirmed_daily_assignments(self):
@@ -63,6 +68,42 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(assignment.lineas_ids.trabajo_fijo_id, fixed)
         self.assertEqual(assignment.lineas_ids.trabajo_fijo_linea_id, line)
         self.assertEqual(assignment.lineas_ids.trabajador_id, self.worker_a)
+
+    def test_vacation_releases_generated_fixed_work_day(self):
+        fixed = self._create_fixed()
+        template_line = self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-04-06'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+        generated_line = self.env['portalgestor.asignacion.linea'].search([
+            ('trabajo_fijo_id', '=', fixed.id),
+            ('fecha', '=', fields.Date.to_date('2026-04-06')),
+        ], limit=1)
+        self.assertEqual(generated_line.trabajador_id, self.worker_a)
+
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': self.worker_a.id,
+            'date_start': fields.Date.to_date('2026-04-06'),
+            'date_stop': fields.Date.to_date('2026-04-06'),
+        })
+
+        generated_line.invalidate_recordset([
+            'trabajador_id',
+            'hora_inicio',
+            'hora_fin',
+            'trabajo_fijo_id',
+            'trabajo_fijo_linea_id',
+        ])
+        self.assertFalse(generated_line.trabajador_id)
+        self.assertEqual(generated_line.hora_inicio, 8.0)
+        self.assertEqual(generated_line.hora_fin, 10.0)
+        self.assertFalse(generated_line.trabajo_fijo_id)
+        self.assertFalse(generated_line.trabajo_fijo_linea_id)
+        self.assertEqual(template_line.trabajador_id, self.worker_a)
 
     def test_delete_fixed_work_returns_safe_navigation_action(self):
         fixed = self._create_fixed()
@@ -190,6 +231,18 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
 
         seed_action = fixed.action_open_seed_wizard()
         copy_action = fixed.action_open_copy_week_wizard()
+        with self.assertRaises(ValidationError):
+            fixed.action_open_copy_year_wizard()
+
+        self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-04-06'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+        copy_year_action = fixed.action_open_copy_year_wizard()
 
         self.assertEqual(seed_action['target'], 'new')
         self.assertEqual(seed_action['views'][0][1], 'form')
@@ -197,6 +250,128 @@ class TestPortalGestorTrabajoFijo(TransactionCase):
         self.assertEqual(copy_action['target'], 'new')
         self.assertEqual(copy_action['views'][0][1], 'form')
         self.assertTrue(copy_action['view_id'])
+        self.assertEqual(copy_year_action['target'], 'new')
+        self.assertEqual(copy_year_action['res_model'], 'portalgestor.trabajo_fijo.copy_year.wizard')
+        self.assertFalse(copy_year_action['context']['default_month_4'])
+        self.assertTrue(copy_year_action['context']['default_month_5'])
+        self.assertTrue(copy_year_action['context']['default_month_12'])
+
+    def test_copy_year_creates_confirmed_months_by_day_number_and_fills_extra_days(self):
+        fixed = self._create_fixed_for('6', 2026)
+        self.env['portalgestor.trabajo_fijo.linea'].create([
+            {
+                'trabajo_fijo_id': fixed.id,
+                'fecha': fields.Date.to_date('2026-06-20'),
+                'hora_inicio': 9.0,
+                'hora_fin': 11.0,
+                'trabajador_id': self.worker_b.id,
+            },
+            {
+                'trabajo_fijo_id': fixed.id,
+                'fecha': fields.Date.to_date('2026-06-24'),
+                'hora_inicio': 8.0,
+                'hora_fin': 10.0,
+                'trabajador_id': self.worker_a.id,
+            },
+            {
+                'trabajo_fijo_id': fixed.id,
+                'fecha': fields.Date.to_date('2026-06-30'),
+                'hora_inicio': 11.0,
+                'hora_fin': 12.0,
+                'trabajador_id': self.worker_b.id,
+            },
+        ])
+        fixed.action_verificar_y_confirmar()
+
+        wizard = self.env['portalgestor.trabajo_fijo.copy_year.wizard'].create({
+            'trabajo_fijo_id': fixed.id,
+            'month_7': True,
+        })
+        action = wizard.action_apply()
+
+        self.assertEqual(action['type'], 'ir.actions.client')
+        july = self.env['portalgestor.trabajo_fijo'].search([
+            ('usuario_id', '=', self.usuario.id),
+            ('month', '=', '7'),
+            ('year', '=', 2026),
+        ], limit=1)
+        self.assertTrue(july.confirmado)
+        self.assertEqual(july.line_ids.filtered(lambda line: line.hora_inicio == 8.0).mapped('fecha'), [
+            fields.Date.to_date('2026-07-24'),
+            fields.Date.to_date('2026-07-31'),
+        ])
+        self.assertEqual(july.line_ids.filtered(lambda line: line.hora_inicio == 9.0).fecha, fields.Date.to_date('2026-07-20'))
+        self.assertEqual(july.line_ids.filtered(lambda line: line.hora_inicio == 11.0).mapped('fecha'), [
+            fields.Date.to_date('2026-07-30'),
+        ])
+        self.assertTrue(july.asignacion_linea_ids)
+        self.assertTrue(all(july.asignacion_linea_ids.mapped('asignacion_id.confirmado')))
+
+    def test_copy_year_overwrites_existing_target_month(self):
+        source = self._create_fixed_for('1', 2026)
+        self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': source.id,
+            'fecha': fields.Date.to_date('2026-01-05'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        source.action_verificar_y_confirmar()
+
+        target = self._create_fixed_for('2', 2026)
+        self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': target.id,
+            'fecha': fields.Date.to_date('2026-02-03'),
+            'hora_inicio': 14.0,
+            'hora_fin': 16.0,
+            'trabajador_id': self.worker_b.id,
+        })
+        target.action_verificar_y_confirmar()
+        old_assignment_line = target.asignacion_linea_ids
+        self.assertTrue(old_assignment_line)
+
+        self.env['portalgestor.trabajo_fijo.copy_year.wizard'].create({
+            'trabajo_fijo_id': source.id,
+            'month_2': True,
+        }).action_apply()
+
+        target.invalidate_recordset(['line_ids', 'asignacion_linea_ids', 'confirmado'])
+        self.assertTrue(target.confirmado)
+        self.assertEqual(len(target.line_ids), 1)
+        self.assertEqual(target.line_ids.fecha, fields.Date.to_date('2026-02-05'))
+        self.assertEqual(target.line_ids.trabajador_id, self.worker_a)
+        self.assertFalse(old_assignment_line.exists())
+
+    def test_copy_year_rolls_back_all_months_when_one_target_fails(self):
+        fixed = self._create_fixed_for('1', 2026)
+        self.env['portalgestor.trabajo_fijo.linea'].create({
+            'trabajo_fijo_id': fixed.id,
+            'fecha': fields.Date.to_date('2026-01-05'),
+            'hora_inicio': 8.0,
+            'hora_fin': 10.0,
+            'trabajador_id': self.worker_a.id,
+        })
+        fixed.action_verificar_y_confirmar()
+        self.env['trabajadores.vacacion'].create({
+            'trabajador_id': self.worker_a.id,
+            'date_start': fields.Date.to_date('2026-03-05'),
+            'date_stop': fields.Date.to_date('2026-03-05'),
+        })
+
+        wizard = self.env['portalgestor.trabajo_fijo.copy_year.wizard'].create({
+            'trabajo_fijo_id': fixed.id,
+            'month_2': True,
+            'month_3': True,
+        })
+        with self.assertRaises(ValidationError):
+            wizard.action_apply()
+
+        february = self.env['portalgestor.trabajo_fijo'].search([
+            ('usuario_id', '=', self.usuario.id),
+            ('month', '=', '2'),
+            ('year', '=', 2026),
+        ])
+        self.assertFalse(february)
 
     def test_open_day_lines_starts_safe_edit_session_for_confirmed_fixed(self):
         fixed = self._create_fixed()

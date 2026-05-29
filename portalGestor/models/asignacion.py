@@ -514,7 +514,9 @@ class Asignacion(models.Model):
     def action_descartar_edicion(self):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
-        self._restore_edit_snapshot()
+        snapshot = self._audit_assignment_snapshot()
+        self.with_context(portalgestor_skip_audit=True)._restore_edit_snapshot()
+        self._audit_log_assignment('discard', 'descarto cambios de', snapshot=snapshot)
         return True
 
     @api.model
@@ -549,6 +551,54 @@ class Asignacion(models.Model):
             PORTALGESTOR_CALENDAR_CHANNEL,
             PORTALGESTOR_CALENDAR_NOTIFICATION,
             payload,
+        )
+
+    @api.model
+    def _audit_model(self):
+        return self.env['portalgestor.audit.log']
+
+    @api.model
+    def _audit_gestor_name(self):
+        return self._audit_model().display_record_name(self.env.user)
+
+    def _audit_assignment_snapshot(self):
+        self.ensure_one()
+        audit = self._audit_model()
+        usuario_name = audit.display_record_name(self.usuario_id)
+        date_label = audit.format_date_label(self.fecha)
+        target_label = "horario de %s del %s" % (usuario_name or 'usuario sin nombre', date_label or 'sin fecha')
+        return {
+            'usuario': self.usuario_id,
+            'usuario_name': usuario_name,
+            'usuario_grupo': self.usuario_id.grupo or False,
+            'date_label': date_label,
+            'target_label': target_label,
+            'assignment_id': self.id,
+        }
+
+    def _audit_log_assignment(self, action_type, verb, snapshot=False, detail=False, payload=False):
+        audit = self._audit_model()
+        if audit.should_skip_schedule_audit():
+            return False
+        record = self[:1]
+        if not snapshot:
+            record.ensure_one()
+        data = snapshot or self._audit_assignment_snapshot()
+        summary = "Gestor %s %s %s" % (self._audit_gestor_name(), verb, data['target_label'])
+        technical_payload = dict(payload or {})
+        technical_payload.setdefault('asignacion_id', data.get('assignment_id') or (record.id if record else False))
+        return audit.create_event(
+            action_type,
+            'daily_assignment',
+            summary,
+            detail=detail,
+            usuario=data.get('usuario') if data.get('usuario') and data.get('usuario').exists() else False,
+            asignacion=record if record and record.exists() else False,
+            usuario_name=data.get('usuario_name'),
+            usuario_grupo=data.get('usuario_grupo'),
+            target_label=data.get('target_label'),
+            date_label=data.get('date_label'),
+            technical_payload=technical_payload,
         )
 
     @api.model
@@ -1041,6 +1091,8 @@ class Asignacion(models.Model):
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             records = super().create(vals_list)
             records.mapped('lineas_ids')._recompute_falta_justificada_metrics()
+            for record in records:
+                record._audit_log_assignment('create', 'creo')
             return records
 
         records = super(Asignacion, self.with_context(portalgestor_skip_calendar_notify=True)).create(vals_list)
@@ -1051,6 +1103,8 @@ class Asignacion(models.Model):
                 action_kind='create',
             )
         )
+        for record in records:
+            record._audit_log_assignment('create', 'creo')
         return records.with_env(self.env)
 
     def write(self, vals):
@@ -1060,10 +1114,23 @@ class Asignacion(models.Model):
         self._ensure_current_user_can_manage_users(target_users)
         if vals.get('confirmado') is True:
             vals = dict(vals, edit_session_pending=False, edit_snapshot_data=False)
+        audit_before = {}
+        should_audit_write = bool({'usuario_id', 'fecha'} & set(vals)) and not self._audit_model().should_skip_schedule_audit()
+        if should_audit_write:
+            audit_before = {record.id: record._audit_assignment_snapshot() for record in self}
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             result = super().write(vals)
             if 'fecha' in vals or 'lineas_ids' in vals:
                 self.mapped('lineas_ids')._recompute_falta_justificada_metrics()
+            if should_audit_write:
+                for record in self.exists():
+                    before = audit_before.get(record.id)
+                    after = record._audit_assignment_snapshot()
+                    detail = "Antes: %s\nAhora: %s" % (
+                        before.get('target_label') if before else '',
+                        after.get('target_label'),
+                    )
+                    record._audit_log_assignment('write', 'modifico', snapshot=after, detail=detail)
             return result
 
         before_state = self._get_calendar_realtime_snapshot()
@@ -1085,12 +1152,27 @@ class Asignacion(models.Model):
                 action_kind='write',
             )
         )
+        if should_audit_write:
+            for record in self.exists():
+                before = audit_before.get(record.id)
+                after = record._audit_assignment_snapshot()
+                detail = "Antes: %s\nAhora: %s" % (
+                    before.get('target_label') if before else '',
+                    after.get('target_label'),
+                )
+                record._audit_log_assignment('write', 'modifico', snapshot=after, detail=detail)
         return result
 
     def unlink(self):
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        audit_snapshots = []
+        if not self._audit_model().should_skip_schedule_audit():
+            audit_snapshots = [record._audit_assignment_snapshot() for record in self]
         if self.env.context.get('portalgestor_skip_calendar_notify'):
-            return super().unlink()
+            result = super().unlink()
+            for snapshot in audit_snapshots:
+                self.browse()._audit_log_assignment('delete', 'elimino', snapshot=snapshot)
+            return result
 
         before_state = self._get_calendar_realtime_snapshot()
         result = super(Asignacion, self.with_context(portalgestor_skip_calendar_notify=True)).unlink()
@@ -1100,6 +1182,8 @@ class Asignacion(models.Model):
                 action_kind='unlink',
             )
         )
+        for snapshot in audit_snapshots:
+            self.browse()._audit_log_assignment('delete', 'elimino', snapshot=snapshot)
         return result
 
     def _get_verification_action(self, asignacion_mensual_id=False):
@@ -1176,7 +1260,9 @@ class Asignacion(models.Model):
         result = self._get_verification_action()
         if isinstance(result, dict):
             return result
-        return self._apply_confirmation_as_current_manager()
+        result = self._apply_confirmation_as_current_manager()
+        self._audit_log_assignment('confirm', 'confirmo')
+        return result
 
     def _run_verification_checks(self):
         self.ensure_one()
@@ -1184,6 +1270,18 @@ class Asignacion(models.Model):
             raise ValidationError(_("No puedes confirmar un horario para un usuario dado de baja."))
         if not self.usuario_id.has_ap_service:
             raise ValidationError(_("Solo puedes confirmar horarios para usuarios con el servicio AP activo."))
+        user_absence = self._get_user_absence_for_date()
+        if user_absence:
+            raise ValidationError(
+                _(
+                    "El usuario %(user)s tiene una falta justificada del %(start)s al %(end)s y no necesita asistencia."
+                )
+                % {
+                    'user': self.usuario_id.display_name or self.usuario_id.name,
+                    'start': fields.Date.to_string(user_absence.fecha_inicio),
+                    'end': fields.Date.to_string(user_absence.fecha_fin),
+                }
+            )
 
         lineas_con_trabajador = self.lineas_ids.filtered('trabajador_id').sorted(
             key=lambda linea: (linea.hora_inicio, linea.hora_fin, linea.id)
@@ -1267,6 +1365,7 @@ class Asignacion(models.Model):
         if self.confirmado and not self.edit_session_pending:
             self._set_edit_snapshot()
         self.confirmado = False
+        self._audit_log_assignment('edit', 'edito')
         return True
 
     def action_eliminar_horario(self):
@@ -1439,6 +1538,73 @@ class AsignacionLinea(models.Model):
         total_minutes = int(round((hour_float or 0.0) * 60))
         return '%02d:%02d' % (total_minutes // 60, total_minutes % 60)
 
+    @api.model
+    def _audit_model(self):
+        return self.env['portalgestor.audit.log']
+
+    @api.model
+    def _audit_gestor_name(self):
+        return self._audit_model().display_record_name(self.env.user)
+
+    def _audit_line_snapshot(self):
+        self.ensure_one()
+        audit = self._audit_model()
+        assignment = self.asignacion_id
+        usuario = assignment.usuario_id
+        trabajador = self.trabajador_id
+        usuario_name = audit.display_record_name(usuario)
+        trabajador_name = audit.display_record_name(trabajador)
+        date_label = audit.format_date_label(self.fecha or assignment.fecha)
+        hour_range = audit.format_hour_range_label(self.hora_inicio, self.hora_fin)
+        worker_fragment = "con AP %s" % trabajador_name if trabajador_name else "sin AP"
+        target_label = "tramo %s %s al horario de %s del %s" % (
+            hour_range,
+            worker_fragment,
+            usuario_name or 'usuario sin nombre',
+            date_label or 'sin fecha',
+        )
+        return {
+            'line_id': self.id,
+            'assignment': assignment,
+            'assignment_id': assignment.id,
+            'usuario': usuario,
+            'usuario_name': usuario_name,
+            'usuario_grupo': usuario.grupo or False,
+            'trabajador': trabajador,
+            'trabajador_name': trabajador_name,
+            'date_label': date_label,
+            'hour_range': hour_range,
+            'target_label': target_label,
+        }
+
+    def _audit_log_line(self, action_type, verb=False, snapshot=False, detail=False, payload=False, summary=False):
+        audit = self._audit_model()
+        if audit.should_skip_schedule_audit():
+            return False
+        record = self[:1]
+        if not snapshot:
+            record.ensure_one()
+        data = snapshot or self._audit_line_snapshot()
+        summary = summary or "Gestor %s %s %s" % (self._audit_gestor_name(), verb, data['target_label'])
+        technical_payload = dict(payload or {})
+        technical_payload.setdefault('line_id', data.get('line_id') or (record.id if record else False))
+        technical_payload.setdefault('asignacion_id', data.get('assignment_id'))
+        return audit.create_event(
+            action_type,
+            'daily_line',
+            summary,
+            detail=detail,
+            usuario=data.get('usuario') if data.get('usuario') and data.get('usuario').exists() else False,
+            trabajador=data.get('trabajador') if data.get('trabajador') and data.get('trabajador').exists() else False,
+            asignacion=data.get('assignment') if data.get('assignment') and data.get('assignment').exists() else False,
+            usuario_name=data.get('usuario_name'),
+            trabajador_name=data.get('trabajador_name'),
+            usuario_grupo=data.get('usuario_grupo'),
+            target_label=data.get('target_label'),
+            date_label=data.get('date_label'),
+            technical_payload=technical_payload,
+        )
+
     def _get_total_duration_minutes(self):
         self.ensure_one()
         return self._float_hours_to_minutes((self.hora_fin or 0.0) - (self.hora_inicio or 0.0))
@@ -1479,18 +1645,19 @@ class AsignacionLinea(models.Model):
 
         worker_ids = sorted(set(lines.mapped('trabajador_id').ids))
         dates = sorted({date_value for date_value in lines.mapped('fecha') if date_value})
-        absences_by_key = defaultdict(list)
+        absences_by_worker = defaultdict(list)
         if worker_ids and dates:
             absences = self.env['trabajadores.falta.justificada'].search(
                 [
                     ('state', '=', 'verified'),
                     ('trabajador_id', 'in', worker_ids),
-                    ('fecha', 'in', dates),
+                    ('fecha_inicio', '<=', dates[-1]),
+                    ('fecha_fin', '>=', dates[0]),
                 ],
                 order='hora_inicio asc, id asc',
             )
             for absence in absences:
-                absences_by_key[(absence.trabajador_id.id, absence.fecha)].append(absence)
+                absences_by_worker[absence.trabajador_id.id].append(absence)
 
         for line in lines:
             total_minutes = line._get_total_duration_minutes()
@@ -1506,7 +1673,11 @@ class AsignacionLinea(models.Model):
                 applied_absence = False
                 justified_minutes = 0
                 motivos = []
-                for absence in absences_by_key.get((line.trabajador_id.id, line.fecha), []):
+                for absence in absences_by_worker.get(line.trabajador_id.id, []):
+                    if not absence.fecha_inicio or not absence.fecha_fin:
+                        continue
+                    if not (absence.fecha_inicio <= line.fecha <= absence.fecha_fin):
+                        continue
                     overlap = min(line.hora_fin, absence.hora_fin) - max(line.hora_inicio, absence.hora_inicio)
                     if overlap <= 0:
                         continue
@@ -1808,6 +1979,8 @@ class AsignacionLinea(models.Model):
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             records = super().create(vals_list)
             records._recompute_falta_justificada_metrics()
+            for record in records:
+                record._audit_log_line('add_line', 'anadio')
             return records
 
         impacted_assignments = self._get_impacted_calendar_assignments(vals_list)
@@ -1826,6 +1999,8 @@ class AsignacionLinea(models.Model):
                 action_kind='create',
             )
         )
+        for record in records:
+            record._audit_log_line('add_line', 'anadio')
         return records
 
     def write(self, vals):
@@ -1833,9 +2008,33 @@ class AsignacionLinea(models.Model):
         if vals.get('asignacion_id'):
             impacted_assignments_for_security |= self.env['portalgestor.asignacion'].browse(vals['asignacion_id']).exists()
         self._ensure_current_user_can_manage_parent_assignments(impacted_assignments_for_security)
+        audit_fields = {'hora_inicio', 'hora_fin', 'trabajador_id', 'asignacion_id'}
+        should_audit_write = bool(audit_fields & set(vals)) and not self._audit_model().should_skip_schedule_audit()
+        audit_before = {}
+        if should_audit_write:
+            audit_before = {line.id: line._audit_line_snapshot() for line in self}
         if self.env.context.get('portalgestor_skip_calendar_notify'):
             result = super().write(vals)
             self._recompute_falta_justificada_metrics()
+            if should_audit_write:
+                for line in self.exists():
+                    before = audit_before.get(line.id)
+                    after = line._audit_line_snapshot()
+                    if before and before.get('trabajador') and not line.trabajador_id:
+                        summary = "Gestor %s libero el AP %s del tramo %s de %s del %s" % (
+                            self._audit_gestor_name(),
+                            before.get('trabajador_name'),
+                            before.get('hour_range'),
+                            before.get('usuario_name') or 'usuario sin nombre',
+                            before.get('date_label') or 'sin fecha',
+                        )
+                        line._audit_log_line('release', snapshot=before, summary=summary)
+                    else:
+                        detail = "Antes: %s\nAhora: %s" % (
+                            before.get('target_label') if before else '',
+                            after.get('target_label'),
+                        )
+                        line._audit_log_line('write', 'modifico', snapshot=after, detail=detail)
             return result
 
         impacted_assignments = self._get_impacted_calendar_assignments([vals])
@@ -1857,12 +2056,37 @@ class AsignacionLinea(models.Model):
                 action_kind='write',
             )
         )
+        if should_audit_write:
+            for line in self.exists():
+                before = audit_before.get(line.id)
+                after = line._audit_line_snapshot()
+                if before and before.get('trabajador') and not line.trabajador_id:
+                    summary = "Gestor %s libero el AP %s del tramo %s de %s del %s" % (
+                        self._audit_gestor_name(),
+                        before.get('trabajador_name'),
+                        before.get('hour_range'),
+                        before.get('usuario_name') or 'usuario sin nombre',
+                        before.get('date_label') or 'sin fecha',
+                    )
+                    line._audit_log_line('release', snapshot=before, summary=summary)
+                else:
+                    detail = "Antes: %s\nAhora: %s" % (
+                        before.get('target_label') if before else '',
+                        after.get('target_label'),
+                    )
+                    line._audit_log_line('write', 'modifico', snapshot=after, detail=detail)
         return result
 
     def unlink(self):
         self._ensure_current_user_can_manage_parent_assignments(self.mapped('asignacion_id'))
+        audit_snapshots = []
+        if not self._audit_model().should_skip_schedule_audit():
+            audit_snapshots = [line._audit_line_snapshot() for line in self]
         if self.env.context.get('portalgestor_skip_calendar_notify'):
-            return super().unlink()
+            result = super().unlink()
+            for snapshot in audit_snapshots:
+                self.browse()._audit_log_line('delete', 'elimino', snapshot=snapshot)
+            return result
 
         impacted_assignments = self.mapped('asignacion_id')
         before_state = impacted_assignments._get_calendar_realtime_snapshot()
@@ -1886,6 +2110,8 @@ class AsignacionLinea(models.Model):
                 action_kind='unlink',
             )
         )
+        for snapshot in audit_snapshots:
+            self.browse()._audit_log_line('delete', 'elimino', snapshot=snapshot)
         return result
 
     @api.constrains('hora_inicio', 'hora_fin')

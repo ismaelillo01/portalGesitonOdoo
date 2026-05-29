@@ -74,6 +74,20 @@
             <field name="domain_force">[(1, '=', 1)]</field>
         </record>
 
+        <record id="rule_portalgestor_audit_log_gestor_agusto" model="ir.rule">
+            <field name="name">Auditoria PortalGestor visible para gestores Agusto</field>
+            <field name="model_id" ref="model_portalgestor_audit_log"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_agusto'))]"/>
+            <field name="domain_force">['|', ('usuario_grupo', '=', False), ('usuario_grupo', '!=', 'intecum')]</field>
+        </record>
+
+        <record id="rule_portalgestor_audit_log_gestor_intecum" model="ir.rule">
+            <field name="name">Auditoria PortalGestor global Intecum y Admin</field>
+            <field name="model_id" ref="model_portalgestor_audit_log"/>
+            <field name="groups" eval="[(4, ref('gestores.group_gestores_intecum')), (4, ref('gestores.group_gestores_administrador'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
         <!-- Record Rules para Usuarios y Trabajadores -->
         <record id="rule_usuarios_gestor_agusto" model="ir.rule">
             <field name="name">Usuarios globales para gestores Agusto</field>

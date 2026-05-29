@@ -268,7 +268,9 @@ class AsignacionMensual(models.Model):
     def action_descartar_edicion(self):
         self.ensure_one()
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
-        self._restore_edit_snapshot()
+        snapshot = self._audit_fixed_snapshot()
+        self.with_context(portalgestor_skip_audit=True)._restore_edit_snapshot()
+        self._audit_log_fixed('discard', 'descarto cambios de', snapshot=snapshot)
         return True
 
     def _apply_confirmation_as_current_manager(self):
@@ -333,12 +335,71 @@ class AsignacionMensual(models.Model):
             records_to_remove.with_context(portalgestor_skip_fixed_sync=True).unlink()
         return records_to_remove
 
+    @api.model
+    def _audit_model(self):
+        return self.env['portalgestor.audit.log']
+
+    @api.model
+    def _audit_gestor_name(self):
+        return self._audit_model().display_record_name(self.env.user)
+
+    def _audit_fixed_snapshot(self):
+        self.ensure_one()
+        audit = self._audit_model()
+        usuario_name = audit.display_record_name(self.usuario_id)
+        start_label = audit.format_date_label(self.fecha_inicio)
+        end_label = audit.format_date_label(self.fecha_fin)
+        date_label = "%s - %s" % (start_label or 'sin inicio', end_label or 'sin fin')
+        target_label = "trabajo fijo legacy de %s del %s" % (usuario_name or 'usuario sin nombre', date_label)
+        return {
+            'fixed_id': self.id,
+            'usuario': self.usuario_id,
+            'usuario_name': usuario_name,
+            'usuario_grupo': self.usuario_id.grupo or False,
+            'target_label': target_label,
+            'date_label': date_label,
+        }
+
+    def _audit_log_fixed(self, action_type, verb, snapshot=False, detail=False, payload=False):
+        audit = self._audit_model()
+        if audit.should_skip_schedule_audit():
+            return False
+        record = self[:1]
+        if not snapshot:
+            record.ensure_one()
+        data = snapshot or self._audit_fixed_snapshot()
+        summary = "Gestor %s %s %s" % (self._audit_gestor_name(), verb, data['target_label'])
+        technical_payload = dict(payload or {})
+        technical_payload.setdefault('asignacion_mensual_id', data.get('fixed_id') or (record.id if record else False))
+        return audit.create_event(
+            action_type,
+            'legacy_fixed',
+            summary,
+            detail=detail,
+            usuario=data.get('usuario') if data.get('usuario') and data.get('usuario').exists() else False,
+            asignacion_mensual=record if record and record.exists() else False,
+            usuario_name=data.get('usuario_name'),
+            usuario_grupo=data.get('usuario_grupo'),
+            target_label=data.get('target_label'),
+            date_label=data.get('date_label'),
+            technical_payload=technical_payload,
+        )
+
     def _sync_generated_assignments(self):
         Assignment = self.env['portalgestor.asignacion']
         AssignmentLine = self.env['portalgestor.asignacion.linea']
 
         for record in self:
             target_dates = record._get_target_dates()
+            absent_dates = (
+                self.env['usuarios.falta.justificada']._get_absent_dates_by_user(
+                    record.usuario_id.ids,
+                    target_dates[0],
+                    target_dates[-1],
+                ).get(record.usuario_id.id, set())
+                if target_dates and record.usuario_id
+                else set()
+            )
             target_dates_by_key = {
                 fields.Date.to_string(target_date): target_date
                 for target_date in target_dates
@@ -352,6 +413,8 @@ class AsignacionMensual(models.Model):
             active_dates = set()
             for date_key, target_date in target_dates_by_key.items():
                 if record.usuario_id.baja and target_date >= today:
+                    continue
+                if target_date in absent_dates:
                     continue
                 if date_key in manual_exception_dates:
                     continue
@@ -474,7 +537,10 @@ class AsignacionMensual(models.Model):
             AsignacionMensual,
             self.with_context(portalgestor_skip_fixed_sync=True),
         ).create(vals_list)
+        records = records.with_env(self.env)
         records._sync_generated_assignments()
+        for record in records:
+            record._audit_log_fixed('create', 'creo')
         return records
 
     def write(self, vals):
@@ -489,6 +555,11 @@ class AsignacionMensual(models.Model):
                 AsignacionMensual,
                 self.with_context(portalgestor_skip_fixed_sync=True),
             ).write(vals)
+        audit_fields = {'usuario_id', 'fecha_inicio', 'fecha_fin'}
+        should_audit_write = bool(audit_fields & set(vals)) and not self._audit_model().should_skip_schedule_audit()
+        audit_before = {}
+        if should_audit_write:
+            audit_before = {record.id: record._audit_fixed_snapshot() for record in self}
         if 'confirmado' not in vals:
             vals = dict(vals, confirmado=False)
         result = super(
@@ -496,6 +567,15 @@ class AsignacionMensual(models.Model):
             self.with_context(portalgestor_skip_fixed_sync=True),
         ).write(vals)
         self._sync_generated_assignments()
+        if should_audit_write:
+            for record in self.exists():
+                before = audit_before.get(record.id)
+                after = record._audit_fixed_snapshot()
+                detail = "Antes: %s\nAhora: %s" % (
+                    before.get('target_label') if before else '',
+                    after.get('target_label'),
+                )
+                record._audit_log_fixed('write', 'modifico', snapshot=after, detail=detail)
         return result
 
     def action_verificar_y_confirmar(self):
@@ -527,7 +607,9 @@ class AsignacionMensual(models.Model):
                 return result
             asignacion._apply_confirmation_as_current_manager()
 
-        return self._apply_confirmation_as_current_manager()
+        result = self._apply_confirmation_as_current_manager()
+        self._audit_log_fixed('confirm', 'confirmo')
+        return result
 
     def _get_pending_generated_lines_for_assignment(self, assignment):
         self.ensure_one()
@@ -688,6 +770,7 @@ class AsignacionMensual(models.Model):
             self._set_edit_snapshot()
         self.confirmado = False
         self.asignacion_linea_ids.mapped('asignacion_id').write({'confirmado': False})
+        self._audit_log_fixed('edit', 'edito')
         return True
 
     def action_eliminar_horario(self):
@@ -700,6 +783,9 @@ class AsignacionMensual(models.Model):
 
     def unlink(self):
         self._ensure_current_user_can_manage_users(self.mapped('usuario_id'))
+        audit_snapshots = []
+        if not self._audit_model().should_skip_schedule_audit():
+            audit_snapshots = [record._audit_fixed_snapshot() for record in self]
         touched_assignments = self.mapped('asignacion_linea_ids.asignacion_id')
         generated_lines = self.mapped('asignacion_linea_ids')
         exception_keys = {
@@ -715,10 +801,13 @@ class AsignacionMensual(models.Model):
             portalgestor_skip_fixed_exception=True,
         ).unlink()
         touched_assignments.cleanup_empty_assignments()
-        return super(
+        result = super(
             AsignacionMensual,
             self.with_context(portalgestor_skip_fixed_sync=True),
         ).unlink()
+        for snapshot in audit_snapshots:
+            self.browse()._audit_log_fixed('delete', 'elimino', snapshot=snapshot)
+        return result
 
     @api.depends('usuario_id', 'fecha_inicio', 'fecha_fin', 'linea_fija_ids')
     def _compute_display_name(self):
@@ -787,6 +876,74 @@ class AsignacionMensualLinea(models.Model):
             'asignacion_mensual_linea_id': self.id,
         }
 
+    @api.model
+    def _audit_model(self):
+        return self.env['portalgestor.audit.log']
+
+    @api.model
+    def _audit_gestor_name(self):
+        return self._audit_model().display_record_name(self.env.user)
+
+    def _audit_line_snapshot(self):
+        self.ensure_one()
+        audit = self._audit_model()
+        parent = self.asignacion_mensual_id
+        usuario = parent.usuario_id
+        trabajador = self.trabajador_id
+        usuario_name = audit.display_record_name(usuario)
+        trabajador_name = audit.display_record_name(trabajador)
+        date_label = "%s - %s" % (
+            audit.format_date_label(parent.fecha_inicio) or 'sin inicio',
+            audit.format_date_label(parent.fecha_fin) or 'sin fin',
+        )
+        hour_range = audit.format_hour_range_label(self.hora_inicio, self.hora_fin)
+        target_label = "tramo %s con AP %s del trabajo fijo legacy de %s del %s" % (
+            hour_range,
+            trabajador_name or 'sin AP',
+            usuario_name or 'usuario sin nombre',
+            date_label,
+        )
+        return {
+            'line_id': self.id,
+            'parent': parent,
+            'parent_id': parent.id,
+            'usuario': usuario,
+            'usuario_name': usuario_name,
+            'usuario_grupo': usuario.grupo or False,
+            'trabajador': trabajador,
+            'trabajador_name': trabajador_name,
+            'date_label': date_label,
+            'target_label': target_label,
+        }
+
+    def _audit_log_line(self, action_type, verb, snapshot=False, detail=False, payload=False):
+        audit = self._audit_model()
+        if audit.should_skip_schedule_audit():
+            return False
+        record = self[:1]
+        if not snapshot:
+            record.ensure_one()
+        data = snapshot or self._audit_line_snapshot()
+        summary = "Gestor %s %s %s" % (self._audit_gestor_name(), verb, data['target_label'])
+        technical_payload = dict(payload or {})
+        technical_payload.setdefault('asignacion_mensual_linea_id', data.get('line_id') or (record.id if record else False))
+        technical_payload.setdefault('asignacion_mensual_id', data.get('parent_id'))
+        return audit.create_event(
+            action_type,
+            'legacy_fixed_line',
+            summary,
+            detail=detail,
+            usuario=data.get('usuario') if data.get('usuario') and data.get('usuario').exists() else False,
+            trabajador=data.get('trabajador') if data.get('trabajador') and data.get('trabajador').exists() else False,
+            asignacion_mensual=data.get('parent') if data.get('parent') and data.get('parent').exists() else False,
+            usuario_name=data.get('usuario_name'),
+            trabajador_name=data.get('trabajador_name'),
+            usuario_grupo=data.get('usuario_grupo'),
+            target_label=data.get('target_label'),
+            date_label=data.get('date_label'),
+            technical_payload=technical_payload,
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         parent_ids = [vals.get('asignacion_mensual_id') for vals in vals_list if vals.get('asignacion_mensual_id')]
@@ -795,6 +952,8 @@ class AsignacionMensualLinea(models.Model):
                 self.env['portalgestor.asignacion.mensual'].browse(parent_ids).exists()
             )
         records = super().create(vals_list)
+        for record in records:
+            record._audit_log_line('add_line', 'anadio')
         if not self.env.context.get('portalgestor_skip_fixed_sync'):
             records.mapped('asignacion_mensual_id')._sync_generated_assignments()
         return records
@@ -804,17 +963,36 @@ class AsignacionMensualLinea(models.Model):
         if vals.get('asignacion_mensual_id'):
             parent_records |= self.env['portalgestor.asignacion.mensual'].browse(vals['asignacion_mensual_id']).exists()
         self._ensure_current_user_can_manage_parent_records(parent_records)
+        audit_fields = {'hora_inicio', 'hora_fin', 'trabajador_id', 'asignacion_mensual_id'}
+        should_audit_write = bool(audit_fields & set(vals)) and not self._audit_model().should_skip_schedule_audit()
+        audit_before = {}
+        if should_audit_write:
+            audit_before = {line.id: line._audit_line_snapshot() for line in self}
         result = super().write(vals)
         if not self.env.context.get('portalgestor_skip_fixed_sync'):
             (parent_records | self.mapped('asignacion_mensual_id')).exists()._sync_generated_assignments()
+        if should_audit_write:
+            for line in self.exists():
+                before = audit_before.get(line.id)
+                after = line._audit_line_snapshot()
+                detail = "Antes: %s\nAhora: %s" % (
+                    before.get('target_label') if before else '',
+                    after.get('target_label'),
+                )
+                line._audit_log_line('write', 'modifico', snapshot=after, detail=detail)
         return result
 
     def unlink(self):
         parent_records = self.mapped('asignacion_mensual_id')
         self._ensure_current_user_can_manage_parent_records(parent_records)
+        audit_snapshots = []
+        if not self._audit_model().should_skip_schedule_audit():
+            audit_snapshots = [line._audit_line_snapshot() for line in self]
         result = super().unlink()
         if not self.env.context.get('portalgestor_skip_fixed_sync'):
             parent_records.exists()._sync_generated_assignments()
+        for snapshot in audit_snapshots:
+            self.browse()._audit_log_line('delete', 'elimino', snapshot=snapshot)
         return result
 
     @api.constrains('hora_inicio', 'hora_fin')

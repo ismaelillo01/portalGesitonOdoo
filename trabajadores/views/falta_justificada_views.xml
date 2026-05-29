@@ -5,7 +5,8 @@
       <field name="model">trabajadores.falta.justificada</field>
       <field name="arch" type="xml">
         <list decoration-info="state == 'verified'">
-          <field name="fecha"/>
+          <field name="fecha_inicio"/>
+          <field name="fecha_fin"/>
           <field name="trabajador_id" domain="[('baja', '=', False)]"/>
           <field name="hora_inicio" widget="float_time"/>
           <field name="hora_fin" widget="float_time"/>
@@ -21,7 +22,8 @@
       <field name="arch" type="xml">
         <search string="Buscar faltas justificadas">
           <field name="trabajador_id" string="AP" domain="[('baja', '=', False)]"/>
-          <field name="fecha"/>
+          <field name="fecha_inicio"/>
+          <field name="fecha_fin"/>
           <field name="state"/>
           <filter name="verified" string="Verificadas" domain="[('state', '=', 'verified')]"/>
           <filter name="draft" string="Borrador" domain="[('state', '=', 'draft')]"/>
@@ -59,7 +61,8 @@
             <group>
               <group>
                 <field name="trabajador_id" domain="[('baja', '=', False)]" options="{'no_create': True}"/>
-                <field name="fecha"/>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
               </group>
               <group>
                 <field name="hora_inicio" widget="float_time" placeholder="00:00"/>
@@ -100,7 +103,8 @@
           <page string="Faltas justificadas">
             <field name="faltas_justificadas_ids" readonly="1">
               <list>
-                <field name="fecha"/>
+                <field name="fecha_inicio"/>
+                <field name="fecha_fin"/>
                 <field name="hora_inicio" widget="float_time"/>
                 <field name="hora_fin" widget="float_time"/>
                 <field name="state"/>
