@@ -140,8 +140,17 @@ class UsuarioPortalAPQR(models.Model):
         return True
 
     def action_portal_ap_print_qr(self):
+        self.ensure_one()
         self._ensure_portal_ap_qr_token()
-        return self.env.ref('portal_ap.action_report_portal_ap_user_qr').report_action(self)
+        # Use act_url (GET) instead of report_action (POST /report/download)
+        # to avoid CSRF token validation failures when odoo.csrf_token is
+        # not available in the browser context.
+        report = self.env.ref('portal_ap.action_report_portal_ap_user_qr')
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/report/pdf/{report.report_name}/{self.id}',
+            'target': 'new',
+        }
 
     @api.model_create_multi
     def create(self, vals_list):
