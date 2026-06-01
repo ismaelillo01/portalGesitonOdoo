@@ -799,32 +799,33 @@ class TrabajoFijo(models.Model):
     def action_copy_week_to_remaining(self, source_week_number):
         return self._copy_week(source_week_number, scope='remaining')
 
-    def _get_copy_year_source_date_for_target(self, target_date):
+    def _get_copy_year_source_lines_by_weekday(self):
+        """Returns a dict mapping weekday (0=Mon..6=Sun) -> first-occurrence source lines."""
         self.ensure_one()
-        source_start, source_end = self._get_month_bounds(self.month, self.year)
-        source_day_count = (source_end - source_start).days + 1
-        target_day = fields.Date.to_date(target_date).day
-        if target_day > source_day_count:
-            return False
-        source_day = target_day
-        return source_start.replace(day=source_day)
-
-    def _prepare_copy_year_line_vals(self, target_month):
-        self.ensure_one()
-        line_vals = []
         source_lines_by_date = defaultdict(list)
         for source_line in self.line_ids.sorted(key=self._get_line_sort_key):
             if not source_line.fecha:
                 continue
             source_lines_by_date[source_line.fecha].append(source_line)
+        source_start, source_end = self._get_month_bounds(self.month, self.year)
+        lines_by_weekday = {}
+        current = source_start
+        while current <= source_end:
+            wd = current.weekday()
+            if wd not in lines_by_weekday:
+                lines_by_weekday[wd] = source_lines_by_date.get(current, [])
+            current += timedelta(days=1)
+        return lines_by_weekday
+
+    def _prepare_copy_year_line_vals(self, target_month):
+        self.ensure_one()
+        line_vals = []
+        lines_by_weekday = self._get_copy_year_source_lines_by_weekday()
         target_start, target_end = self._get_month_bounds(target_month, self.year)
-        target_vals_by_date = {}
         target_date = target_start
         while target_date <= target_end:
-            source_date = self._get_copy_year_source_date_for_target(target_date)
-            source_day_lines = source_lines_by_date.get(source_date, []) if source_date else []
-            target_day_vals = []
-            for source_line in source_day_lines:
+            wd = target_date.weekday()
+            for source_line in lines_by_weekday.get(wd, []):
                 vals = {
                     'fecha': target_date,
                     'hora_inicio': source_line.hora_inicio,
@@ -836,16 +837,7 @@ class TrabajoFijo(models.Model):
                     vals['kilometraje_km'] = source_line.kilometraje_km
                 if 'desplazamiento_horas' in source_line._fields:
                     vals['desplazamiento_horas'] = source_line.desplazamiento_horas
-                target_day_vals.append(vals)
-            if not target_day_vals and not source_date:
-                previous_week_date = target_date - timedelta(days=7)
-                if previous_week_date >= target_start:
-                    target_day_vals = [
-                        dict(previous_vals, fecha=target_date)
-                        for previous_vals in target_vals_by_date.get(previous_week_date, [])
-                    ]
-            target_vals_by_date[target_date] = target_day_vals
-            line_vals.extend(target_day_vals)
+                line_vals.append(vals)
             target_date += timedelta(days=1)
         return line_vals
 
