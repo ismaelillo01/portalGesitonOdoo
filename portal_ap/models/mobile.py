@@ -459,6 +459,10 @@ class PortalAPServiceMobile(models.AbstractModel):
 
     @api.model
     def _mobile_sync(self, session_token, events):
+        # Validate session before processing any events (even an empty list)
+        _session, error = self._mobile_get_session(session_token)
+        if error:
+            return error
         results = []
         for event in events or []:
             event = dict(event)
