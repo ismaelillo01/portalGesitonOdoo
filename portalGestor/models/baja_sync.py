@@ -37,15 +37,24 @@ class Usuario(models.Model):
             self.fecha_baja = False
 
     def write(self, vals):
-        usuarios_baja = self.browse()
+        # Caso 1: baja pasa de False → True (nueva baja)
+        nuevos_en_baja = self.browse()
         if vals.get('baja') is True:
-            usuarios_baja = self.filtered(lambda usuario: not usuario.baja)
+            nuevos_en_baja = self.filtered(lambda u: not u.baja)
+
+        # Caso 2: fecha_baja cambia mientras baja ya está activa
+        # (el usuario corrigió la fecha sin tocar el checkbox)
+        ya_en_baja_con_nueva_fecha = self.browse()
+        if 'fecha_baja' in vals and vals.get('fecha_baja') and vals.get('baja') is not True:
+            ya_en_baja_con_nueva_fecha = self.filtered(lambda u: u.baja)
+
+        usuarios_a_cancelar = nuevos_en_baja | ya_en_baja_con_nueva_fecha
 
         result = super().write(vals)
 
-        if usuarios_baja:
-            for usuario in usuarios_baja:
-                # Usa fecha_baja ya escrita (viene de vals o del registro)
+        if usuarios_a_cancelar:
+            for usuario in usuarios_a_cancelar:
+                # fecha_baja ya está escrita en DB; usarla como start_date
                 self.env['portalgestor.asignacion'].cancel_future_user_assignments(
                     [usuario.id],
                     start_date=usuario.fecha_baja,
