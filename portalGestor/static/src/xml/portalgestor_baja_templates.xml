@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="portalGestor.BajaWarningDialog">
+        <Dialog size="'md'" title="'Confirmar baja'">
+            <div class="o_portalgestor_baja_dialog">
+                <p>
+                    Al guardar se cancelarán los horarios desde el
+                    <strong t-esc="props.fechaBaja"/>
+                    hacia adelante.
+                </p>
+                <p class="text-muted fst-italic">
+                    Puedes cambiar la fecha de baja en el formulario antes de guardar.
+                </p>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="onConfirm">
+                    Continuar
+                </button>
+                <button class="btn btn-secondary" t-on-click="onCancel">
+                    Cancelar baja
+                </button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>

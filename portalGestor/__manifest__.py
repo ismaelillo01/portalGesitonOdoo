@@ -19,10 +19,12 @@
             'portalGestor/static/src/js/portalgestor_user_badges.js',
             'portalGestor/static/src/js/trabajadores_vacacion_markers.js',
             'portalGestor/static/src/js/portalgestor_calendar_summary.js',
+            'portalGestor/static/src/js/portalgestor_baja_warning.js',
             'portalGestor/static/src/scss/trabajadores_vacacion_markers.scss',
             'portalGestor/static/src/scss/portalgestor_calendar_summary.scss',
             'portalGestor/static/src/scss/trabajo_fijo.scss',
             'portalGestor/static/src/xml/portalgestor_calendar_templates.xml',
+            'portalGestor/static/src/xml/portalgestor_baja_templates.xml',
         ],
     },
     'data': [

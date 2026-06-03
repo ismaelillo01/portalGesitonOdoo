@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Campo fecha_baja: aparece cuando baja=True -->
+    <record id="portalgestor_usuario_form_inherit_fecha_baja" model="ir.ui.view">
+        <field name="name">usuarios.usuario.form.portalgestor.fecha_baja</field>
+        <field name="model">usuarios.usuario</field>
+        <field name="inherit_id" ref="usuarios.usuario_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='baja']" position="after">
+                <field
+                    name="fecha_baja"
+                    invisible="not baja"
+                    readonly="manager_edit_blocked"
+                    required="baja"
+                    string="Cancelar horarios desde"
+                    options="{'datepicker': {'warn_future': false}}"
+                />
+            </xpath>
+        </field>
+    </record>
+
     <record id="portalgestor_usuario_form_inherit_report_button" model="ir.ui.view">
         <field name="name">usuarios.usuario.form.portalgestor.report.button</field>
         <field name="model">usuarios.usuario</field>
